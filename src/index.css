@@ -1,0 +1,70 @@
+@import "tailwindcss";
+
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css');
+@import url('https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+@theme {
+  /* 컬러 토큰 — 춤바람(春/바람) 무대 무드 */
+  --color-stage: #15121a;       /* 야간무대: 핑크빛이 살짝 도는 딥 블랙 */
+  --color-afterglow: #1f1822;   /* 카드/패널 배경 */
+  --color-afterglow-2: #2c2130; /* hover, border — 살짝 밝은 톤 */
+  --color-wind-gold: #ff3d8a;   /* 메인 포인트 → 로고 핑크로 교체 */
+  --color-wind-gold-dim: #a92460;
+  --color-dawn-teal: #ff8fbb;   /* 보조 포인트 → 연핑크/로즈 계열 */
+  --color-backstage: #f7eef1;   /* 어두운 배경 위 본문 텍스트 — 핑크빛 도는 화이트 */
+  --color-mute: #998a95;        /* 저강조 텍스트 — 톤을 맞춘 뮤트 로즈그레이 */
+  --color-line: #3a2c3e;        /* 구분선 */
+
+
+  --font-display: "Black Han Sans", "Pretendard", sans-serif;
+  --font-body: "Pretendard", "Black Han Sans", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+
+  --animate-windline: windline 8s linear infinite;
+  --animate-rise: rise 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes windline {
+  0% { stroke-dashoffset: 0; }
+  100% { stroke-dashoffset: -240; }
+}
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--color-stage);
+  color: var(--color-backstage);
+  font-family: var(--font-body);
+}
+
+::selection {
+  background: var(--color-wind-gold);
+  color: var(--color-stage);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-dawn-teal);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+/* 스크롤바 — 무대 톤 유지 */
+::-webkit-scrollbar { width: 10px; }
+::-webkit-scrollbar-track { background: var(--color-stage); }
+::-webkit-scrollbar-thumb { background: var(--color-afterglow-2); border-radius: 999px; }

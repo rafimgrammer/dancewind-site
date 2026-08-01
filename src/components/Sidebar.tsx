@@ -1,0 +1,113 @@
+import { NavLink } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+
+interface NavItem {
+  to: string;
+  label: string;
+  emphasize?: boolean;
+}
+
+const COMMON: NavItem[] = [
+  { to: "/", label: "HOME" },
+  { to: "/about", label: "춤바람 소개" },
+  { to: "/videos", label: "춤바람 활동 영상" },
+  { to: "/officers", label: "회장단 프로필" },
+  { to: "/location", label: "동방 찾아오시는 길" },
+  { to: "/recruit", label: "신입 부원 모집 안내", emphasize: true },
+  { to: "/gallery", label: "활동 갤러리" },
+];
+
+const MEMBER: NavItem[] = [
+  { to: "/notices", label: "공지사항" },
+  { to: "/board", label: "자유게시판" },
+  { to: "/anonymous", label: "익명 건의·게시판" },
+  { to: "/classes", label: "티칭 클래스" },
+  { to: "/practice-matcher", label: "연습시간 마스터" },
+];
+
+const PRESIDENT: NavItem[] = [
+  { to: "/tracklist-master", label: "트랙리스트 마스터" },
+  { to: "/member-manage", label: "전체 부원 관리" },
+];
+
+function GroupLabel({ children }: { children: string }) {
+  return (
+    <p className="px-3 pt-5 pb-1.5 text-[11px] tracking-[0.18em] text-mute font-mono uppercase">
+      {children}
+    </p>
+  );
+}
+
+function Item({ item, onNavigate }: { item: NavItem; onNavigate?: () => void }) {
+  return (
+    <NavLink
+      to={item.to}
+      onClick={onNavigate}
+      className={({ isActive }) =>
+        [
+          "group relative flex items-center gap-2 rounded-lg px-3 py-2.5 text-[15px] transition-all duration-200",
+          "hover:translate-x-1 hover:bg-afterglow-2",
+          isActive ? "bg-afterglow-2 text-wind-gold font-semibold" : "text-backstage/85",
+          item.emphasize && !isActive ? "text-wind-gold" : "",
+        ].join(" ")
+      }
+    >
+      {({ isActive }) => (
+        <>
+          <span
+            className={[
+              "h-1.5 w-1.5 shrink-0 rounded-full transition-all duration-200",
+              isActive ? "bg-wind-gold scale-100" : "bg-transparent scale-0 group-hover:scale-100 group-hover:bg-dawn-teal/70",
+            ].join(" ")}
+          />
+          {item.label}
+        </>
+      )}
+    </NavLink>
+  );
+}
+
+export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
+  const { role } = useAuth();
+
+  return (
+    <nav className="flex h-full flex-col px-3 pb-6" aria-label="주요 메뉴">
+      <div className="mt-1 space-y-0.5">
+        {COMMON.map((item) => (
+          <Item key={item.to} item={item} onNavigate={onNavigate} />
+        ))}
+      </div>
+
+      {(role === "member" || role === "president") && (
+        <>
+          <GroupLabel>부원 전용</GroupLabel>
+          <div className="space-y-0.5">
+            {MEMBER.map((item) => (
+              <Item key={item.to} item={item} onNavigate={onNavigate} />
+            ))}
+          </div>
+        </>
+      )}
+
+      {role === "president" && (
+        <>
+          <GroupLabel>회장단 전용</GroupLabel>
+          <div className="space-y-0.5">
+            {PRESIDENT.map((item) => (
+              <Item key={item.to} item={item} onNavigate={onNavigate} />
+            ))}
+          </div>
+        </>
+      )}
+
+      <div className="mt-auto pt-6">
+        <div className="rounded-xl border border-line bg-afterglow p-3 text-xs text-mute">
+          <p className="font-mono text-dawn-teal">CHUMBARAM CREW</p>
+          <p className="mt-1 leading-relaxed">
+            바람이 지나간 자리에 스텝이 남는다.
+          </p>
+        </div>
+      </div>
+    </nav>
+  );
+}
