@@ -2,7 +2,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { PageHeader, Card, EmptyState, RequireRole } from "../components/Ui";
-import { useAuth } from "../context/AuthContext";
 import { useBoard } from "../context/BoardContext";
 
 const PAGE_SIZE = 6;
@@ -13,7 +12,6 @@ function stripHtml(html: string) {
 }
 
 export default function Board() {
-  const { role } = useAuth();
   const { posts } = useBoard();
   const [searchType, setSearchType] = useState<SearchType>("title");
   const [query, setQuery] = useState("");

@@ -4,7 +4,6 @@ import { PageHeader, Card, RequireRole } from "../components/Ui";
 import { useAuth } from "../context/AuthContext";
 import {
   usePractice,
-  emptySession,
   type PersonEntry,
   type PracticeSession,
   type MainSlot,
