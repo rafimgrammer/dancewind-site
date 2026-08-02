@@ -1,3 +1,4 @@
+// src/pages/Home.tsx
 import { Link } from "react-router-dom";
 import WindLine from "../components/WindLine";
 import { Card, Pill } from "../components/Ui";
@@ -5,9 +6,18 @@ import history from "../data/history.json";
 import schedule from "../data/schedule.json";
 
 const CHANNELS = [
-  { name: "Instagram", handle: "@chumbaram_official", href: "#", desc: "연습 영상과 공연 스케치" },
-  { name: "YouTube", handle: "춤바람 CHUMBARAM", href: "#", desc: "정기공연 풀영상 아카이브" },
-  { name: "Naver Cafe", handle: "춤바람 부원 라운지", href: "#", desc: "기수별 소식과 아카이브" },
+  {
+    name: "Instagram",
+    handle: "@hallym_dancewind",
+    href: "https://www.instagram.com/hallym_dancewind?igsh=MWFweWs4cGVvcTNvYw==",
+    desc: "연습 영상과 공연 스케치",
+  },
+  {
+    name: "YouTube",
+    handle: "춤바람 CHUMBARAM",
+    href: "https://youtube.com/@2dancewind2023?si=jPvCFrEvj8KHF4H1",
+    desc: "정기공연 풀영상 아카이브",
+  },
 ];
 
 export default function Home() {
@@ -45,20 +55,44 @@ export default function Home() {
             </div>
           </div>
 
-          {/* 영상 자리 — 홍보영상 플레이스홀더, 무대 조명처럼 살짝 기울인 비대칭 프레임 */}
+          {/* 영상 자리 — 홍보영상 자동재생, 무대 조명처럼 살짝 기울인 비대칭 프레임 */}
           <div className="relative flex items-center justify-center">
             <div className="relative w-full max-w-sm -rotate-2 rounded-2xl border border-line bg-stage p-2 shadow-2xl shadow-black/40 transition-transform duration-500 hover:rotate-0">
-              <div className="flex aspect-[9/13] flex-col items-center justify-center gap-3 rounded-xl bg-gradient-to-b from-afterglow-2 to-stage">
-                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" className="text-wind-gold">
-                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.5" />
-                  <path d="M10 8.5l6 3.5-6 3.5v-7z" fill="currentColor" />
-                </svg>
-                <p className="font-mono text-xs text-mute">2026 춤바람 홍보영상</p>
-                <p className="px-6 text-center text-[11px] text-mute/70">영상 업로드 예정 · 00:47</p>
+              <div className="relative aspect-[9/13] overflow-hidden rounded-xl bg-stage">
+                <iframe
+                  className="pointer-events-none absolute left-1/2 top-1/2 h-[130%] w-[130%] -translate-x-1/2 -translate-y-1/2"
+                  src="https://www.youtube.com/embed/Ehg9VxymfT4?autoplay=1&mute=1&loop=1&playlist=Ehg9VxymfT4&controls=0&showinfo=0&rel=0&modestbranding=1&playsinline=1"
+                  title="2026 춤바람 홍보영상"
+                  allow="autoplay; encrypted-media"
+                  allowFullScreen
+                />
               </div>
               <span className="absolute -bottom-3 left-4 rounded-full bg-dawn-teal px-3 py-1 font-mono text-[10px] text-stage">
                 LIVE AT STAGE
               </span>
+
+              {/* 이어폰 줄 디테일 */}
+              <svg
+                className="pointer-events-none absolute -bottom-24 right-6 h-28 w-16 overflow-visible"
+                viewBox="0 0 60 100"
+                fill="none"
+              >
+                <path
+                  d="M10 0 C 10 30, 45 20, 40 50 S 15 75, 20 95"
+                  stroke="var(--color-line)"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+                <circle
+                  cx="20"
+                  cy="95"
+                  r="6"
+                  fill="var(--color-afterglow-2)"
+                  stroke="var(--color-wind-gold)"
+                  strokeWidth="1.5"
+                />
+                <circle cx="20" cy="95" r="2" fill="var(--color-wind-gold)" />
+              </svg>
             </div>
           </div>
         </div>
@@ -123,11 +157,13 @@ export default function Home() {
       <section>
         <p className="font-mono text-xs tracking-[0.2em] text-dawn-teal uppercase">Channels</p>
         <h2 className="mt-2 font-display text-2xl text-backstage md:text-3xl">춤바람 채널</h2>
-        <div className="mt-6 grid gap-3 sm:grid-cols-3">
+        <div className="mt-6 grid gap-3 sm:grid-cols-2">
           {CHANNELS.map((c) => (
             <a
               key={c.name}
               href={c.href}
+              target="_blank"
+              rel="noreferrer"
               className="group rounded-2xl border border-line bg-afterglow p-5 transition-all hover:-translate-y-1 hover:border-dawn-teal/50"
             >
               <p className="font-display text-lg text-backstage group-hover:text-dawn-teal">{c.name}</p>
