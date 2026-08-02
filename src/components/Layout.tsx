@@ -1,3 +1,4 @@
+// src/components/Layout.tsx
 import { useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import Sidebar from "./Sidebar";
@@ -11,10 +12,13 @@ export default function Layout({ children }: { children: ReactNode }) {
       <div className="mx-auto flex max-w-[1400px]">
         {/* 데스크톱 사이드바 */}
         <aside className="sticky top-0 hidden h-screen w-64 shrink-0 border-r border-line md:flex md:flex-col">
-          <Link to="/" className="flex items-center gap-2 px-5 py-6">
-            <span className="font-display text-2xl tracking-wide text-backstage">춤바람</span>
-            <span className="font-mono text-[10px] text-mute">CHUM.BARAM</span>
-          </Link>
+          <Link
+  to="/"
+  className="flex flex-col items-center gap-3 px-5 py-8 transition-opacity hover:opacity-80"
+>
+  <img src="/dancewindlogo.png" alt="춤바람 로고" className="h-24 w-auto" />
+  <span className="font-display text-4xl tracking-wide text-backstage">춤바람</span>
+</Link>
           <div className="flex-1 overflow-y-auto">
             <Sidebar />
           </div>
@@ -30,8 +34,13 @@ export default function Layout({ children }: { children: ReactNode }) {
             />
             <aside className="absolute left-0 top-0 h-full w-72 animate-rise bg-stage border-r border-line">
               <div className="flex items-center justify-between px-5 py-6">
-                <Link to="/" onClick={() => setDrawerOpen(false)} className="font-display text-2xl text-backstage">
-                  춤바람
+                <Link
+                  to="/"
+                  onClick={() => setDrawerOpen(false)}
+                  className="flex items-center gap-2.5 transition-opacity hover:opacity-80"
+                >
+                  <img src="/chumbaram-logo.png" alt="춤바람 로고" className="h-7 w-auto" />
+                  <span className="font-display text-2xl text-backstage">춤바람</span>
                 </Link>
                 <button
                   onClick={() => setDrawerOpen(false)}
