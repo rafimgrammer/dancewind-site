@@ -4,6 +4,9 @@ import { NoticesProvider } from "./context/NoticesContext";
 import { BoardProvider } from "./context/BoardContext";
 import { TeachingProvider } from "./context/TeachingContext";
 import { PracticeProvider } from "./context/PracticeContext";
+import { CalendarProvider } from "./context/CalendarContext";
+import { AnonBoardProvider } from "./context/AnonBoardContext";
+import { TracklistProvider } from "./context/TracklistContext";
 import Layout from "./components/Layout";
 
 import Home from "./pages/Home";
@@ -11,6 +14,7 @@ import About from "./pages/About";
 import Videos from "./pages/Videos";
 import Officers from "./pages/Officers";
 import Location from "./pages/Location";
+import CalendarPage from "./pages/Calendar";
 import Recruit from "./pages/Recruit";
 import Gallery from "./pages/Gallery";
 import Notices from "./pages/Notices";
@@ -20,6 +24,7 @@ import Board from "./pages/Board";
 import BoardForm from "./pages/BoardForm";
 import BoardDetail from "./pages/BoardDetail";
 import AnonBoard from "./pages/AnonBoard";
+import AnonBoardDetail from "./pages/AnonBoardDetail";
 import Teaching from "./pages/Teaching";
 import TeachingForm from "./pages/TeachingForm";
 import TeachingDetail from "./pages/TeachingDetail";
@@ -39,37 +44,45 @@ export default function App() {
         <BoardProvider>
           <TeachingProvider>
             <PracticeProvider>
-              <BrowserRouter>
-                <Layout>
-                  <Routes>
-                    <Route path="/" element={<Home />} />
-                    <Route path="/login" element={<Login />} />
-                    <Route path="/privacy" element={<PrivacyPolicy />} />
-                    <Route path="/terms" element={<Terms />} />
-                    <Route path="/about" element={<About />} />
-                    <Route path="/videos" element={<Videos />} />
-                    <Route path="/officers" element={<Officers />} />
-                    <Route path="/location" element={<Location />} />
-                    <Route path="/recruit" element={<Recruit />} />
-                    <Route path="/gallery" element={<Gallery />} />
-                    <Route path="/notices" element={<Notices />} />
-                    <Route path="/notices/new" element={<NoticeForm />} />
-                    <Route path="/notices/:id" element={<NoticeDetail />} />
-                    <Route path="/board" element={<Board />} />
-                    <Route path="/board/new" element={<BoardForm />} />
-                    <Route path="/board/:id" element={<BoardDetail />} />
-                    <Route path="/anonymous" element={<AnonBoard />} />
-                    <Route path="/classes" element={<Teaching />} />
-                    <Route path="/classes" element={<Teaching />} />
-                    <Route path="/classes/new" element={<TeachingForm />} />
-                    <Route path="/classes/:id" element={<TeachingDetail />} />
-                    <Route path="/practice-matcher" element={<PracticeMatcher />} />
-                    <Route path="/tracklist-master" element={<TracklistMaster />} />
-                    <Route path="/member-manage" element={<MemberManage />} />
-                    <Route path="*" element={<NotFound />} />
-                  </Routes>
-                </Layout>
-              </BrowserRouter>
+              <CalendarProvider>
+                <AnonBoardProvider>
+                  <TracklistProvider>
+                    <BrowserRouter>
+                      <Layout>
+                        <Routes>
+                          <Route path="/" element={<Home />} />
+                          <Route path="/login" element={<Login />} />
+                          <Route path="/privacy" element={<PrivacyPolicy />} />
+                          <Route path="/calendar" element={<CalendarPage />} />
+                          <Route path="/terms" element={<Terms />} />
+                          <Route path="/about" element={<About />} />
+                          <Route path="/videos" element={<Videos />} />
+                          <Route path="/officers" element={<Officers />} />
+                          <Route path="/anonymous/:id" element={<AnonBoardDetail />} />
+                          <Route path="/location" element={<Location />} />
+                          <Route path="/recruit" element={<Recruit />} />
+                          <Route path="/gallery" element={<Gallery />} />
+                          <Route path="/notices" element={<Notices />} />
+                          <Route path="/notices/new" element={<NoticeForm />} />
+                          <Route path="/notices/:id" element={<NoticeDetail />} />
+                          <Route path="/board" element={<Board />} />
+                          <Route path="/board/new" element={<BoardForm />} />
+                          <Route path="/board/:id" element={<BoardDetail />} />
+                          <Route path="/anonymous" element={<AnonBoard />} />
+                          <Route path="/classes" element={<Teaching />} />
+                          <Route path="/classes" element={<Teaching />} />
+                          <Route path="/classes/new" element={<TeachingForm />} />
+                          <Route path="/classes/:id" element={<TeachingDetail />} />
+                          <Route path="/practice-matcher" element={<PracticeMatcher />} />
+                          <Route path="/tracklist-master" element={<TracklistMaster />} />
+                          <Route path="/member-manage" element={<MemberManage />} />
+                          <Route path="*" element={<NotFound />} />
+                        </Routes>
+                      </Layout>
+                    </BrowserRouter>
+                  </TracklistProvider>
+                </AnonBoardProvider>
+              </CalendarProvider>
             </PracticeProvider>
           </TeachingProvider>
         </BoardProvider>

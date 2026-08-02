@@ -12,6 +12,7 @@ const COMMON: NavItem[] = [
   { to: "/", label: "HOME" },
   { to: "/about", label: "춤바람 소개" },
   { to: "/videos", label: "춤바람 활동 영상" },
+  { to: "/calendar", label: "춤바람 캘린더" },
   { to: "/officers", label: "회장단 프로필" },
   { to: "/location", label: "동방 찾아오시는 길" },
   { to: "/recruit", label: "신입 부원 모집 안내", emphasize: true },

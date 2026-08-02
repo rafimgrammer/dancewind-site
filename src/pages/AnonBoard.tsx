@@ -1,36 +1,40 @@
-import { useState } from "react";
-import { PageHeader, Card, EmptyState, RequireRole, Pill } from "../components/Ui";
+// src/pages/AnonBoard.tsx
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { PageHeader, Card, EmptyState, RequireRole } from "../components/Ui";
 import { useAuth } from "../context/AuthContext";
-import initialPosts from "../data/anonPosts.json";
-
-interface Post {
-  id: string;
-  title: string;
-  date: string;
-  reports: number;
-  blinded: boolean;
-  body: string;
-}
-
-const BLIND_THRESHOLD = 3;
+import { useAnonBoard } from "../context/AnonBoardContext";
+import { formatTimeAgo } from "../utils/timeAgo";
 
 export default function AnonBoard() {
-  const { role } = useAuth();
-  const [posts, setPosts] = useState<Post[]>(initialPosts);
-  const [reportedIds, setReportedIds] = useState<string[]>([]);
-  const isPresident = role === "president";
+  const { name } = useAuth() as { name?: string };
+  const { posts, addPost, getRemainingCooldown } = useAnonBoard();
 
-  const report = (id: string) => {
-    if (reportedIds.includes(id)) return;
-    setReportedIds((prev) => [...prev, id]);
-    setPosts((prev) =>
-      prev.map((p) => {
-        if (p.id !== id) return p;
-        const reports = p.reports + 1;
-        return { ...p, reports, blinded: p.blinded || reports >= BLIND_THRESHOLD };
-      })
-    );
+  const myKey = name ?? "익명의 부원";
+
+  const [draft, setDraft] = useState("");
+  const [isAnonymous, setIsAnonymous] = useState(true);
+  const [cooldownMs, setCooldownMs] = useState(0);
+
+  useEffect(() => {
+    setCooldownMs(getRemainingCooldown(myKey));
+    const timer = setInterval(() => setCooldownMs(getRemainingCooldown(myKey)), 1000);
+    return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [myKey, posts]);
+
+  const handleSubmit = () => {
+    const displayName = isAnonymous ? "익명" : myKey;
+    const result = addPost(myKey, displayName, draft);
+    if (!result.ok) {
+      alert(result.message);
+      return;
+    }
+    setDraft("");
   };
+
+  const cooldownLabel =
+    cooldownMs > 0 ? `${Math.ceil(cooldownMs / 60000)}분 후 다시 작성 가능` : null;
 
   return (
     <RequireRole allow={["member", "president"]} what="익명 건의·게시판">
@@ -41,51 +45,62 @@ export default function AnonBoard() {
           desc="이름을 밝히지 않아도 괜찮은 이야기들. 신고가 쌓이면 자동으로 블라인드돼요."
         />
 
+        <Card className="mb-6">
+          <textarea
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            placeholder="하고 싶은 이야기를 자유롭게 남겨주세요"
+            rows={4}
+            className="w-full resize-none rounded-lg border border-line bg-stage px-3 py-2 text-sm text-backstage placeholder:text-mute outline-none focus:border-dawn-teal"
+          />
+          <div className="mt-3 flex items-center justify-between">
+            <label className="flex items-center gap-1.5 text-xs text-backstage/80">
+              <input
+                type="checkbox"
+                checked={isAnonymous}
+                onChange={(e) => setIsAnonymous(e.target.checked)}
+                className="accent-wind-gold"
+              />
+              익명으로 작성
+            </label>
+            <div className="flex items-center gap-3">
+              {cooldownLabel && <span className="text-xs text-mute">{cooldownLabel}</span>}
+              <button
+                onClick={handleSubmit}
+                disabled={cooldownMs > 0}
+                className="rounded-lg bg-wind-gold px-4 py-2 text-sm font-semibold text-stage disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                등록
+              </button>
+            </div>
+          </div>
+        </Card>
+
         {posts.length === 0 ? (
           <EmptyState title="아직 등록된 글이 없어요" desc="불편했던 점이나 제안이 있다면 편하게 남겨주세요." />
         ) : (
           <div className="space-y-3">
             {posts.map((p) => (
-              <Card key={p.id}>
-                {p.blinded ? (
-                  <div className="text-center py-2">
-                    <p className="font-mono text-xs text-mute">신고가 누적되어 블라인드 처리되었습니다</p>
-                    {isPresident && (
-                      <p className="mt-2 text-sm text-backstage/60">
-                        회장단 보기: <span className="text-backstage/85">{p.title}</span> — {p.body}
-                      </p>
-                    )}
-                  </div>
-                ) : (
-                  <>
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="font-medium text-backstage">{p.title}</p>
-                        <p className="mt-1 font-mono text-xs text-mute">익명 · {p.date}</p>
+              <Link key={p.id} to={`/anonymous/${p.id}`}>
+                <Card className="cursor-pointer transition-colors hover:border-dawn-teal/40">
+                  {p.blinded ? (
+                    <p className="py-1 text-center font-mono text-xs text-mute">
+                      신고가 누적되어 블라인드 처리되었습니다
+                    </p>
+                  ) : (
+                    <>
+                      <p className="line-clamp-2 text-sm leading-relaxed text-backstage/90">{p.body}</p>
+                      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-xs text-mute">
+                        <span>{p.displayName} · {formatTimeAgo(p.createdAt)}</span>
+                        <span>조회 {p.views}</span>
+                        <span>좋아요 {p.likes}</span>
+                        <span>댓글 {p.comments.length}</span>
+                        {p.reports > 0 && <span className="text-red-300/80">신고 {p.reports}</span>}
                       </div>
-                      {p.reports > 0 && <Pill tone="mute">신고 {p.reports}</Pill>}
-                    </div>
-                    <p className="mt-3 text-sm leading-relaxed text-backstage/80">{p.body}</p>
-                    <div className="mt-4 flex items-center gap-2">
-                      <button
-                        onClick={() => report(p.id)}
-                        disabled={reportedIds.includes(p.id)}
-                        className="rounded-lg border border-line px-3 py-1.5 text-xs text-mute transition-colors hover:border-red-400/50 hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-40"
-                      >
-                        {reportedIds.includes(p.id) ? "신고 완료" : "신고하기"}
-                      </button>
-                      {isPresident && (
-                        <button
-                          onClick={() => setPosts((prev) => prev.filter((x) => x.id !== p.id))}
-                          className="rounded-lg border border-line px-3 py-1.5 text-xs text-mute hover:border-red-400/50 hover:text-red-300"
-                        >
-                          삭제
-                        </button>
-                      )}
-                    </div>
-                  </>
-                )}
-              </Card>
+                    </>
+                  )}
+                </Card>
+              </Link>
             ))}
           </div>
         )}
