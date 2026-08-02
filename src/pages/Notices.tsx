@@ -5,24 +5,38 @@ import { useAuth } from "../context/AuthContext";
 import { useNotices } from "../context/NoticesContext";
 
 const PAGE_SIZE = 6;
+type SearchType = "title" | "titleBody" | "author";
+
+function stripHtml(html: string) {
+  return html.replace(/<[^>]*>/g, "");
+}
 
 export default function Notices() {
   const { role } = useAuth();
   const { notices, togglePin } = useNotices();
-  const [searchType, setSearchType] = useState<"title" | "author">("title");
+  const [searchType, setSearchType] = useState<SearchType>("title");
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
 
   const isPresident = role === "president";
 
+  const searchLabels: Record<SearchType, string> = {
+    title: "제목",
+    titleBody: "제목+내용",
+    author: "작성자",
+  };
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     const base = q
-      ? notices.filter((n) =>
-          searchType === "title"
-            ? n.title.toLowerCase().includes(q)
-            : n.author.toLowerCase().includes(q)
-        )
+      ? notices.filter((n) => {
+          const title = n.title.toLowerCase();
+          const author = n.author.toLowerCase();
+          const body = stripHtml(n.body).toLowerCase();
+          if (searchType === "title") return title.includes(q);
+          if (searchType === "author") return author.includes(q);
+          return title.includes(q) || body.includes(q);
+        })
       : notices;
 
     // 고정글을 항상 맨 위로, 그 안에서는 최신순 유지
@@ -44,24 +58,24 @@ export default function Notices() {
 
         <div className="mb-6 flex flex-col gap-2 sm:flex-row">
           <div className="flex gap-2">
-            {(["title", "author"] as const).map((type) => (
+            {(Object.keys(searchLabels) as SearchType[]).map((type) => (
               <button
                 key={type}
                 onClick={() => setSearchType(type)}
-                className={`rounded-lg border px-3 py-2 text-xs font-medium transition-colors ${
+                className={`whitespace-nowrap rounded-lg border px-3 py-2 text-xs font-medium transition-colors ${
                   searchType === type
                     ? "border-wind-gold bg-wind-gold/10 text-wind-gold"
                     : "border-line text-mute"
                 }`}
               >
-                {type === "title" ? "제목" : "작성자"}
+                {searchLabels[type]}
               </button>
             ))}
           </div>
           <input
             value={query}
             onChange={(e) => handleSearch(e.target.value)}
-            placeholder={searchType === "title" ? "제목으로 검색" : "작성자로 검색"}
+            placeholder={`${searchLabels[searchType]}(으)로 검색`}
             className="flex-1 rounded-lg border border-line bg-stage px-3 py-2 text-sm text-backstage placeholder:text-mute outline-none focus:border-dawn-teal"
           />
           {isPresident && (

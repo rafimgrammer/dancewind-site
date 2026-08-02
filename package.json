@@ -15,9 +15,11 @@
     "@tiptap/extension-youtube": "^3.29.2",
     "@tiptap/react": "^3.29.2",
     "@tiptap/starter-kit": "^3.29.2",
+    "html2canvas-pro": "^2.3.3",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
-    "react-router-dom": "^7.18.2"
+    "react-router-dom": "^7.18.2",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.3",
