@@ -1,17 +1,21 @@
 // src/components/Topbar.tsx
-import { useState } from "react";
 import { Link } from "react-router-dom";
-import { useAuth, type Role } from "../context/AuthContext";
+import { useAuth } from "../context/AuthContext";
 
-const ROLE_LABEL: Record<Role, string> = {
+const ROLE_LABEL: Record<string, string> = {
   guest: "비로그인",
   member: "부원",
   president: "회장단",
 };
 
 export default function Topbar({ onMenuClick }: { onMenuClick?: () => void }) {
-  const { role, name, setRole } = useAuth();
-  const [open, setOpen] = useState(false);
+  const { role, name, signOut } = useAuth();
+  const isLoggedIn = role === "member" || role === "president";
+
+  const handleLogout = async () => {
+    await signOut();
+    window.location.href = "/";
+  };
 
   return (
     <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-line bg-stage/90 px-4 backdrop-blur md:px-8">
@@ -29,7 +33,7 @@ export default function Topbar({ onMenuClick }: { onMenuClick?: () => void }) {
       </div>
 
       <div className="flex items-center gap-2">
-        {role === "guest" && (
+        {!isLoggedIn && (
           <Link
             to="/login"
             className="rounded-full bg-wind-gold px-4 py-1.5 text-sm font-semibold text-stage transition-opacity hover:opacity-90"
@@ -38,56 +42,31 @@ export default function Topbar({ onMenuClick }: { onMenuClick?: () => void }) {
           </Link>
         )}
 
-        <div className="relative">
-          <button
-            onClick={() => setOpen((v) => !v)}
-            className="flex items-center gap-2 rounded-full border border-line bg-afterglow px-3 py-1.5 text-sm text-backstage/90 transition-colors hover:border-dawn-teal/60"
-            aria-haspopup="true"
-            aria-expanded={open}
-          >
-            <span
-              className={[
-                "h-2 w-2 rounded-full",
-                role === "guest" ? "bg-mute" : role === "member" ? "bg-dawn-teal" : "bg-wind-gold",
-              ].join(" ")}
-            />
-            <span className="hidden sm:inline">{name}</span>
-            <span className="rounded-full bg-afterglow-2 px-2 py-0.5 font-mono text-[11px] text-mute">
-              {ROLE_LABEL[role]}
-            </span>
-          </button>
-
-          {open && (
-            <div
-              className="absolute right-0 mt-2 w-64 animate-rise rounded-xl border border-line bg-afterglow p-2 shadow-xl shadow-black/40"
-              role="menu"
+        {isLoggedIn && (
+          <>
+            <Link
+              to="/mypage"
+              className="rounded-full border border-line px-4 py-1.5 text-sm text-backstage/85 transition-colors hover:border-dawn-teal/60 hover:text-dawn-teal"
             >
-              <p className="px-2 py-1.5 font-mono text-[11px] uppercase tracking-widest text-mute">
-                테스트용 로그인 전환
-              </p>
-              {(["guest", "member", "president"] as Role[]).map((r) => (
-                <button
-                  key={r}
-                  role="menuitem"
-                  onClick={() => {
-                    setRole(r);
-                    setOpen(false);
-                  }}
-                  className={[
-                    "flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm transition-colors",
-                    role === r ? "bg-afterglow-2 text-wind-gold" : "text-backstage/85 hover:bg-afterglow-2",
-                  ].join(" ")}
-                >
-                  {ROLE_LABEL[r]}
-                  {role === r && <span className="text-xs">현재</span>}
-                </button>
-              ))}
-              <div className="mt-1 border-t border-line pt-2 px-2 text-[11px] leading-relaxed text-mute">
-                실제 서비스에서는 Google 로그인 후 자동으로 권한이 부여됩니다. 이 버튼은 디자인 검토용입니다.
-              </div>
+              마이페이지
+            </Link>
+            <button
+              onClick={handleLogout}
+              className="rounded-full border border-line px-4 py-1.5 text-sm text-backstage/85 transition-colors hover:border-red-400/50 hover:text-red-300"
+            >
+              로그아웃
+            </button>
+            <div className="flex items-center gap-2 rounded-full border border-line bg-afterglow px-3 py-1.5 text-sm text-backstage/90">
+              <span
+                className={`h-2 w-2 rounded-full ${role === "member" ? "bg-dawn-teal" : "bg-wind-gold"}`}
+              />
+              <span className="hidden sm:inline">{name}</span>
+              <span className="rounded-full bg-afterglow-2 px-2 py-0.5 font-mono text-[11px] text-mute">
+                {ROLE_LABEL[role]}
+              </span>
             </div>
-          )}
-        </div>
+          </>
+        )}
       </div>
     </header>
   );

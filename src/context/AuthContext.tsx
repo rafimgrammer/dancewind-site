@@ -1,31 +1,89 @@
-import { createContext, useContext, useState, type ReactNode } from "react";
+// src/context/AuthContext.tsx
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import type { User } from "@supabase/supabase-js";
+import { supabase } from "../lib/supabase";
 
 export type Role = "guest" | "member" | "president";
+export type ProfileStatus = "none" | "pending" | "approved";
 
-interface AuthState {
+export interface MemberProfile {
+  id: string;
+  email: string;
+  name: string;
+  student_id: string;
+  department: string;
+  cohort: string;
+  role: "member" | "president";
+  status: "pending" | "approved";
+}
+
+interface AuthContextValue {
   role: Role;
   name: string;
+  user: User | null;
+  profile: MemberProfile | null;
+  profileStatus: ProfileStatus; // "none" = 아직 신청 안 함, "pending" = 승인 대기, "approved" = 정식 부원
+  loading: boolean;
+  signOut: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
 }
-
-interface AuthContextValue extends AuthState {
-  setRole: (role: Role) => void;
-}
-
-const ROLE_NAMES: Record<Role, string> = {
-  guest: "게스트",
-  member: "23기 이도윤",
-  president: "19기 강지호 (회장)",
-};
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [role, setRoleState] = useState<Role>("guest");
+  const [user, setUser] = useState<User | null>(null);
+  const [profile, setProfile] = useState<MemberProfile | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const setRole = (next: Role) => setRoleState(next);
+  const fetchProfile = async (userId: string) => {
+    const { data } = await supabase.from("members").select("*").eq("id", userId).maybeSingle();
+    setProfile(data as MemberProfile | null);
+  };
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setUser(data.session?.user ?? null);
+      if (data.session?.user) fetchProfile(data.session.user.id);
+      setLoading(false);
+    });
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+      if (session?.user) {
+        fetchProfile(session.user.id);
+      } else {
+        setProfile(null);
+      }
+    });
+
+    return () => listener.subscription.unsubscribe();
+  }, []);
+
+  const signOut = async () => {
+    await supabase.auth.signOut();
+    setUser(null);
+    setProfile(null);
+  };
+
+  const refreshProfile = async () => {
+    if (user) await fetchProfile(user.id);
+  };
+
+  const profileStatus: ProfileStatus = !user ? "none" : !profile ? "none" : profile.status;
+
+  const role: Role =
+    profile && profile.status === "approved"
+      ? profile.role === "president"
+        ? "president"
+        : "member"
+      : "guest";
+
+  const name = profile ? `${profile.cohort} ${profile.name}` : "게스트";
 
   return (
-    <AuthContext.Provider value={{ role, name: ROLE_NAMES[role], setRole }}>
+    <AuthContext.Provider
+      value={{ role, name, user, profile, profileStatus, loading, signOut, refreshProfile }}
+    >
       {children}
     </AuthContext.Provider>
   );
