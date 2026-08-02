@@ -39,7 +39,6 @@ export default function Layout({ children }: { children: ReactNode }) {
                   onClick={() => setDrawerOpen(false)}
                   className="flex items-center gap-2.5 transition-opacity hover:opacity-80"
                 >
-                  <img src="/chumbaram-logo.png" alt="춤바람 로고" className="h-7 w-auto" />
                   <span className="font-display text-2xl text-backstage">춤바람</span>
                 </Link>
                 <button
