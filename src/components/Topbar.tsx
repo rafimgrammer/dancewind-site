@@ -32,11 +32,11 @@ export default function Topbar({ onMenuClick }: { onMenuClick?: () => void }) {
         <span className="font-display text-lg tracking-wide text-backstage md:hidden">춤바람</span>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5 sm:gap-2">
         {!isLoggedIn && (
           <Link
             to="/login"
-            className="rounded-full bg-wind-gold px-4 py-1.5 text-sm font-semibold text-stage transition-opacity hover:opacity-90"
+            className="rounded-full bg-wind-gold px-3 py-1 text-xs font-semibold text-stage transition-opacity hover:opacity-90 sm:px-4 sm:py-1.5 sm:text-sm"
           >
             로그인
           </Link>
@@ -46,22 +46,22 @@ export default function Topbar({ onMenuClick }: { onMenuClick?: () => void }) {
           <>
             <Link
               to="/mypage"
-              className="rounded-full border border-line px-4 py-1.5 text-sm text-backstage/85 transition-colors hover:border-dawn-teal/60 hover:text-dawn-teal"
+              className="rounded-full border border-line px-3 py-1 text-xs text-backstage/85 transition-colors hover:border-dawn-teal/60 hover:text-dawn-teal sm:px-4 sm:py-1.5 sm:text-sm"
             >
               마이페이지
             </Link>
             <button
               onClick={handleLogout}
-              className="rounded-full border border-line px-4 py-1.5 text-sm text-backstage/85 transition-colors hover:border-red-400/50 hover:text-red-300"
+              className="rounded-full border border-line px-3 py-1 text-xs text-backstage/85 transition-colors hover:border-red-400/50 hover:text-red-300 sm:px-4 sm:py-1.5 sm:text-sm"
             >
               로그아웃
             </button>
-            <div className="flex items-center gap-2 rounded-full border border-line bg-afterglow px-3 py-1.5 text-sm text-backstage/90">
+            <div className="flex items-center gap-1.5 rounded-full border border-line bg-afterglow px-2 py-1 text-xs text-backstage/90 sm:gap-2 sm:px-3 sm:py-1.5 sm:text-sm">
               <span
                 className={`h-2 w-2 rounded-full ${role === "member" ? "bg-dawn-teal" : "bg-wind-gold"}`}
               />
               <span className="hidden sm:inline">{name}</span>
-              <span className="rounded-full bg-afterglow-2 px-2 py-0.5 font-mono text-[11px] text-mute">
+              <span className="rounded-full bg-afterglow-2 px-1.5 py-0.5 font-mono text-[10px] text-mute sm:px-2 sm:text-[11px]">
                 {ROLE_LABEL[role]}
               </span>
             </div>
