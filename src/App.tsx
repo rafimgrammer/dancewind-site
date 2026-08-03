@@ -32,6 +32,7 @@ import TeachingDetail from "./pages/TeachingDetail";
 import PracticeMatcher from "./pages/PracticeMatcher";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import Terms from "./pages/Terms";
+import TracklistList from "./pages/TracklistList";
 import TracklistMaster from "./pages/TracklistMaster";
 import MemberManage from "./pages/MemberManage";
 import NotFound from "./pages/NotFound";
@@ -72,17 +73,20 @@ export default function App() {
                             <Route path="/gallery" element={<Gallery />} />
                             <Route path="/notices" element={<Notices />} />
                             <Route path="/notices/new" element={<NoticeForm />} />
+                            <Route path="/notices/:id/edit" element={<NoticeForm />} />
                             <Route path="/notices/:id" element={<NoticeDetail />} />
                             <Route path="/board" element={<Board />} />
                             <Route path="/board/new" element={<BoardForm />} />
                             <Route path="/board/:id" element={<BoardDetail />} />
+                            <Route path="/board/:id/edit" element={<BoardForm />} />
                             <Route path="/anonymous" element={<AnonBoard />} />
                             <Route path="/classes" element={<Teaching />} />
                             <Route path="/classes" element={<Teaching />} />
                             <Route path="/classes/new" element={<TeachingForm />} />
                             <Route path="/classes/:id" element={<TeachingDetail />} />
                             <Route path="/practice-matcher" element={<PracticeMatcher />} />
-                            <Route path="/tracklist-master" element={<TracklistMaster />} />
+                            <Route path="/tracklist-master" element={<TracklistList />} />
+                            <Route path="/tracklist-master/:id" element={<TracklistMaster />} />
                             <Route path="/member-manage" element={<MemberManage />} />
                             <Route path="*" element={<NotFound />} />
                           </Routes>

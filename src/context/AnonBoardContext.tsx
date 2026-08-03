@@ -1,21 +1,23 @@
 // src/context/AnonBoardContext.tsx
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
+import { supabase } from "../lib/supabase";
+import { useAuth } from "./AuthContext";
 
 export interface AnonComment {
   id: string;
-  authorKey: string;
+  authorId: string;
   displayName: string;
   content: string;
-  createdAt: number;
+  createdAt: string;
   parentId: string | null;
 }
 
 export interface AnonPost {
   id: string;
-  authorKey: string;
+  authorId: string;
   displayName: string;
   body: string;
-  createdAt: number;
+  createdAt: string;
   views: number;
   likes: number;
   reports: number;
@@ -23,206 +25,191 @@ export interface AnonPost {
   comments: AnonComment[];
 }
 
-const BLIND_THRESHOLD = 3;
 const COOLDOWN_MS = 5 * 60 * 1000;
-
-const STORAGE_KEY = "chumbaram_anon_posts_v3";
-const COOLDOWN_KEY = "chumbaram_anon_last_post";
-const LIKED_KEY = "chumbaram_anon_liked";
-const REPORTED_KEY = "chumbaram_anon_reported";
 
 interface AnonBoardContextType {
   posts: AnonPost[];
+  loading: boolean;
   getById: (id: string) => AnonPost | undefined;
-  addPost: (authorKey: string, displayName: string, body: string) => { ok: boolean; message?: string };
-  removePost: (id: string) => void;
-  addComment: (
-    postId: string,
-    authorKey: string,
-    displayName: string,
-    content: string,
-    parentId: string | null
-  ) => void;
-  removeComment: (postId: string, commentId: string) => void;
-  incrementViews: (id: string) => void;
-  toggleLike: (id: string, userKey: string) => void;
-  report: (id: string, userKey: string) => { ok: boolean; message?: string };
-  getRemainingCooldown: (authorKey: string) => number;
+  addPost: (displayName: string, body: string) => Promise<{ ok: boolean; message?: string }>;
+  removePost: (id: string) => Promise<void>;
+  addComment: (postId: string, displayName: string, content: string, parentId: string | null) => Promise<void>;
+  removeComment: (postId: string, commentId: string) => Promise<void>;
+  incrementViews: (id: string) => Promise<void>;
+  toggleLike: (id: string) => Promise<void>;
+  report: (id: string) => Promise<{ ok: boolean; message?: string }>;
+  getRemainingCooldown: () => number;
   likedIds: Set<string>;
   reportedIds: Set<string>;
 }
 
 const AnonBoardContext = createContext<AnonBoardContextType | null>(null);
 
-function loadSet(key: string): Set<string> {
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? new Set(JSON.parse(raw)) : new Set();
-  } catch {
-    return new Set();
-  }
-}
-
 export function AnonBoardProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
   const [posts, setPosts] = useState<AnonPost[]>([]);
-  const [lastPostTimes, setLastPostTimes] = useState<Record<string, number>>({});
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
   const [reportedIds, setReportedIds] = useState<Set<string>>(new Set());
+  const [lastPostTime, setLastPostTime] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) setPosts(JSON.parse(raw));
-      const rawCooldown = localStorage.getItem(COOLDOWN_KEY);
-      if (rawCooldown) setLastPostTimes(JSON.parse(rawCooldown));
-    } catch {
-      // 저장된 값 없으면 무시
+  const fetchAll = useCallback(async () => {
+    if (!user) {
+      setPosts([]);
+      setLikedIds(new Set());
+      setReportedIds(new Set());
+      setLoading(false);
+      return;
     }
-    setLikedIds(loadSet(LIKED_KEY));
-    setReportedIds(loadSet(REPORTED_KEY));
-  }, []);
+    setLoading(true);
+
+    const { data: postData } = await supabase
+      .from("anon_posts")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    const { data: commentData } = await supabase
+      .from("anon_comments")
+      .select("*")
+      .order("created_at", { ascending: true });
+
+    const { data: likeData } = await supabase.from("anon_likes").select("post_id").eq("user_id", user.id);
+    const { data: reportData } = await supabase.from("anon_reports").select("post_id").eq("user_id", user.id);
+
+    const { data: myLastPost } = await supabase
+      .from("anon_posts")
+      .select("created_at")
+      .eq("author_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const commentsByPost: Record<string, AnonComment[]> = {};
+    (commentData ?? []).forEach((c) => {
+      if (!commentsByPost[c.post_id]) commentsByPost[c.post_id] = [];
+      commentsByPost[c.post_id].push({
+        id: c.id,
+        authorId: c.author_id,
+        displayName: c.display_name,
+        content: c.content,
+        createdAt: c.created_at,
+        parentId: c.parent_id,
+      });
+    });
+
+    setPosts(
+      (postData ?? []).map((p) => ({
+        id: p.id,
+        authorId: p.author_id,
+        displayName: p.display_name,
+        body: p.body,
+        createdAt: p.created_at,
+        views: p.views,
+        likes: p.likes,
+        reports: p.reports,
+        blinded: p.blinded,
+        comments: commentsByPost[p.id] ?? [],
+      }))
+    );
+
+    setLikedIds(new Set((likeData ?? []).map((l) => l.post_id)));
+    setReportedIds(new Set((reportData ?? []).map((r) => r.post_id)));
+    setLastPostTime(myLastPost ? new Date(myLastPost.created_at).getTime() : null);
+
+    setLoading(false);
+  }, [user]);
 
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(posts));
-    } catch {
-      // 저장 실패해도 화면은 정상 동작
-    }
-  }, [posts]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(COOLDOWN_KEY, JSON.stringify(lastPostTimes));
-    } catch {
-      // 저장 실패해도 화면은 정상 동작
-    }
-  }, [lastPostTimes]);
-
-  useEffect(() => {
-    localStorage.setItem(LIKED_KEY, JSON.stringify(Array.from(likedIds)));
-  }, [likedIds]);
-
-  useEffect(() => {
-    localStorage.setItem(REPORTED_KEY, JSON.stringify(Array.from(reportedIds)));
-  }, [reportedIds]);
+    fetchAll();
+  }, [fetchAll]);
 
   const getById = (id: string) => posts.find((p) => p.id === id);
 
-  const getRemainingCooldown = (authorKey: string) => {
-    const last = lastPostTimes[authorKey];
-    if (!last) return 0;
-    const remaining = COOLDOWN_MS - (Date.now() - last);
+  const getRemainingCooldown = () => {
+    if (!lastPostTime) return 0;
+    const remaining = COOLDOWN_MS - (Date.now() - lastPostTime);
     return remaining > 0 ? remaining : 0;
   };
 
-  const addPost = (authorKey: string, displayName: string, body: string) => {
-    if (!body.trim()) return { ok: false, message: "내용을 입력해주세요." };
+  const addPost = async (displayName: string, body: string) => {
+    if (!body.trim() || !user) return { ok: false, message: "내용을 입력해주세요." };
 
-    const remaining = getRemainingCooldown(authorKey);
+    const remaining = getRemainingCooldown();
     if (remaining > 0) {
       const minutes = Math.ceil(remaining / 60000);
       return { ok: false, message: `글 작성은 5분에 한 번만 가능해요. 약 ${minutes}분 후 다시 시도해주세요.` };
     }
 
-    const post: AnonPost = {
-      id: `ap${Date.now()}`,
-      authorKey,
-      displayName,
+    await supabase.from("anon_posts").insert({
+      author_id: user.id,
+      display_name: displayName,
       body: body.trim(),
-      createdAt: Date.now(),
-      views: 0,
-      likes: 0,
-      reports: 0,
-      blinded: false,
-      comments: [],
-    };
-
-    setPosts((prev) => [post, ...prev]);
-    setLastPostTimes((prev) => ({ ...prev, [authorKey]: Date.now() }));
+    });
+    await fetchAll();
     return { ok: true };
   };
 
-  const removePost = (id: string) => {
-    setPosts((prev) => prev.filter((p) => p.id !== id));
+  const removePost = async (id: string) => {
+    await supabase.from("anon_posts").delete().eq("id", id);
+    await fetchAll();
   };
 
-  const addComment = (
-    postId: string,
-    authorKey: string,
-    displayName: string,
-    content: string,
-    parentId: string | null
-  ) => {
-    if (!content.trim()) return;
-    setPosts((prev) =>
-      prev.map((p) =>
-        p.id === postId
-          ? {
-              ...p,
-              comments: [
-                ...p.comments,
-                {
-                  id: `ac${Date.now()}`,
-                  authorKey,
-                  displayName,
-                  content: content.trim(),
-                  createdAt: Date.now(),
-                  parentId,
-                },
-              ],
-            }
-          : p
-      )
-    );
+  const addComment = async (postId: string, displayName: string, content: string, parentId: string | null) => {
+    if (!content.trim() || !user) return;
+    await supabase.from("anon_comments").insert({
+      post_id: postId,
+      author_id: user.id,
+      display_name: displayName,
+      content: content.trim(),
+      parent_id: parentId,
+    });
+    await fetchAll();
   };
 
-  const removeComment = (postId: string, commentId: string) => {
-    setPosts((prev) =>
-      prev.map((p) =>
-        p.id === postId
-          ? {
-              ...p,
-              // 댓글 삭제 시, 그 댓글에 달린 답글들도 함께 삭제
-              comments: p.comments.filter((c) => c.id !== commentId && c.parentId !== commentId),
-            }
-          : p
-      )
-    );
+  const removeComment = async (_postId: string, commentId: string) => {
+    await supabase.from("anon_comments").delete().eq("id", commentId);
+    await fetchAll();
   };
 
-  const incrementViews = (id: string) => {
+  const incrementViews = async (id: string) => {
+    await supabase.rpc("increment_anon_views", { post_id: id });
     setPosts((prev) => prev.map((p) => (p.id === id ? { ...p, views: p.views + 1 } : p)));
   };
 
-  const toggleLike = (id: string, userKey: string) => {
-    const likeKey = `${id}:${userKey}`;
+  const toggleLike = async (id: string) => {
+    if (!user) return;
+    const alreadyLiked = likedIds.has(id);
+
+    if (alreadyLiked) {
+      await supabase.from("anon_likes").delete().eq("post_id", id).eq("user_id", user.id);
+      await supabase.rpc("adjust_anon_likes", { post_id: id, delta: -1 });
+    } else {
+      await supabase.from("anon_likes").insert({ post_id: id, user_id: user.id });
+      await supabase.rpc("adjust_anon_likes", { post_id: id, delta: 1 });
+    }
+
     setLikedIds((prev) => {
       const next = new Set(prev);
-      const already = next.has(likeKey);
-      if (already) next.delete(likeKey);
-      else next.add(likeKey);
-
-      setPosts((prevPosts) =>
-        prevPosts.map((p) => (p.id === id ? { ...p, likes: p.likes + (already ? -1 : 1) } : p))
-      );
-
+      if (alreadyLiked) next.delete(id);
+      else next.add(id);
       return next;
     });
+    setPosts((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, likes: p.likes + (alreadyLiked ? -1 : 1) } : p))
+    );
   };
 
-  const report = (id: string, userKey: string) => {
-    const reportKey = `${id}:${userKey}`;
-    if (reportedIds.has(reportKey)) {
-      return { ok: false, message: "이미 신고한 글이에요." };
-    }
-    setReportedIds((prev) => new Set(prev).add(reportKey));
-    setPosts((prev) =>
-      prev.map((p) => {
-        if (p.id !== id) return p;
-        const reports = p.reports + 1;
-        return { ...p, reports, blinded: p.blinded || reports >= BLIND_THRESHOLD };
-      })
-    );
+  const report = async (id: string) => {
+    if (!user) return { ok: false, message: "로그인이 필요해요." };
+    const { data, error } = await supabase.rpc("report_anon_post", {
+      target_post_id: id,
+      reporter_id: user.id,
+    });
+    if (error) return { ok: false, message: "신고 처리 중 문제가 발생했어요." };
+    if (data === "already_reported") return { ok: false, message: "이미 신고한 글이에요." };
+
+    setReportedIds((prev) => new Set(prev).add(id));
+    await fetchAll();
     return { ok: true };
   };
 
@@ -230,6 +217,7 @@ export function AnonBoardProvider({ children }: { children: ReactNode }) {
     <AnonBoardContext.Provider
       value={{
         posts,
+        loading,
         getById,
         addPost,
         removePost,

@@ -1,12 +1,15 @@
 // src/context/TeachingContext.tsx
-import { createContext, useContext, useState, type ReactNode } from "react";
-import initialClasses from "../data/classes.json";
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
+import { supabase } from "../lib/supabase";
+import { useAuth } from "./AuthContext";
 
 export interface Comment {
     id: string;
+    authorId: string;
     author: string;
     content: string;
     date: string;
+    parentId: string | null;
 }
 
 export interface TeachingClass {
@@ -14,6 +17,7 @@ export interface TeachingClass {
     category: string;
     title: string;
     description: string;
+    teacherId: string;
     teacher: string;
     youtubeUrl: string;
     songTitle: string;
@@ -21,7 +25,8 @@ export interface TeachingClass {
     songEnd: string;
     classDate: string;
     classTime: string;
-    maxSpots: number | null; // null = 인원무관
+    maxSpots: number | null;
+    confirmed: boolean;
     applicants: string[];
     comments: Comment[];
     createdAt: string;
@@ -29,134 +34,224 @@ export interface TeachingClass {
 
 interface TeachingContextType {
     classes: TeachingClass[];
+    loading: boolean;
     getById: (id: string) => TeachingClass | undefined;
-    addClass: (
-        data: Omit<TeachingClass, "id" | "applicants" | "comments" | "createdAt">
-    ) => void;
-    removeClass: (id: string) => void;
-    toggleApply: (id: string, name: string) => void;
-    addComment: (id: string, author: string, content: string) => void;
-    editComment: (classId: string, commentId: string, content: string) => void;
-    removeComment: (classId: string, commentId: string) => void;
+    addClass: (data: {
+        category: string;
+        title: string;
+        description: string;
+        youtubeUrl: string;
+        songTitle: string;
+        songStart: string;
+        songEnd: string;
+        classDate: string;
+        classTime: string;
+        maxSpots: number | null;
+    }) => Promise<void>;
+    removeClass: (id: string) => Promise<void>;
+    confirmClass: (id: string) => Promise<void>;
+    unconfirmClass: (id: string) => Promise<void>;
+    toggleApply: (id: string) => Promise<void>;
+    addComment: (id: string, content: string, parentId: string | null) => Promise<void>;
+    editComment: (classId: string, commentId: string, content: string) => Promise<void>;
+    removeComment: (classId: string, commentId: string) => Promise<void>;
+    isApplied: (id: string) => boolean;
 }
 
 const TeachingContext = createContext<TeachingContextType | null>(null);
 
 export function TeachingProvider({ children }: { children: ReactNode }) {
-    const [classes, setClasses] = useState<TeachingClass[]>(
-        (initialClasses as any[]).map((c) => ({
-            id: c.id,
-            category: c.category ?? "케이팝",
-            title: c.title,
-            description: c.description ?? "",
-            teacher: c.teacher,
-            youtubeUrl: c.youtubeUrl ?? "",
-            songTitle: c.songTitle ?? "",
-            songStart: c.songStart ?? "0:00",
-            songEnd: c.songEnd ?? "0:00",
-            classDate: c.classDate ?? new Date().toISOString().slice(0, 10),
-            classTime: c.classTime ?? "19:00",
-            maxSpots: c.maxSpots ?? 10,
-            applicants: c.applicants ?? [],
-            comments: c.comments ?? [],
-            createdAt: c.createdAt ?? new Date().toISOString().slice(0, 10),
-        }))
-    );
+    const { user, name } = useAuth();
+    const [classes, setClasses] = useState<TeachingClass[]>([]);
+    const [myApplications, setMyApplications] = useState<Set<string>>(new Set());
+    const [loading, setLoading] = useState(true);
+
+    const fetchAll = useCallback(async () => {
+        if (!user) {
+            setClasses([]);
+            setMyApplications(new Set());
+            setLoading(false);
+            return;
+        }
+        setLoading(true);
+
+        const { data: classData } = await supabase
+            .from("teaching_classes")
+            .select("*")
+            .order("created_at", { ascending: false });
+
+        const { data: applicantData } = await supabase.from("teaching_applicants").select("*");
+        const { data: commentData } = await supabase
+            .from("teaching_comments")
+            .select("*")
+            .order("created_at", { ascending: true });
+
+        const applicantsByClass: Record<string, string[]> = {};
+        (applicantData ?? []).forEach((a) => {
+            if (!applicantsByClass[a.class_id]) applicantsByClass[a.class_id] = [];
+            applicantsByClass[a.class_id].push(a.user_name);
+        });
+
+        const commentsByClass: Record<string, Comment[]> = {};
+        (commentData ?? []).forEach((c) => {
+            if (!commentsByClass[c.class_id]) commentsByClass[c.class_id] = [];
+            commentsByClass[c.class_id].push({
+                id: c.id,
+                authorId: c.author_id,
+                author: c.author_name,
+                content: c.content,
+                date: c.created_at?.slice(0, 10) ?? "",
+                parentId: c.parent_id,
+            });
+        });
+
+        setClasses(
+            (classData ?? []).map((c) => ({
+                id: c.id,
+                category: c.category,
+                title: c.title,
+                description: c.description,
+                teacherId: c.teacher_id,
+                teacher: c.teacher_name,
+                youtubeUrl: c.youtube_url,
+                songTitle: c.song_title,
+                songStart: c.song_start,
+                songEnd: c.song_end,
+                classDate: c.class_date,
+                classTime: c.class_time,
+                maxSpots: c.max_spots,
+                confirmed: c.confirmed,
+                applicants: applicantsByClass[c.id] ?? [],
+                comments: commentsByClass[c.id] ?? [],
+                createdAt: c.created_at?.slice(0, 10) ?? "",
+            }))
+        );
+
+        const myApps = new Set(
+            (applicantData ?? []).filter((a) => a.user_id === user.id).map((a) => a.class_id)
+        );
+        setMyApplications(myApps);
+
+        setLoading(false);
+    }, [user]);
+
+    useEffect(() => {
+        fetchAll();
+    }, [fetchAll]);
 
     const getById = (id: string) => classes.find((c) => c.id === id);
+    const isApplied = (id: string) => myApplications.has(id);
 
-    const addClass: TeachingContextType["addClass"] = (data) => {
-        setClasses((prev) => [
-            {
-                ...data,
-                id: `c${Date.now()}`,
-                applicants: [],
-                comments: [],
-                createdAt: new Date().toISOString().slice(0, 10),
-            },
-            ...prev,
-        ]);
-    };
-
-    const removeClass = (id: string) =>
-        setClasses((prev) => prev.filter((c) => c.id !== id));
-
-    const toggleApply = (id: string, name: string) => {
-        setClasses((prev) =>
-            prev.map((c) => {
-                if (c.id !== id) return c;
-                const applied = c.applicants.includes(name);
-                if (applied) {
-                    return { ...c, applicants: c.applicants.filter((a) => a !== name) };
-                }
-                if (c.maxSpots !== null && c.applicants.length >= c.maxSpots) {
-                    alert("정원이 마감된 클래스예요.");
-                    return c;
-                }
-                return { ...c, applicants: [...c.applicants, name] };
+    const addClass: TeachingContextType["addClass"] = async (data) => {
+        if (!user) return;
+        const { data: created } = await supabase
+            .from("teaching_classes")
+            .insert({
+                category: data.category,
+                title: data.title,
+                description: data.description,
+                teacher_id: user.id,
+                teacher_name: name,
+                youtube_url: data.youtubeUrl,
+                song_title: data.songTitle,
+                song_start: data.songStart,
+                song_end: data.songEnd,
+                class_date: data.classDate,
+                class_time: data.classTime,
+                max_spots: data.maxSpots,
             })
-        );
+            .select("id")
+            .single();
+
+        // 개설자를 자동으로 신청자에 포함
+        if (created) {
+            await supabase.from("teaching_applicants").insert({
+                class_id: created.id,
+                user_id: user.id,
+                user_name: name,
+            });
+        }
+        await fetchAll();
     };
 
-    const addComment = (id: string, author: string, content: string) => {
+    const removeClass = async (id: string) => {
+        await supabase.from("teaching_classes").delete().eq("id", id);
+        await fetchAll();
+    };
+
+    const confirmClass = async (id: string) => {
+        await supabase.from("teaching_classes").update({ confirmed: true }).eq("id", id);
+        await fetchAll();
+    };
+
+    const unconfirmClass = async (id: string) => {
+        await supabase.from("teaching_classes").update({ confirmed: false }).eq("id", id);
+        await fetchAll();
+    };
+
+    const toggleApply = async (id: string) => {
+        if (!user) return;
+        const target = classes.find((c) => c.id === id);
+        if (!target || target.confirmed) return;
+
+        // 개설자 본인은 신청을 취소할 수 없음
+        if (target.teacherId === user.id) {
+            alert("클래스를 개설한 사람은 신청을 취소할 수 없어요.");
+            return;
+        }
+
+        const applied = myApplications.has(id);
+
+        if (applied) {
+            await supabase.from("teaching_applicants").delete().eq("class_id", id).eq("user_id", user.id);
+        } else {
+            if (target.maxSpots !== null && target.applicants.length >= target.maxSpots) {
+                alert("정원이 마감된 클래스예요.");
+                return;
+            }
+            await supabase.from("teaching_applicants").insert({ class_id: id, user_id: user.id, user_name: name });
+        }
+        await fetchAll();
+    };
+
+    const addComment = async (id: string, content: string, parentId: string | null) => {
+        if (!content.trim() || !user) return;
+        await supabase.from("teaching_comments").insert({
+            class_id: id,
+            author_id: user.id,
+            author_name: name,
+            content: content.trim(),
+            parent_id: parentId,
+        });
+        await fetchAll();
+    };
+
+    const editComment = async (_classId: string, commentId: string, content: string) => {
         if (!content.trim()) return;
-        setClasses((prev) =>
-            prev.map((c) =>
-                c.id === id
-                    ? {
-                        ...c,
-                        comments: [
-                            ...c.comments,
-                            {
-                                id: `cm${Date.now()}`,
-                                author,
-                                content: content.trim(),
-                                date: new Date().toISOString().slice(0, 10),
-                            },
-                        ],
-                    }
-                    : c
-            )
-        );
+        await supabase.from("teaching_comments").update({ content: content.trim() }).eq("id", commentId);
+        await fetchAll();
     };
 
-    const editComment = (classId: string, commentId: string, content: string) => {
-        if (!content.trim()) return;
-        setClasses((prev) =>
-            prev.map((c) =>
-                c.id === classId
-                    ? {
-                        ...c,
-                        comments: c.comments.map((cm) =>
-                            cm.id === commentId ? { ...cm, content: content.trim() } : cm
-                        ),
-                    }
-                    : c
-            )
-        );
-    };
-
-    const removeComment = (classId: string, commentId: string) => {
-        setClasses((prev) =>
-            prev.map((c) =>
-                c.id === classId
-                    ? { ...c, comments: c.comments.filter((cm) => cm.id !== commentId) }
-                    : c
-            )
-        );
+    const removeComment = async (_classId: string, commentId: string) => {
+        await supabase.from("teaching_comments").delete().eq("id", commentId);
+        await fetchAll();
     };
 
     return (
         <TeachingContext.Provider
             value={{
                 classes,
+                loading,
                 getById,
                 addClass,
                 removeClass,
+                confirmClass,
+                unconfirmClass,
                 toggleApply,
                 addComment,
                 editComment,
                 removeComment,
+                isApplied,
             }}
         >
             {children}

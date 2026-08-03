@@ -1,59 +1,110 @@
 // src/context/CalendarContext.tsx
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
+import { supabase } from "../lib/supabase";
+import { useAuth } from "./AuthContext";
 
-export type EventVisibility = "public" | "member";
-export type EventType = "공연" | "모집" | "연습" | "기타";
+export type EventVisibility = "public" | "member" | "president";
 
 export interface CalendarEvent {
   id: string;
-  date: string; // "2026-08-15"
+  date: string;
   title: string;
-  type: EventType;
+  time: string;
+  location: string;
   visibility: EventVisibility;
+  source: "general" | "class"; // 캘린더 직접 등록 or 티칭클래스에서 파생
 }
 
 interface CalendarContextType {
   events: CalendarEvent[];
-  addEvent: (data: Omit<CalendarEvent, "id">) => void;
-  removeEvent: (id: string) => void;
+  loading: boolean;
+  addEvent: (data: { date: string; title: string; time: string; location: string; visibility: EventVisibility }) => Promise<void>;
+  removeEvent: (id: string) => Promise<void>;
 }
-
-const STORAGE_KEY = "chumbaram_calendar_events";
 
 const CalendarContext = createContext<CalendarContextType | null>(null);
 
-const SEED_EVENTS: CalendarEvent[] = [];
-
 export function CalendarProvider({ children }: { children: ReactNode }) {
-  const [events, setEvents] = useState<CalendarEvent[]>(SEED_EVENTS);
+  const { user, role } = useAuth();
+  const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchAll = useCallback(async () => {
+    setLoading(true);
+
+    // 1. 일반 캘린더 이벤트 (RLS가 알아서 공개범위별로 필터링해줌)
+    const { data: generalData } = await supabase
+      .from("calendar_events")
+      .select("*")
+      .order("event_date", { ascending: true });
+
+    const generalEvents: CalendarEvent[] = (generalData ?? []).map((e) => ({
+      id: e.id,
+      date: e.event_date,
+      title: e.title,
+      time: e.event_time,
+      location: e.location,
+      visibility: e.visibility,
+      source: "general",
+    }));
+
+    // 2. 확정된 티칭 클래스 중, 내가 신청했거나 개설한 것만 캘린더에 표시
+    let classEvents: CalendarEvent[] = [];
+    if (user) {
+      const { data: myApplications } = await supabase
+        .from("teaching_applicants")
+        .select("class_id")
+        .eq("user_id", user.id);
+
+      const appliedClassIds = new Set((myApplications ?? []).map((a) => a.class_id));
+
+      const { data: classData } = await supabase
+        .from("teaching_classes")
+        .select("*")
+        .eq("confirmed", true);
+
+      classEvents = (classData ?? [])
+        .filter((c) => appliedClassIds.has(c.id) || c.teacher_id === user.id)
+        .map((c) => ({
+          id: `class-${c.id}`,
+          date: c.class_date,
+          title: `🎵 ${c.title}`,
+          time: c.class_time,
+          location: "",
+          visibility: "member" as EventVisibility,
+          source: "class" as const,
+        }));
+    }
+
+    setEvents([...generalEvents, ...classEvents]);
+    setLoading(false);
+  }, [user]);
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) setEvents(JSON.parse(raw));
-    } catch {
-      // 저장된 값 없으면 무시
-    }
-  }, []);
+    fetchAll();
+  }, [fetchAll]);
 
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(events));
-    } catch {
-      // 저장 실패해도 화면은 정상 동작
-    }
-  }, [events]);
-
-  const addEvent = (data: Omit<CalendarEvent, "id">) => {
-    setEvents((prev) => [...prev, { ...data, id: `e${Date.now()}` }]);
+  const addEvent: CalendarContextType["addEvent"] = async (data) => {
+    if (!user) return;
+    await supabase.from("calendar_events").insert({
+      event_date: data.date,
+      title: data.title,
+      event_time: data.time,
+      location: data.location,
+      visibility: data.visibility,
+      created_by_id: user.id,
+      created_by_name: role,
+    });
+    await fetchAll();
   };
 
-  const removeEvent = (id: string) => {
-    setEvents((prev) => prev.filter((e) => e.id !== id));
+  const removeEvent = async (id: string) => {
+    await supabase.from("calendar_events").delete().eq("id", id);
+    await fetchAll();
   };
 
   return (
-    <CalendarContext.Provider value={{ events, addEvent, removeEvent }}>
+    <CalendarContext.Provider value={{ events, loading, addEvent, removeEvent }}>
       {children}
     </CalendarContext.Provider>
   );

@@ -2,14 +2,13 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { PageHeader, Card, RequireRole } from "../components/Ui";
-import { useAuth } from "../context/AuthContext";
 import { useTeaching } from "../context/TeachingContext";
 import { getYoutubeId, fetchYoutubeTitle } from "../utils/youtube";
 
 const CATEGORIES = ["케이팝", "코레오", "스트릿", "락킹", "왁킹", "보깅", "힙합", "하우스"];
+const TIME_PATTERN = /^([0-9]{1,2}):([0-5][0-9])$/; // 예: 0:45, 12:30, 1:05
 
 export default function TeachingForm() {
-  const { name } = useAuth() as { name?: string };
   const { addClass } = useTeaching();
   const navigate = useNavigate();
 
@@ -21,12 +20,29 @@ export default function TeachingForm() {
   const [fetchingTitle, setFetchingTitle] = useState(false);
   const [songStart, setSongStart] = useState("");
   const [songEnd, setSongEnd] = useState("");
+  const [songStartError, setSongStartError] = useState("");
+  const [songEndError, setSongEndError] = useState("");
   const [classDate, setClassDate] = useState("");
   const [classTime, setClassTime] = useState("");
   const [unlimited, setUnlimited] = useState(false);
   const [maxSpots, setMaxSpots] = useState(10);
 
   const videoId = getYoutubeId(youtubeUrl);
+
+  const validateTimeFormat = (value: string) => {
+    if (!value) return true; // 비워두는 건 허용 (기본값 0:00 처리)
+    return TIME_PATTERN.test(value);
+  };
+
+  const handleSongStartChange = (value: string) => {
+    setSongStart(value);
+    setSongStartError(validateTimeFormat(value) ? "" : "분:초 형식으로 입력해주세요 (예: 0:45)");
+  };
+
+  const handleSongEndChange = (value: string) => {
+    setSongEnd(value);
+    setSongEndError(validateTimeFormat(value) ? "" : "분:초 형식으로 입력해주세요 (예: 1:30)");
+  };
 
   const handleUrlBlur = async () => {
     if (!youtubeUrl.trim() || !getYoutubeId(youtubeUrl)) return;
@@ -36,7 +52,7 @@ export default function TeachingForm() {
     setFetchingTitle(false);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!title.trim()) {
       alert("제목을 입력해주세요.");
       return;
@@ -45,11 +61,18 @@ export default function TeachingForm() {
       alert("클래스 날짜와 시간을 입력해주세요.");
       return;
     }
-    addClass({
+    if (songStart && !validateTimeFormat(songStart)) {
+      alert("시작 구간을 분:초 형식으로 입력해주세요 (예: 0:45)");
+      return;
+    }
+    if (songEnd && !validateTimeFormat(songEnd)) {
+      alert("종료 구간을 분:초 형식으로 입력해주세요 (예: 1:30)");
+      return;
+    }
+    await addClass({
       category,
       title: title.trim(),
       description: description.trim(),
-      teacher: name ?? "익명의 부원",
       youtubeUrl: youtubeUrl.trim(),
       songTitle: songTitle.trim(),
       songStart: songStart.trim() || "0:00",
@@ -140,22 +163,26 @@ export default function TeachingForm() {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className={labelClass}>시작 구간 (예: 0:45)</label>
+              <label className={labelClass}>시작 구간 (분:초, 예: 0:45)</label>
               <input
                 value={songStart}
-                onChange={(e) => setSongStart(e.target.value)}
+                onChange={(e) => handleSongStartChange(e.target.value)}
                 placeholder="0:45"
-                className={inputClass}
+                inputMode="numeric"
+                className={`${inputClass} ${songStartError ? "border-red-400/60" : ""}`}
               />
+              {songStartError && <p className="mt-1 text-[11px] text-red-300">{songStartError}</p>}
             </div>
             <div>
-              <label className={labelClass}>종료 구간 (예: 1:30)</label>
+              <label className={labelClass}>종료 구간 (분:초, 예: 1:30)</label>
               <input
                 value={songEnd}
-                onChange={(e) => setSongEnd(e.target.value)}
+                onChange={(e) => handleSongEndChange(e.target.value)}
                 placeholder="1:30"
-                className={inputClass}
+                inputMode="numeric"
+                className={`${inputClass} ${songEndError ? "border-red-400/60" : ""}`}
               />
+              {songEndError && <p className="mt-1 text-[11px] text-red-300">{songEndError}</p>}
             </div>
           </div>
 
@@ -181,7 +208,7 @@ export default function TeachingForm() {
           </div>
 
           <div>
-            <label className={labelClass}>정원</label>
+            <label className={labelClass}>정원 (본인 포함 인원수로 입력해주세요)</label>
             <div className="flex items-center gap-3">
               <input
                 type="number"
@@ -201,6 +228,9 @@ export default function TeachingForm() {
                 인원무관
               </label>
             </div>
+            <p className="mt-1.5 text-[11px] text-mute">
+              클래스를 개설하면 본인도 자동으로 신청 인원에 포함돼요. 예: 총 8명을 원하시면 8을 입력해주세요.
+            </p>
           </div>
 
           <div className="flex justify-end gap-2">

@@ -1,7 +1,8 @@
 // src/pages/TracklistMaster.tsx
 import { useRef, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { PageHeader, Card, Pill, RequireRole } from "../components/Ui";
-import { useTracklist } from "../context/TracklistContext";
+import { useTracklist, type TracklistSettings, type TrackItem } from "../context/TracklistContext";
 import { generateTracklist, type GapOption } from "../utils/tracklistSolver";
 import { exportTracklistToExcel, exportTracklistToImage } from "../utils/exportTracklist";
 
@@ -11,53 +12,111 @@ const GAP_OPTIONS: { value: GapOption; label: string; desc: string }[] = [
   { value: 3, label: "3곡", desc: "넉넉한 텀" },
 ];
 
+type ConfirmAction = "generate" | "confirm" | "unconfirm" | null;
+
 export default function TracklistMaster() {
-  const {
-    members,
-    tracks,
-    settings,
-    result,
-    addMember,
-    removeMember,
-    addTrack,
-    removeTrack,
-    toggleParticipant,
-    updateSettings,
-    setResult,
-  } = useTracklist();
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const { getById, updateSet, confirmSet, unconfirmSet } = useTracklist();
+
+  const set = id ? getById(id) : undefined;
 
   const [memberInput, setMemberInput] = useState("");
   const [trackInput, setTrackInput] = useState("");
   const [searchByTrack, setSearchByTrack] = useState<Record<string, string>>({});
   const [exporting, setExporting] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
+  const [pendingResult, setPendingResult] = useState<TrackItem[] | null>(null);
   const resultRef = useRef<HTMLDivElement>(null);
 
-  const memberName = (id: string) => members.find((m) => m.id === id)?.name ?? "알 수 없음";
+  if (!set) {
+    return (
+      <RequireRole allow={["president"]} what="트랙리스트 마스터">
+        <div>
+          <PageHeader eyebrow="Tracklist Master" title="공연을 찾을 수 없어요" desc="삭제되었거나 존재하지 않는 공연이에요." />
+          <button
+            onClick={() => navigate("/tracklist-master")}
+            className="mt-4 rounded-lg border border-line px-4 py-2 text-sm text-mute"
+          >
+            목록으로 돌아가기
+          </button>
+        </div>
+      </RequireRole>
+    );
+  }
+
+  const memberName = (memberId: string) => set.members.find((m) => m.id === memberId)?.name ?? "알 수 없음";
 
   const handleAddMember = () => {
-    addMember(memberInput);
+    const trimmed = memberInput.trim();
+    if (!trimmed || set.members.some((m) => m.name === trimmed)) {
+      setMemberInput("");
+      return;
+    }
+    const next = [...set.members, { id: `m${Date.now()}`, name: trimmed }];
+    updateSet(set.id, { members: next });
     setMemberInput("");
   };
 
+  const handleRemoveMember = (memberId: string) => {
+    const nextMembers = set.members.filter((m) => m.id !== memberId);
+    const nextTracks = set.tracks.map((t) => ({
+      ...t,
+      participantIds: t.participantIds.filter((p) => p !== memberId),
+    }));
+    updateSet(set.id, { members: nextMembers, tracks: nextTracks });
+  };
+
   const handleAddTrack = () => {
-    addTrack(trackInput);
+    const trimmed = trackInput.trim();
+    if (!trimmed) return;
+    const next = [...set.tracks, { id: `tr${Date.now()}`, title: trimmed, participantIds: [] }];
+    updateSet(set.id, { tracks: next });
     setTrackInput("");
   };
 
-  const handleGenerate = () => {
-    if (tracks.length === 0) {
+  const handleRemoveTrack = (trackId: string) => {
+    const nextTracks = set.tracks.filter((t) => t.id !== trackId);
+    const nextSettings: TracklistSettings = {
+      ...set.settings,
+      fixedFirstId: set.settings.fixedFirstId === trackId ? null : set.settings.fixedFirstId,
+      fixedLastId: set.settings.fixedLastId === trackId ? null : set.settings.fixedLastId,
+    };
+    updateSet(set.id, { tracks: nextTracks, settings: nextSettings });
+  };
+
+  const toggleParticipant = (trackId: string, memberId: string) => {
+    const next = set.tracks.map((t) =>
+      t.id === trackId
+        ? {
+            ...t,
+            participantIds: t.participantIds.includes(memberId)
+              ? t.participantIds.filter((p) => p !== memberId)
+              : [...t.participantIds, memberId],
+          }
+        : t
+    );
+    updateSet(set.id, { tracks: next });
+  };
+
+  const updateSettings = (patch: Partial<TracklistSettings>) => {
+    updateSet(set.id, { settings: { ...set.settings, ...patch } });
+  };
+
+  const handleGenerateClick = () => {
+    if (set.tracks.length === 0) {
       alert("곡을 먼저 등록해주세요.");
       return;
     }
-    if (tracks.length < 2) {
+    if (set.tracks.length < 2) {
       alert("두 곡 이상 등록해야 순서를 계산할 수 있어요.");
       return;
     }
 
-    const solved = generateTracklist(tracks, {
-      minGap: settings.minGap,
-      fixedFirstId: settings.fixedFirstId,
-      fixedLastId: settings.fixedLastId,
+    const solved = generateTracklist(set.tracks, {
+      minGap: set.settings.minGap,
+      fixedFirstId: set.settings.fixedFirstId,
+      fixedLastId: set.settings.fixedLastId,
     });
 
     if (!solved) {
@@ -67,19 +126,50 @@ export default function TracklistMaster() {
       return;
     }
 
-    setResult(solved.map((t) => ({ id: t.id, title: t.title, participantIds: t.participantIds })));
+    setPendingResult(solved.map((t) => ({ id: t.id, title: t.title, participantIds: t.participantIds })));
+    setConfirmAction("generate");
+  };
+
+  const handleConfirm = async () => {
+    if (confirmAction === "generate" && pendingResult) {
+      await updateSet(set.id, { result: pendingResult });
+    } else if (confirmAction === "confirm") {
+      await confirmSet(set.id);
+    } else if (confirmAction === "unconfirm") {
+      await unconfirmSet(set.id);
+    }
+    setConfirmAction(null);
+    setPendingResult(null);
+  };
+
+  const confirmCopy: Record<Exclude<ConfirmAction, null>, { title: string; desc: string; action: string }> = {
+    generate: {
+      title: "이 순서로 확정하시겠습니까?",
+      desc: "새로 계산된 순서가 기존 결과를 덮어씁니다.",
+      action: "적용할게요",
+    },
+    confirm: {
+      title: "이 공연을 확정하시겠습니까?",
+      desc: "확정 후에는 인원/곡 구성 수정이 제한될 수 있어요.",
+      action: "확정할게요",
+    },
+    unconfirm: {
+      title: "확정을 취소하시겠습니까?",
+      desc: "다시 편집 가능한 상태로 돌아갑니다.",
+      action: "확정 취소할게요",
+    },
   };
 
   const handleExcelExport = () => {
-    if (!result || result.length === 0) {
+    if (!set.result || set.result.length === 0) {
       alert("먼저 트랙리스트를 생성해주세요.");
       return;
     }
-    exportTracklistToExcel(result, members, "춤바람_트랙리스트.xlsx");
+    exportTracklistToExcel(set.result, set.members, `춤바람_${set.title}_트랙리스트.xlsx`);
   };
 
   const handleImageExport = async () => {
-    if (!result || result.length === 0) {
+    if (!set.result || set.result.length === 0) {
       alert("먼저 트랙리스트를 생성해주세요.");
       return;
     }
@@ -87,7 +177,7 @@ export default function TracklistMaster() {
     try {
       await new Promise((r) => setTimeout(r, 150));
       if (resultRef.current) {
-        await exportTracklistToImage(resultRef.current, "춤바람_트랙리스트.png");
+        await exportTracklistToImage(resultRef.current, `춤바람_${set.title}_트랙리스트.png`);
       }
     } catch (err) {
       console.error("이미지 생성 실패:", err);
@@ -103,17 +193,36 @@ export default function TracklistMaster() {
   return (
     <RequireRole allow={["president"]} what="트랙리스트 마스터">
       <div>
+        <button
+          onClick={() => navigate("/tracklist-master")}
+          className="mb-4 text-sm text-mute hover:text-backstage"
+        >
+          ← 공연 목록으로
+        </button>
+
         <PageHeader
           eyebrow="Tracklist Master"
-          title="트랙리스트 마스터"
-          desc="같은 사람이 연달아 무대에 서지 않도록, 의상 갈아입을 시간을 자동으로 확보해줘요."
+          title={set.title}
+          desc={`${set.performanceDate} · 같은 사람이 연달아 무대에 서지 않도록 자동으로 순서를 짜드려요.`}
         />
+
+        {set.confirmed && (
+          <div className="mb-6 flex items-center justify-between rounded-xl border border-dawn-teal/40 bg-dawn-teal/10 px-4 py-3">
+            <p className="text-sm font-semibold text-dawn-teal">✓ 확정된 공연이에요</p>
+            <button
+              onClick={() => setConfirmAction("unconfirm")}
+              className="rounded-lg border border-line px-3 py-1.5 text-xs text-mute hover:border-red-400/50 hover:text-red-300"
+            >
+              확정 취소하기
+            </button>
+          </div>
+        )}
 
         <div className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
           {/* 공연진 관리 */}
           <Card>
             <p className="font-display text-lg text-backstage">
-              👥 공연진 관리 <span className="font-mono text-sm text-mute">({members.length}명)</span>
+              👥 공연진 관리 <span className="font-mono text-sm text-mute">({set.members.length}명)</span>
             </p>
             <div className="mt-3 flex gap-2">
               <input
@@ -131,17 +240,17 @@ export default function TracklistMaster() {
               </button>
             </div>
             <div className="mt-3 flex max-h-80 flex-wrap gap-1.5 overflow-y-auto">
-              {members.length === 0 && (
+              {set.members.length === 0 && (
                 <p className="text-sm text-mute">등록된 공연진이 없어요.</p>
               )}
-              {members.map((m) => (
+              {set.members.map((m) => (
                 <span
                   key={m.id}
                   className="flex items-center gap-1.5 rounded-lg border border-line bg-stage px-2.5 py-1 text-xs text-backstage"
                 >
                   {m.name}
                   <button
-                    onClick={() => removeMember(m.id)}
+                    onClick={() => handleRemoveMember(m.id)}
                     className="font-bold text-mute hover:text-red-300"
                     aria-label={`${m.name} 삭제`}
                   >
@@ -172,9 +281,9 @@ export default function TracklistMaster() {
             </div>
 
             <div className="mt-3 max-h-96 space-y-3 overflow-y-auto">
-              {tracks.length === 0 && <p className="text-sm text-mute">등록된 곡이 없어요.</p>}
-              {tracks.map((t) => {
-                const unassigned = members.filter((m) => !t.participantIds.includes(m.id));
+              {set.tracks.length === 0 && <p className="text-sm text-mute">등록된 곡이 없어요.</p>}
+              {set.tracks.map((t) => {
+                const unassigned = set.members.filter((m) => !t.participantIds.includes(m.id));
                 const query = (searchByTrack[t.id] ?? "").trim().toLowerCase();
                 const filteredUnassigned = query
                   ? unassigned.filter((m) => m.name.toLowerCase().includes(query))
@@ -185,7 +294,7 @@ export default function TracklistMaster() {
                     <div className="flex items-center justify-between">
                       <p className="font-semibold text-backstage">{t.title}</p>
                       <button
-                        onClick={() => removeTrack(t.id)}
+                        onClick={() => handleRemoveTrack(t.id)}
                         className="text-xs text-mute hover:text-red-300"
                       >
                         삭제
@@ -256,10 +365,11 @@ export default function TracklistMaster() {
                 <button
                   key={opt.value}
                   onClick={() => updateSettings({ minGap: opt.value })}
-                  className={`rounded-lg border px-3 py-2 text-left text-xs transition-colors ${settings.minGap === opt.value
-                    ? "border-wind-gold/50 bg-wind-gold/10 text-wind-gold"
-                    : "border-line text-mute hover:border-dawn-teal/40 hover:text-dawn-teal"
-                    }`}
+                  className={`rounded-lg border px-3 py-2 text-left text-xs transition-colors ${
+                    set.settings.minGap === opt.value
+                      ? "border-wind-gold/50 bg-wind-gold/10 text-wind-gold"
+                      : "border-line text-mute hover:border-dawn-teal/40 hover:text-dawn-teal"
+                  }`}
                 >
                   <span className="block font-semibold">{opt.label}</span>
                   <span className="block text-[11px] opacity-80">{opt.desc}</span>
@@ -272,13 +382,13 @@ export default function TracklistMaster() {
             <div>
               <p className="mb-1.5 text-xs text-mute">시작곡 지정 (선택)</p>
               <select
-                value={settings.fixedFirstId ?? ""}
+                value={set.settings.fixedFirstId ?? ""}
                 onChange={(e) => updateSettings({ fixedFirstId: e.target.value || null })}
                 className="w-full rounded-lg border border-line bg-stage px-3 py-2 text-sm text-backstage outline-none focus:border-dawn-teal"
               >
                 <option value="">지정 안 함</option>
-                {tracks
-                  .filter((t) => t.id !== settings.fixedLastId)
+                {set.tracks
+                  .filter((t) => t.id !== set.settings.fixedLastId)
                   .map((t) => (
                     <option key={t.id} value={t.id}>
                       {t.title}
@@ -289,13 +399,13 @@ export default function TracklistMaster() {
             <div>
               <p className="mb-1.5 text-xs text-mute">마지막곡 지정 (선택)</p>
               <select
-                value={settings.fixedLastId ?? ""}
+                value={set.settings.fixedLastId ?? ""}
                 onChange={(e) => updateSettings({ fixedLastId: e.target.value || null })}
                 className="w-full rounded-lg border border-line bg-stage px-3 py-2 text-sm text-backstage outline-none focus:border-dawn-teal"
               >
                 <option value="">지정 안 함</option>
-                {tracks
-                  .filter((t) => t.id !== settings.fixedFirstId)
+                {set.tracks
+                  .filter((t) => t.id !== set.settings.fixedFirstId)
                   .map((t) => (
                     <option key={t.id} value={t.id}>
                       {t.title}
@@ -306,15 +416,26 @@ export default function TracklistMaster() {
           </div>
         </Card>
 
-        <button
-          onClick={handleGenerate}
-          className="mt-4 w-full rounded-xl bg-wind-gold py-4 text-lg font-bold text-stage transition-opacity hover:opacity-90"
-        >
-          최적의 순서 자동 생성 ✨
-        </button>
+        <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+          <button
+            onClick={handleGenerateClick}
+            className="flex-1 rounded-xl bg-wind-gold py-4 text-lg font-bold text-stage transition-opacity hover:opacity-90"
+          >
+            최적의 순서 자동 생성 ✨
+          </button>
+          {!set.confirmed && (
+            <button
+              onClick={() => setConfirmAction("confirm")}
+              disabled={!set.result}
+              className="rounded-xl border border-dawn-teal/50 bg-dawn-teal/10 px-6 py-4 text-sm font-bold text-dawn-teal disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              이 공연 확정하기
+            </button>
+          )}
+        </div>
 
         {/* 결과 */}
-        {result && (
+        {set.result && (
           <div ref={resultRef} className="mt-6 rounded-2xl border border-line bg-afterglow p-6">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="font-display text-lg text-backstage">📋 최종 트랙리스트</p>
@@ -335,7 +456,7 @@ export default function TracklistMaster() {
               </div>
             </div>
             <div className="mt-4 space-y-2">
-              {result.map((t, idx) => (
+              {set.result.map((t, idx) => (
                 <div
                   key={t.id}
                   className="flex items-center gap-4 rounded-lg border border-line bg-stage px-4 py-3"
@@ -361,6 +482,41 @@ export default function TracklistMaster() {
           </div>
         )}
       </div>
+
+      {confirmAction && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-stage/70 backdrop-blur-sm"
+          onClick={() => {
+            setConfirmAction(null);
+            setPendingResult(null);
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="mx-4 w-full max-w-sm rounded-2xl border border-line bg-afterglow p-6"
+          >
+            <p className="font-display text-lg text-backstage">{confirmCopy[confirmAction].title}</p>
+            <p className="mt-2 text-sm text-backstage/70">{confirmCopy[confirmAction].desc}</p>
+            <div className="mt-6 flex justify-end gap-2">
+              <button
+                onClick={() => {
+                  setConfirmAction(null);
+                  setPendingResult(null);
+                }}
+                className="rounded-lg border border-line px-4 py-2 text-sm text-mute"
+              >
+                아니요
+              </button>
+              <button
+                onClick={handleConfirm}
+                className="rounded-lg bg-wind-gold px-4 py-2 text-sm font-semibold text-stage"
+              >
+                {confirmCopy[confirmAction].action}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </RequireRole>
   );
 }

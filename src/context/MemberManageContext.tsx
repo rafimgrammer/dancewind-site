@@ -1,5 +1,7 @@
 // src/context/MemberManageContext.tsx
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
+import { supabase } from "../lib/supabase";
+import { useAuth } from "./AuthContext";
 
 export interface PendingApplicant {
   id: string;
@@ -28,161 +30,145 @@ export interface KickRequest {
   targetName: string;
   requestedBy: string;
   requestedAt: string;
-  approvedBy: string[]; // 승인한 회장단 이름 목록
+  approvedBy: string[];
 }
-
-const STORAGE_KEY = "chumbaram_member_manage_v2";
-
-const SEED_PENDING: PendingApplicant[] = [
-  {
-    id: "p1",
-    name: "박서연",
-    email: "seoyeon.park@hallym.ac.kr",
-    studentId: "20261234",
-    department: "경영학과",
-    cohort: "30기",
-    appliedAt: "2026-07-28",
-  },
-  {
-    id: "p2",
-    name: "이도윤",
-    email: "doyoon.lee@hallym.ac.kr",
-    studentId: "20265678",
-    department: "컴퓨터공학과",
-    cohort: "30기",
-    appliedAt: "2026-07-30",
-  },
-];
-
-const SEED_MEMBERS: Member[] = [
-  {
-    id: "m1",
-    name: "강지호",
-    email: "jiho.kang@hallym.ac.kr",
-    studentId: "20221111",
-    department: "체육학과",
-    cohort: "19기",
-    role: "president",
-    joinedAt: "2023-03-02",
-  },
-  {
-    id: "m2",
-    name: "임예진",
-    email: "yejin.lim@hallym.ac.kr",
-    studentId: "20222222",
-    department: "무용학과",
-    cohort: "29기",
-    role: "president",
-    joinedAt: "2024-03-02",
-  },
-];
 
 interface MemberManageContextType {
   pending: PendingApplicant[];
   members: Member[];
   kickRequests: KickRequest[];
-  approve: (id: string) => void;
-  reject: (id: string) => void;
-  requestKick: (targetId: string, requestedBy: string) => void;
-  approveKick: (requestId: string, approverName: string) => void;
-  cancelKickRequest: (requestId: string) => void;
+  loading: boolean;
+  approve: (id: string) => Promise<void>;
+  reject: (id: string) => Promise<void>;
+  requestKick: (targetId: string, requestedBy: string) => Promise<void>;
+  approveKick: (requestId: string, approverName: string) => Promise<void>;
+  cancelKickRequest: (requestId: string) => Promise<void>;
   presidentCount: number;
 }
 
 const MemberManageContext = createContext<MemberManageContextType | null>(null);
 
 export function MemberManageProvider({ children }: { children: ReactNode }) {
-  const [pending, setPending] = useState<PendingApplicant[]>(SEED_PENDING);
-  const [members, setMembers] = useState<Member[]>(SEED_MEMBERS);
+  const { role } = useAuth();
+  const [pending, setPending] = useState<PendingApplicant[]>([]);
+  const [members, setMembers] = useState<Member[]>([]);
   const [kickRequests, setKickRequests] = useState<KickRequest[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchAll = useCallback(async () => {
+    if (role !== "president") {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+
+    const { data: pendingData } = await supabase
+      .from("members")
+      .select("*")
+      .eq("status", "pending")
+      .order("created_at", { ascending: true });
+
+    const { data: memberData } = await supabase
+      .from("members")
+      .select("*")
+      .eq("status", "approved")
+      .order("created_at", { ascending: true });
+
+    const { data: kickData } = await supabase
+      .from("kick_requests")
+      .select("*")
+      .order("requested_at", { ascending: true });
+
+    setPending(
+      (pendingData ?? []).map((p) => ({
+        id: p.id,
+        name: p.name,
+        email: p.email,
+        studentId: p.student_id,
+        department: p.department,
+        cohort: p.cohort,
+        appliedAt: p.created_at?.slice(0, 10) ?? "",
+      }))
+    );
+
+    setMembers(
+      (memberData ?? []).map((m) => ({
+        id: m.id,
+        name: m.name,
+        email: m.email,
+        studentId: m.student_id,
+        department: m.department,
+        cohort: m.cohort,
+        role: m.role,
+        joinedAt: m.created_at?.slice(0, 10) ?? "",
+      }))
+    );
+
+    setKickRequests(
+      (kickData ?? []).map((k) => ({
+        id: k.id,
+        targetId: k.target_id,
+        targetName: k.target_name,
+        requestedBy: k.requested_by_name,
+        requestedAt: k.requested_at?.slice(0, 10) ?? "",
+        approvedBy: k.approved_by ?? [],
+      }))
+    );
+
+    setLoading(false);
+  }, [role]);
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        setPending(parsed.pending ?? SEED_PENDING);
-        setMembers(parsed.members ?? SEED_MEMBERS);
-        setKickRequests(parsed.kickRequests ?? []);
-      }
-    } catch {
-      // 저장된 값 없으면 무시
-    }
-  }, []);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ pending, members, kickRequests }));
-    } catch {
-      // 저장 실패해도 화면은 정상 동작
-    }
-  }, [pending, members, kickRequests]);
+    fetchAll();
+  }, [fetchAll]);
 
   const presidentCount = members.filter((m) => m.role === "president").length;
 
-  const approve = (id: string) => {
-    const applicant = pending.find((p) => p.id === id);
-    if (!applicant) return;
-    setMembers((prev) => [
-      ...prev,
-      {
-        id: `m${Date.now()}`,
-        name: applicant.name,
-        email: applicant.email,
-        studentId: applicant.studentId,
-        department: applicant.department,
-        cohort: applicant.cohort,
-        role: "member",
-        joinedAt: new Date().toISOString().slice(0, 10),
-      },
-    ]);
-    setPending((prev) => prev.filter((p) => p.id !== id));
+  const approve = async (id: string) => {
+    await supabase.from("members").update({ status: "approved" }).eq("id", id);
+    await fetchAll();
   };
 
-  const reject = (id: string) => {
-    setPending((prev) => prev.filter((p) => p.id !== id));
+  const reject = async (id: string) => {
+    await supabase.from("members").delete().eq("id", id);
+    await fetchAll();
   };
 
-  const requestKick = (targetId: string, requestedBy: string) => {
+  const requestKick = async (targetId: string, requestedBy: string) => {
     const target = members.find((m) => m.id === targetId);
     if (!target) return;
 
-    // 이미 이 사람에 대한 요청이 진행 중이면 중복 생성 안 함
     const existing = kickRequests.find((r) => r.targetId === targetId);
     if (existing) return;
 
-    const request: KickRequest = {
-      id: `kr${Date.now()}`,
-      targetId,
-      targetName: target.name,
-      requestedBy,
-      requestedAt: new Date().toISOString().slice(0, 10),
-      approvedBy: [requestedBy], // 요청한 사람은 자동으로 첫 동의자가 됨
-    };
-    setKickRequests((prev) => [...prev, request]);
-  };
-
-  const approveKick = (requestId: string, approverName: string) => {
-    setKickRequests((prev) => {
-      const next = prev.map((r) => {
-        if (r.id !== requestId) return r;
-        if (r.approvedBy.includes(approverName)) return r;
-        return { ...r, approvedBy: [...r.approvedBy, approverName] };
-      });
-
-      const target = next.find((r) => r.id === requestId);
-      if (target && target.approvedBy.length >= presidentCount) {
-        // 전원 동의 완료 → 실제 강퇴 실행
-        setMembers((prevMembers) => prevMembers.filter((m) => m.id !== target.targetId));
-        return next.filter((r) => r.id !== requestId);
-      }
-
-      return next;
+    await supabase.from("kick_requests").insert({
+      target_id: targetId,
+      target_name: target.name,
+      requested_by_name: requestedBy,
+      approved_by: [requestedBy],
     });
+    await fetchAll();
   };
 
-  const cancelKickRequest = (requestId: string) => {
-    setKickRequests((prev) => prev.filter((r) => r.id !== requestId));
+  const approveKick = async (requestId: string, approverName: string) => {
+    const request = kickRequests.find((r) => r.id === requestId);
+    if (!request || request.approvedBy.includes(approverName)) return;
+
+    const nextApprovedBy = [...request.approvedBy, approverName];
+
+    if (nextApprovedBy.length >= presidentCount) {
+      // 전원 동의 완료 → 실제 강퇴 실행 + 요청 삭제
+      await supabase.from("members").delete().eq("id", request.targetId);
+      await supabase.from("kick_requests").delete().eq("id", requestId);
+    } else {
+      await supabase.from("kick_requests").update({ approved_by: nextApprovedBy }).eq("id", requestId);
+    }
+    await fetchAll();
+  };
+
+  const cancelKickRequest = async (requestId: string) => {
+    await supabase.from("kick_requests").delete().eq("id", requestId);
+    await fetchAll();
   };
 
   return (
@@ -191,6 +177,7 @@ export function MemberManageProvider({ children }: { children: ReactNode }) {
         pending,
         members,
         kickRequests,
+        loading,
         approve,
         reject,
         requestKick,

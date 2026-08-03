@@ -1,5 +1,7 @@
 // src/context/TracklistContext.tsx
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
+import { supabase } from "../lib/supabase";
+import { useAuth } from "./AuthContext";
 import type { GapOption } from "../utils/tracklistSolver";
 
 export interface TrackMember {
@@ -19,131 +21,121 @@ export interface TracklistSettings {
   fixedLastId: string | null;
 }
 
-interface TracklistContextType {
+export interface TracklistSet {
+  id: string;
+  title: string;
+  performanceDate: string;
   members: TrackMember[];
   tracks: TrackItem[];
   settings: TracklistSettings;
   result: TrackItem[] | null;
-  addMember: (name: string) => void;
-  removeMember: (id: string) => void;
-  addTrack: (title: string) => void;
-  removeTrack: (id: string) => void;
-  toggleParticipant: (trackId: string, memberId: string) => void;
-  updateSettings: (patch: Partial<TracklistSettings>) => void;
-  setResult: (result: TrackItem[] | null) => void;
+  confirmed: boolean;
+  createdBy: string;
+  createdAt: string;
 }
 
-const STORAGE_KEY = "chumbaram_tracklist_master";
+const defaultSettings: TracklistSettings = { minGap: 1, fixedFirstId: null, fixedLastId: null };
+
+interface TracklistContextType {
+  sets: TracklistSet[];
+  loading: boolean;
+  getById: (id: string) => TracklistSet | undefined;
+  createSet: (title: string, performanceDate: string) => Promise<string | null>;
+  updateSet: (id: string, patch: Partial<Omit<TracklistSet, "id">>) => Promise<void>;
+  removeSet: (id: string) => Promise<void>;
+  confirmSet: (id: string) => Promise<void>;
+  unconfirmSet: (id: string) => Promise<void>;
+}
 
 const TracklistContext = createContext<TracklistContextType | null>(null);
 
-function defaultState() {
-  return {
-    members: [] as TrackMember[],
-    tracks: [] as TrackItem[],
-    settings: { minGap: 1 as GapOption, fixedFirstId: null, fixedLastId: null } as TracklistSettings,
-    result: null as TrackItem[] | null,
-  };
-}
-
 export function TracklistProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState(defaultState);
+  const { user, name } = useAuth();
+  const [sets, setSets] = useState<TracklistSet[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchAll = useCallback(async () => {
+    if (!user) {
+      setSets([]);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    const { data } = await supabase
+      .from("tracklist_sets")
+      .select("*")
+      .order("performance_date", { ascending: true });
+
+    setSets(
+      (data ?? []).map((s) => ({
+        id: s.id,
+        title: s.title,
+        performanceDate: s.performance_date,
+        members: s.members_data ?? [],
+        tracks: s.tracks_data ?? [],
+        settings: s.settings_data ?? defaultSettings,
+        result: s.result_data ?? null,
+        confirmed: s.confirmed,
+        createdBy: s.created_by_name,
+        createdAt: s.created_at?.slice(0, 10) ?? "",
+      }))
+    );
+    setLoading(false);
+  }, [user]);
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) setState(JSON.parse(raw));
-    } catch {
-      // 저장된 값 없으면 무시
-    }
-  }, []);
+    fetchAll();
+  }, [fetchAll]);
 
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    } catch {
-      // 저장 실패해도 화면은 정상 동작
-    }
-  }, [state]);
+  const getById = (id: string) => sets.find((s) => s.id === id);
 
-  const addMember = (name: string) => {
-    const trimmed = name.trim();
-    if (!trimmed) return;
-    if (state.members.some((m) => m.name === trimmed)) return;
-    setState((s) => ({ ...s, members: [...s.members, { id: `m${Date.now()}`, name: trimmed }] }));
+  const createSet = async (title: string, performanceDate: string) => {
+    if (!title.trim() || !user) return null;
+    const { data } = await supabase
+      .from("tracklist_sets")
+      .insert({
+        title: title.trim(),
+        performance_date: performanceDate,
+        created_by_id: user.id,
+        created_by_name: name,
+      })
+      .select("id")
+      .single();
+    await fetchAll();
+    return data?.id ?? null;
   };
 
-  const removeMember = (id: string) => {
-    setState((s) => ({
-      ...s,
-      members: s.members.filter((m) => m.id !== id),
-      tracks: s.tracks.map((t) => ({
-        ...t,
-        participantIds: t.participantIds.filter((p) => p !== id),
-      })),
-    }));
+  const updateSet = async (id: string, patch: Partial<Omit<TracklistSet, "id">>) => {
+    const payload: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    if (patch.title !== undefined) payload.title = patch.title;
+    if (patch.performanceDate !== undefined) payload.performance_date = patch.performanceDate;
+    if (patch.members !== undefined) payload.members_data = patch.members;
+    if (patch.tracks !== undefined) payload.tracks_data = patch.tracks;
+    if (patch.settings !== undefined) payload.settings_data = patch.settings;
+    if (patch.result !== undefined) payload.result_data = patch.result;
+
+    await supabase.from("tracklist_sets").update(payload).eq("id", id);
+    await fetchAll();
   };
 
-  const addTrack = (title: string) => {
-    const trimmed = title.trim();
-    if (!trimmed) return;
-    setState((s) => ({
-      ...s,
-      tracks: [...s.tracks, { id: `tr${Date.now()}`, title: trimmed, participantIds: [] }],
-    }));
+  const removeSet = async (id: string) => {
+    await supabase.from("tracklist_sets").delete().eq("id", id);
+    await fetchAll();
   };
 
-  const removeTrack = (id: string) => {
-    setState((s) => ({
-      ...s,
-      tracks: s.tracks.filter((t) => t.id !== id),
-      settings: {
-        ...s.settings,
-        fixedFirstId: s.settings.fixedFirstId === id ? null : s.settings.fixedFirstId,
-        fixedLastId: s.settings.fixedLastId === id ? null : s.settings.fixedLastId,
-      },
-    }));
+  const confirmSet = async (id: string) => {
+    await supabase.from("tracklist_sets").update({ confirmed: true }).eq("id", id);
+    await fetchAll();
   };
 
-  const toggleParticipant = (trackId: string, memberId: string) => {
-    setState((s) => ({
-      ...s,
-      tracks: s.tracks.map((t) =>
-        t.id === trackId
-          ? {
-              ...t,
-              participantIds: t.participantIds.includes(memberId)
-                ? t.participantIds.filter((p) => p !== memberId)
-                : [...t.participantIds, memberId],
-            }
-          : t
-      ),
-    }));
-  };
-
-  const updateSettings = (patch: Partial<TracklistSettings>) => {
-    setState((s) => ({ ...s, settings: { ...s.settings, ...patch } }));
-  };
-
-  const setResult = (result: TrackItem[] | null) => {
-    setState((s) => ({ ...s, result }));
+  const unconfirmSet = async (id: string) => {
+    await supabase.from("tracklist_sets").update({ confirmed: false }).eq("id", id);
+    await fetchAll();
   };
 
   return (
     <TracklistContext.Provider
-      value={{
-        members: state.members,
-        tracks: state.tracks,
-        settings: state.settings,
-        result: state.result,
-        addMember,
-        removeMember,
-        addTrack,
-        removeTrack,
-        toggleParticipant,
-        updateSettings,
-        setResult,
-      }}
+      value={{ sets, loading, getById, createSet, updateSet, removeSet, confirmSet, unconfirmSet }}
     >
       {children}
     </TracklistContext.Provider>

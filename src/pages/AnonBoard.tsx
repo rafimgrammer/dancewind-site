@@ -7,25 +7,23 @@ import { useAnonBoard } from "../context/AnonBoardContext";
 import { formatTimeAgo } from "../utils/timeAgo";
 
 export default function AnonBoard() {
-  const { name } = useAuth() as { name?: string };
+  const { name } = useAuth();
   const { posts, addPost, getRemainingCooldown } = useAnonBoard();
-
-  const myKey = name ?? "익명의 부원";
 
   const [draft, setDraft] = useState("");
   const [isAnonymous, setIsAnonymous] = useState(true);
   const [cooldownMs, setCooldownMs] = useState(0);
 
   useEffect(() => {
-    setCooldownMs(getRemainingCooldown(myKey));
-    const timer = setInterval(() => setCooldownMs(getRemainingCooldown(myKey)), 1000);
+    setCooldownMs(getRemainingCooldown());
+    const timer = setInterval(() => setCooldownMs(getRemainingCooldown()), 1000);
     return () => clearInterval(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [myKey, posts]);
+  }, [posts]);
 
-  const handleSubmit = () => {
-    const displayName = isAnonymous ? "익명" : myKey;
-    const result = addPost(myKey, displayName, draft);
+  const handleSubmit = async () => {
+    const displayName = isAnonymous ? "익명" : name;
+    const result = await addPost(displayName, draft);
     if (!result.ok) {
       alert(result.message);
       return;
@@ -42,7 +40,7 @@ export default function AnonBoard() {
         <PageHeader
           eyebrow="Anonymous"
           title="춤바람 익명 건의·게시판"
-          desc="이름을 밝히지 않아도 괜찮은 이야기들. 신고가 쌓이면 자동으로 블라인드돼요."
+          desc="이름을 밝히지 않아도 괜찮은 이야기들. 신고가 10회 누적되면 자동으로 블라인드돼요."
         />
 
         <Card className="mb-6">
@@ -91,9 +89,18 @@ export default function AnonBoard() {
                     <>
                       <p className="line-clamp-2 text-sm leading-relaxed text-backstage/90">{p.body}</p>
                       <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-xs text-mute">
-                        <span>{p.displayName} · {formatTimeAgo(p.createdAt)}</span>
+                        <span>
+                          {p.displayName} · {formatTimeAgo(new Date(p.createdAt).getTime())}
+                        </span>
                         <span>조회 {p.views}</span>
-                        <span>좋아요 {p.likes}</span>
+                        {p.likes > 0 && (
+                          <span className="flex items-center gap-1 text-red-400/80">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                              <path d="M12 21s-7-6.2-9.5-10.2C1 8 1.8 4.5 5 3.5c2-.6 3.8.2 5 2 1.2-1.8 3-2.6 5-2 3.2 1 4 4.5 2.5 7.3C19 14.8 12 21 12 21z" />
+                            </svg>
+                            {p.likes}
+                          </span>
+                        )}
                         <span>댓글 {p.comments.length}</span>
                         {p.reports > 0 && <span className="text-red-300/80">신고 {p.reports}</span>}
                       </div>

@@ -6,9 +6,11 @@ import { useAuth } from "../context/AuthContext";
 import { useAnonBoard, type AnonComment } from "../context/AnonBoardContext";
 import { formatTimeAgo } from "../utils/timeAgo";
 
+type ConfirmAction = "like" | "report" | "delete" | null;
+
 export default function AnonBoardDetail() {
   const { id } = useParams<{ id: string }>();
-  const { role, name } = useAuth() as { role: "member" | "president"; name?: string };
+  const { role, name, user } = useAuth();
   const {
     getById,
     removePost,
@@ -23,16 +25,14 @@ export default function AnonBoardDetail() {
   const navigate = useNavigate();
   const counted = useRef(false);
 
-  const myKey = name ?? "익명의 부원";
   const isPresident = role === "president";
 
   const [commentDraft, setCommentDraft] = useState("");
   const [commentAnon, setCommentAnon] = useState(true);
-  const [confirmAction, setConfirmAction] = useState<"like" | "report" | null>(null);
-
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [replyDraft, setReplyDraft] = useState("");
   const [replyAnon, setReplyAnon] = useState(true);
+  const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
 
   const post = id ? getById(id) : undefined;
 
@@ -60,75 +60,97 @@ export default function AnonBoardDetail() {
     );
   }
 
-  const isMine = post.authorKey === myKey;
-  const isLiked = likedIds.has(`${post.id}:${myKey}`);
-  const isReported = reportedIds.has(`${post.id}:${myKey}`);
+  const isMine = post.authorId === user?.id;
+  const isLiked = likedIds.has(post.id);
+  const isReported = reportedIds.has(post.id);
 
-  // 익명 댓글(답글 포함)에 등장 순서대로 번호 매기기
+  // 익명 댓글 번호는 authorId 기준으로 부여 (같은 사람=같은 번호, 작성자는 번호 없음)
   const anonNumberMap = new Map<string, number>();
   let anonCounter = 0;
   post.comments.forEach((c) => {
-    if (c.displayName === "익명" && !anonNumberMap.has(c.id)) {
+    const isPostAuthor = c.authorId === post.authorId;
+    if (c.displayName === "익명" && !isPostAuthor && !anonNumberMap.has(c.authorId)) {
       anonCounter += 1;
-      anonNumberMap.set(c.id, anonCounter);
+      anonNumberMap.set(c.authorId, anonCounter);
     }
   });
 
   const topLevelComments = post.comments.filter((c) => !c.parentId);
   const getReplies = (parentId: string) => post.comments.filter((c) => c.parentId === parentId);
 
-  const handleDelete = () => {
-    removePost(post.id);
+  const handleDelete = async () => {
+    await removePost(post.id);
     navigate("/anonymous");
   };
 
-  const handleCommentSubmit = () => {
+  const handleCommentSubmit = async () => {
     if (!commentDraft.trim()) return;
-    addComment(post.id, myKey, commentAnon ? "익명" : myKey, commentDraft, null);
+    await addComment(post.id, commentAnon ? "익명" : name, commentDraft, null);
     setCommentDraft("");
   };
 
-  const handleReplySubmit = (parentId: string) => {
+  const handleReplySubmit = async (parentId: string) => {
     if (!replyDraft.trim()) return;
-    addComment(post.id, myKey, replyAnon ? "익명" : myKey, replyDraft, parentId);
+    await addComment(post.id, replyAnon ? "익명" : name, replyDraft, parentId);
     setReplyDraft("");
     setReplyingTo(null);
   };
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     if (confirmAction === "like") {
-      toggleLike(post.id, myKey);
+      await toggleLike(post.id);
     } else if (confirmAction === "report") {
-      const result = report(post.id, myKey);
+      const result = await report(post.id);
       if (!result.ok) alert(result.message);
+    } else if (confirmAction === "delete") {
+      await handleDelete();
     }
     setConfirmAction(null);
   };
 
+  const confirmCopy: Record<Exclude<ConfirmAction, null>, { title: string; desc: string; action: string }> = {
+    like: { title: "좋아요를 누르시겠습니까?", desc: "좋아요를 누르면 취소할 수 없습니다.", action: "좋아요 누를게요" },
+    report: { title: "신고하시겠습니까?", desc: "신고는 철회할 수 없습니다.", action: "신고할게요" },
+    delete: { title: "정말로 삭제하시겠습니까?", desc: "삭제된 글은 복구할 수 없습니다.", action: "삭제할게요" },
+  };
+
   const renderCommentLabel = (c: AnonComment) => {
-    const label = c.displayName === "익명" ? `익명 ${anonNumberMap.get(c.id)}` : c.displayName;
-    const isPostAuthor = c.authorKey === post.authorKey;
+    const isPostAuthor = c.authorId === post.authorId;
+    const label =
+      c.displayName === "익명" && !isPostAuthor
+        ? `익명 ${anonNumberMap.get(c.authorId)}`
+        : c.displayName; // 작성자는 익명이어도 그냥 "익명"으로 표시, 배지로 구분
+    const timeLabel = formatTimeAgo(new Date(c.createdAt).getTime());
+
     return (
-      <>
-        {label}
-        {isPostAuthor && <span className="text-wind-gold"> · 작성자</span>} · {formatTimeAgo(c.createdAt)}
-      </>
+      <div className="flex items-center gap-1.5">
+        <span className="text-xs font-semibold text-backstage/90">{label}</span>
+        {isPostAuthor && (
+          <span className="rounded-full bg-wind-gold/15 px-1.5 py-0.5 text-[10px] font-medium text-wind-gold">
+            작성자
+          </span>
+        )}
+        <span className="text-mute">·</span>
+        <span className="font-mono text-[11px] text-mute">{timeLabel}</span>
+      </div>
     );
   };
 
-  const renderCommentActions = (c: AnonComment) => {
-    const isCommentMine = c.authorKey === myKey;
+  const renderCommentActions = (c: AnonComment, isReply: boolean) => {
+    const isCommentMine = c.authorId === user?.id;
     return (
       <div className="mt-1.5 flex items-center gap-3">
-        <button
-          onClick={() => {
-            setReplyingTo(replyingTo === c.id ? null : c.id);
-            setReplyDraft("");
-          }}
-          className="text-[11px] text-mute hover:text-dawn-teal"
-        >
-          답글
-        </button>
+        {!isReply && (
+          <button
+            onClick={() => {
+              setReplyingTo(replyingTo === c.id ? null : c.id);
+              setReplyDraft("");
+            }}
+            className="text-[11px] text-mute hover:text-dawn-teal"
+          >
+            답글
+          </button>
+        )}
         {(isCommentMine || isPresident) && (
           <button
             onClick={() => removeComment(post.id, c.id)}
@@ -144,10 +166,7 @@ export default function AnonBoardDetail() {
   return (
     <RequireRole allow={["member", "president"]} what="익명 건의·게시판">
       <div>
-        <button
-          onClick={() => navigate("/anonymous")}
-          className="mb-4 text-sm text-mute hover:text-backstage"
-        >
+        <button onClick={() => navigate("/anonymous")} className="mb-4 text-sm text-mute hover:text-backstage">
           ← 목록으로
         </button>
 
@@ -164,11 +183,9 @@ export default function AnonBoardDetail() {
           ) : (
             <>
               <p className="font-mono text-xs text-mute">
-                {post.displayName} · {formatTimeAgo(post.createdAt)}
+                {post.displayName} · {formatTimeAgo(new Date(post.createdAt).getTime())}
               </p>
-              <p className="mt-4 whitespace-pre-line text-sm leading-relaxed text-backstage/90">
-                {post.body}
-              </p>
+              <p className="mt-4 whitespace-pre-line text-sm leading-relaxed text-backstage/90">{post.body}</p>
 
               <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1 font-mono text-xs text-mute">
                 <span>조회 {post.views}</span>
@@ -183,13 +200,26 @@ export default function AnonBoardDetail() {
                     <button
                       onClick={() => !isLiked && setConfirmAction("like")}
                       disabled={isLiked}
-                      className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs transition-colors ${
-                        isLiked
-                          ? "cursor-not-allowed border-wind-gold/50 bg-wind-gold/10 text-wind-gold"
-                          : "border-line text-mute hover:border-wind-gold/40 hover:text-wind-gold"
-                      }`}
+                      className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-all ${isLiked
+                          ? "cursor-not-allowed border-red-400/40 bg-red-400/10 text-red-400"
+                          : "border-line text-mute hover:border-red-400/30 hover:text-red-300"
+                        }`}
                     >
-                      {isLiked ? "♥" : "♡"} 좋아요
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill={isLiked ? "currentColor" : "none"}
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        className={`transition-transform ${isLiked ? "scale-110" : "scale-100"}`}
+                      >
+                        <path
+                          d="M12 21s-7-6.2-9.5-10.2C1 8 1.8 4.5 5 3.5c2-.6 3.8.2 5 2 1.2-1.8 3-2.6 5-2 3.2 1 4 4.5 2.5 7.3C19 14.8 12 21 12 21z"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                      <span>{post.likes}</span>
                     </button>
                     <button
                       onClick={() => setConfirmAction("report")}
@@ -204,7 +234,7 @@ export default function AnonBoardDetail() {
                 )}
                 {(isMine || isPresident) && (
                   <button
-                    onClick={handleDelete}
+                    onClick={() => setConfirmAction("delete")}
                     className="rounded-lg border border-line px-3 py-1.5 text-xs text-mute hover:border-red-400/50 hover:text-red-300"
                   >
                     삭제
@@ -221,28 +251,22 @@ export default function AnonBoardDetail() {
                       <div key={c.id}>
                         <div className="rounded-lg bg-stage px-3 py-2.5">
                           <p className="text-sm text-backstage/90">{c.content}</p>
-                          <p className="mt-0.5 font-mono text-[11px] text-mute">
-                            {renderCommentLabel(c)}
-                          </p>
-                          {renderCommentActions(c)}
+                          <div className="mt-1.5">{renderCommentLabel(c)}</div>
+                          {renderCommentActions(c, false)}
                         </div>
 
-                        {/* 답글 목록 */}
                         {getReplies(c.id).length > 0 && (
                           <div className="mt-2 ml-6 space-y-2 border-l border-line pl-3">
                             {getReplies(c.id).map((r) => (
                               <div key={r.id} className="rounded-lg bg-afterglow-2 px-3 py-2">
                                 <p className="text-sm text-backstage/90">{r.content}</p>
-                                <p className="mt-0.5 font-mono text-[11px] text-mute">
-                                  {renderCommentLabel(r)}
-                                </p>
-                                {renderCommentActions(r)}
+                                <div className="mt-1.5">{renderCommentLabel(r)}</div>
+                                {renderCommentActions(r, true)}
                               </div>
                             ))}
                           </div>
                         )}
 
-                        {/* 답글 입력창 */}
                         {replyingTo === c.id && (
                           <div className="mt-2 ml-6 flex items-center gap-2 pl-3">
                             <input
@@ -314,14 +338,8 @@ export default function AnonBoardDetail() {
             onClick={(e) => e.stopPropagation()}
             className="mx-4 w-full max-w-sm rounded-2xl border border-line bg-afterglow p-6"
           >
-            <p className="font-display text-lg text-backstage">
-              {confirmAction === "like" ? "좋아요를 누르시겠습니까?" : "신고하시겠습니까?"}
-            </p>
-            <p className="mt-2 text-sm text-backstage/70">
-              {confirmAction === "like"
-                ? "좋아요를 누르면 취소할 수 없습니다."
-                : "신고는 철회할 수 없습니다."}
-            </p>
+            <p className="font-display text-lg text-backstage">{confirmCopy[confirmAction].title}</p>
+            <p className="mt-2 text-sm text-backstage/70">{confirmCopy[confirmAction].desc}</p>
             <div className="mt-6 flex justify-end gap-2">
               <button
                 onClick={() => setConfirmAction(null)}
@@ -333,7 +351,7 @@ export default function AnonBoardDetail() {
                 onClick={handleConfirm}
                 className="rounded-lg bg-wind-gold px-4 py-2 text-sm font-semibold text-stage"
               >
-                {confirmAction === "like" ? "좋아요 누를게요" : "신고할게요"}
+                {confirmCopy[confirmAction].action}
               </button>
             </div>
           </div>

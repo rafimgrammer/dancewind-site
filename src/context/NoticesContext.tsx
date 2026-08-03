@@ -1,6 +1,7 @@
 // src/context/NoticesContext.tsx
-import { createContext, useContext, useState, type ReactNode } from "react";
-import initialNotices from "../data/notices.json";
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
+import { supabase } from "../lib/supabase";
+import { useAuth } from "./AuthContext";
 
 export interface Notice {
   id: string;
@@ -12,70 +13,114 @@ export interface Notice {
   views: number;
 }
 
-const MAX_PINNED = 3;
+const MAX_PINNED = 2;
 
 interface NoticesContextType {
   notices: Notice[];
+  loading: boolean;
   getById: (id: string) => Notice | undefined;
-  addNotice: (title: string, body: string) => void;
-  removeNotice: (id: string) => void;
-  incrementViews: (id: string) => void;
-  togglePin: (id: string) => void;
+  addNotice: (title: string, body: string) => Promise<void>;
+  editNotice: (id: string, title: string, body: string) => Promise<void>;
+  removeNotice: (id: string) => Promise<void>;
+  incrementViews: (id: string) => Promise<void>;
+  togglePin: (id: string) => Promise<void>;
   pinnedCount: number;
 }
 
 const NoticesContext = createContext<NoticesContextType | null>(null);
 
 export function NoticesProvider({ children }: { children: ReactNode }) {
-  const [notices, setNotices] = useState<Notice[]>(
-    (initialNotices as Omit<Notice, "views">[]).map((n) => ({ ...n, views: 0 }))
-  );
+  const { user, name } = useAuth();
+  const [notices, setNotices] = useState<Notice[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchNotices = useCallback(async () => {
+    if (!user) {
+      setNotices([]);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    const { data } = await supabase.from("notices").select("*").order("created_at", { ascending: false });
+    setNotices(
+      (data ?? []).map((n) => ({
+        id: n.id,
+        title: n.title,
+        author: n.author_name,
+        date: n.created_at?.slice(0, 10) ?? "",
+        pinned: n.pinned,
+        body: n.body,
+        views: n.views,
+      }))
+    );
+    setLoading(false);
+  }, [user]);
+
+  useEffect(() => {
+    fetchNotices();
+  }, [fetchNotices]);
 
   const getById = (id: string) => notices.find((n) => n.id === id);
 
-  const addNotice = (title: string, body: string) => {
-    if (!title.trim()) return;
-    setNotices((prev) => [
-      {
-        id: `n${Date.now()}`,
-        title: title.trim(),
-        author: "회장단",
-        date: new Date().toISOString().slice(0, 10),
-        pinned: false,
-        body: body.trim() || "내용을 입력해주세요.",
-        views: 0,
-      },
-      ...prev,
-    ]);
+  const addNotice = async (title: string, body: string) => {
+    if (!title.trim() || !user) return;
+    await supabase.from("notices").insert({
+      title: title.trim(),
+      body: body.trim() || "내용을 입력해주세요.",
+      author_id: user.id,
+      author_name: name,
+      pinned: false,
+    });
+    await fetchNotices();
   };
 
-  const removeNotice = (id: string) =>
-    setNotices((prev) => prev.filter((n) => n.id !== id));
+  const editNotice = async (id: string, title: string, body: string) => {
+    if (!title.trim()) return;
+    await supabase
+      .from("notices")
+      .update({ title: title.trim(), body: body.trim() || "내용을 입력해주세요." })
+      .eq("id", id);
+    await fetchNotices();
+  };
 
-  const incrementViews = (id: string) =>
-    setNotices((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, views: n.views + 1 } : n))
-    );
+  const removeNotice = async (id: string) => {
+    await supabase.from("notices").delete().eq("id", id);
+    await fetchNotices();
+  };
+
+  const incrementViews = async (id: string) => {
+    await supabase.rpc("increment_notice_views", { notice_id: id });
+    setNotices((prev) => prev.map((n) => (n.id === id ? { ...n, views: n.views + 1 } : n)));
+  };
 
   const pinnedCount = notices.filter((n) => n.pinned).length;
 
-  const togglePin = (id: string) => {
-    setNotices((prev) => {
-      const target = prev.find((n) => n.id === id);
-      if (!target) return prev;
+  const togglePin = async (id: string) => {
+    const target = notices.find((n) => n.id === id);
+    if (!target) return;
 
-      if (!target.pinned && pinnedCount >= MAX_PINNED) {
-        alert(`고정 공지는 최대 ${MAX_PINNED}개까지만 가능해요. 다른 공지의 고정을 먼저 해제해주세요.`);
-        return prev;
-      }
+    if (!target.pinned && pinnedCount >= MAX_PINNED) {
+      alert(`고정 공지는 최대 ${MAX_PINNED}개까지만 가능해요. 다른 공지의 고정을 먼저 해제해주세요.`);
+      return;
+    }
 
-      return prev.map((n) => (n.id === id ? { ...n, pinned: !n.pinned } : n));
-    });
+    await supabase.from("notices").update({ pinned: !target.pinned }).eq("id", id);
+    await fetchNotices();
   };
 
   return (
     <NoticesContext.Provider
-      value={{ notices, getById, addNotice, removeNotice, incrementViews, togglePin, pinnedCount }}
+      value={{
+        notices,
+        loading,
+        getById,
+        addNotice,
+        editNotice,
+        removeNotice,
+        incrementViews,
+        togglePin,
+        pinnedCount,
+      }}
     >
       {children}
     </NoticesContext.Provider>

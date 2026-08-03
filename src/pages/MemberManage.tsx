@@ -11,17 +11,7 @@ type ConfirmTarget =
 
 export default function MemberManage() {
   const { name } = useAuth() as { name?: string };
-  const {
-    pending,
-    members,
-    kickRequests,
-    approve,
-    reject,
-    requestKick,
-    approveKick,
-    cancelKickRequest,
-    presidentCount,
-  } = useMemberManage();
+  const { pending, members, kickRequests, loading, approve, reject, requestKick, approveKick, cancelKickRequest, presidentCount } = useMemberManage();
 
   const myName = name ?? "회장단";
 
@@ -52,11 +42,11 @@ export default function MemberManage() {
   const currentCohort = cohorts[cohorts.length - 1] ?? "-";
   const newestCohortCount = members.filter((m) => m.cohort === currentCohort).length;
 
-  const runConfirm = () => {
+  const runConfirm = async () => {
     if (!confirmTarget) return;
-    if (confirmTarget.type === "approve") approve(confirmTarget.id);
-    if (confirmTarget.type === "reject") reject(confirmTarget.id);
-    if (confirmTarget.type === "requestKick") requestKick(confirmTarget.id, myName);
+    if (confirmTarget.type === "approve") await approve(confirmTarget.id);
+    if (confirmTarget.type === "reject") await reject(confirmTarget.id);
+    if (confirmTarget.type === "requestKick") await requestKick(confirmTarget.id, myName);
     setConfirmTarget(null);
   };
 
@@ -74,7 +64,7 @@ export default function MemberManage() {
     <RequireRole allow={["president"]} what="전체 부원 관리">
       <div>
         <PageHeader eyebrow="Member Manage" title="전체 부원 관리" desc="가입 승인과 부원 명단을 관리해요." />
-
+        {loading && <p className="text-sm text-mute">불러오는 중...</p>}
         {/* 통계 카드 */}
         <div className="mb-6 grid gap-3 sm:grid-cols-3">
           <Card>
@@ -147,17 +137,15 @@ export default function MemberManage() {
         <div className="mb-6 flex gap-2 border-b border-line">
           <button
             onClick={() => setTab("pending")}
-            className={`border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${
-              tab === "pending" ? "border-wind-gold text-wind-gold" : "border-transparent text-mute hover:text-backstage"
-            }`}
+            className={`border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${tab === "pending" ? "border-wind-gold text-wind-gold" : "border-transparent text-mute hover:text-backstage"
+              }`}
           >
             승인 대기 {pending.length > 0 && `(${pending.length})`}
           </button>
           <button
             onClick={() => setTab("members")}
-            className={`border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${
-              tab === "members" ? "border-wind-gold text-wind-gold" : "border-transparent text-mute hover:text-backstage"
-            }`}
+            className={`border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${tab === "members" ? "border-wind-gold text-wind-gold" : "border-transparent text-mute hover:text-backstage"
+              }`}
           >
             전체 부원
           </button>

@@ -4,6 +4,7 @@ import { PageHeader, Card, RequireRole } from "../components/Ui";
 import { useAuth } from "../context/AuthContext";
 import {
   usePractice,
+  emptySession,
   type PersonEntry,
   type PracticeSession,
   type MainSlot,
@@ -21,28 +22,44 @@ function newId() {
 type Group = "leaders" | "members";
 
 export default function PracticeMatcher() {
-  const { name } = useAuth() as { name?: string };
-  const myName = name ?? "익명의 부원";
-  const { getSession, saveSession, getSavedDates, getSessionsInRange } = usePractice();
+  const { user } = useAuth();
+  const { savedDates, getSession, saveSession, deleteSession, getSessionsInRange } = usePractice();
 
   const today = new Date().toISOString().slice(0, 10);
   const [date, setDate] = useState(today);
-  const [draft, setDraft] = useState<PracticeSession>(() => getSession(myName, today));
+  const [draft, setDraft] = useState<PracticeSession>(emptySession());
   const [showSaveConfirm, setShowSaveConfirm] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
   const [rangeStart, setRangeStart] = useState(today);
   const [rangeEnd, setRangeEnd] = useState(today);
+  const [rangeEntries, setRangeEntries] = useState<{ date: string; session: PracticeSession }[]>([]);
   const [exporting, setExporting] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
 
+  // 날짜 바뀔 때마다 세션 불러오기
   useEffect(() => {
-    setDraft(getSession(myName, date));
-    setLastSavedAt(null);
+    if (!user) return;
+    let cancelled = false;
+    getSession(date).then((s) => {
+      if (!cancelled) {
+        setDraft(s);
+        setLastSavedAt(null);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [date, myName]);
+  }, [date, user]);
 
-  const savedDates = getSavedDates(myName);
+  // 기간 지정 시 해당 범위 세션 불러오기
+  useEffect(() => {
+    if (!user) return;
+    getSessionsInRange(rangeStart, rangeEnd).then(setRangeEntries);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rangeStart, rangeEnd, savedDates, user]);
 
   const addPerson = (group: Group) => {
     const list = draft[group];
@@ -175,16 +192,21 @@ export default function PracticeMatcher() {
     setShowSaveConfirm(true);
   };
 
-  const confirmSave = () => {
-    saveSession(myName, date, draft);
+  const confirmSave = async () => {
+    await saveSession(date, draft);
     setShowSaveConfirm(false);
     setLastSavedAt(new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" }));
   };
 
-  const rangeEntries = useMemo(
-    () => getSessionsInRange(myName, rangeStart, rangeEnd),
-    [myName, rangeStart, rangeEnd, getSessionsInRange]
-  );
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return;
+    await deleteSession(deleteTarget);
+    // 지금 보고 있는 날짜를 지웠으면 화면도 비워줌
+    if (deleteTarget === date) {
+      setDraft(emptySession());
+    }
+    setDeleteTarget(null);
+  };
 
   const handleExcelExport = () => {
     if (rangeEntries.length === 0) {
@@ -323,20 +345,32 @@ export default function PracticeMatcher() {
 
           {savedDates.length > 0 && (
             <div className="mt-3">
-              <p className="mb-1.5 text-xs text-mute">저장된 날짜</p>
+              <p className="mb-1.5 text-xs text-mute">저장된 날짜 (× 를 누르면 삭제돼요)</p>
               <div className="flex flex-wrap gap-1.5">
                 {savedDates.map((d) => (
-                  <button
+                  <div
                     key={d}
-                    onClick={() => setDate(d)}
-                    className={`rounded-full border px-2.5 py-1 text-xs transition-colors ${
+                    className={`flex items-center overflow-hidden rounded-full border text-xs transition-colors ${
                       d === date
                         ? "border-wind-gold/50 bg-wind-gold/10 text-wind-gold"
-                        : "border-line text-mute hover:border-dawn-teal/40 hover:text-dawn-teal"
+                        : "border-line text-mute"
                     }`}
                   >
-                    {d}
-                  </button>
+                    <button
+                      onClick={() => setDate(d)}
+                      className="px-2.5 py-1 hover:text-dawn-teal"
+                    >
+                      {d}
+                    </button>
+                    <button
+                      onClick={() => setDeleteTarget(d)}
+                      aria-label={`${d} 삭제`}
+                      title="이 날짜 삭제"
+                      className="border-l border-line/60 px-2 py-1 text-mute hover:bg-red-400/10 hover:text-red-300"
+                    >
+                      ×
+                    </button>
+                  </div>
                 ))}
               </div>
             </div>
@@ -609,6 +643,37 @@ export default function PracticeMatcher() {
                 className="rounded-lg bg-wind-gold px-4 py-2 text-sm font-semibold text-stage"
               >
                 저장할게요
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {deleteTarget && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-stage/70 backdrop-blur-sm"
+          onClick={() => setDeleteTarget(null)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="mx-4 w-full max-w-sm rounded-2xl border border-red-400/30 bg-afterglow p-6"
+          >
+            <p className="font-display text-lg text-backstage">{deleteTarget} 계획을 삭제하시겠습니까?</p>
+            <p className="mt-2 text-sm text-backstage/70">
+              삭제하면 이 날짜에 저장된 팀장·부원 시간, 확정된 연습 시간이 모두 사라지고 복구할 수 없어요.
+            </p>
+            <div className="mt-6 flex justify-end gap-2">
+              <button
+                onClick={() => setDeleteTarget(null)}
+                className="rounded-lg border border-line px-4 py-2 text-sm text-mute"
+              >
+                아니요
+              </button>
+              <button
+                onClick={handleDeleteConfirm}
+                className="rounded-lg border border-red-400/40 bg-red-400/10 px-4 py-2 text-sm font-semibold text-red-300"
+              >
+                삭제할게요
               </button>
             </div>
           </div>

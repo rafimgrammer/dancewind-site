@@ -17,6 +17,12 @@ export default function Board() {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
 
+  const searchLabels: Record<SearchType, string> = {
+    title: "제목",
+    titleBody: "제목+내용",
+    author: "작성자",
+  };
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return posts;
@@ -36,12 +42,6 @@ export default function Board() {
   const handleSearch = (value: string) => {
     setQuery(value);
     setPage(1);
-  };
-
-  const searchLabels: Record<SearchType, string> = {
-    title: "제목",
-    titleBody: "제목+내용",
-    author: "작성자",
   };
 
   return (
@@ -90,10 +90,21 @@ export default function Board() {
               {paged.map((p) => (
                 <Link key={p.id} to={`/board/${p.id}`}>
                   <Card className="cursor-pointer transition-colors hover:border-dawn-teal/40">
-                    <p className="font-medium text-backstage">{p.title}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium text-backstage">{p.title}</p>
+                      {p.edited && <span className="font-mono text-[11px] text-mute">(수정됨)</span>}
+                    </div>
                     <p className="mt-1.5 font-mono text-xs text-mute">
-                      {p.author} · {p.date} · 조회 {p.views} · 좋아요 {p.likes}
+                      {p.author} · {p.date} · 조회 {p.views}
                     </p>
+                    {p.likes > 0 && (
+                      <div className="mt-2 flex items-center gap-1 text-xs text-red-400/80">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M12 21s-7-6.2-9.5-10.2C1 8 1.8 4.5 5 3.5c2-.6 3.8.2 5 2 1.2-1.8 3-2.6 5-2 3.2 1 4 4.5 2.5 7.3C19 14.8 12 21 12 21z" />
+                        </svg>
+                        <span>{p.likes}</span>
+                      </div>
+                    )}
                   </Card>
                 </Link>
               ))}

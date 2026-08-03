@@ -1,15 +1,12 @@
 // src/context/PracticeContext.tsx
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-
-export interface TimeRange {
-  start: string;
-  end: string;
-}
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
+import { supabase } from "../lib/supabase";
+import { useAuth } from "./AuthContext";
 
 export interface PersonEntry {
   id: string;
   name: string;
-  ranges: TimeRange[];
+  ranges: { start: string; end: string }[];
 }
 
 export interface MainSlot {
@@ -33,70 +30,96 @@ export interface PracticeSession {
   extraSessions: ExtraSession[];
 }
 
-type AllSessions = Record<string, Record<string, PracticeSession>>;
-
-interface PracticeContextType {
-  getSession: (userName: string, date: string) => PracticeSession;
-  saveSession: (userName: string, date: string, session: PracticeSession) => void;
-  getSavedDates: (userName: string) => string[];
-  getSessionsInRange: (
-    userName: string,
-    startDate: string,
-    endDate: string
-  ) => { date: string; session: PracticeSession }[];
-}
-
-const STORAGE_KEY = "chumbaram_practice_sessions_v4";
-
-const PracticeContext = createContext<PracticeContextType | null>(null);
-
 export function emptySession(): PracticeSession {
   return { leaders: [], members: [], mainSlot: null, extraSessions: [] };
 }
 
+interface PracticeContextType {
+  savedDates: string[];
+  loading: boolean;
+  getSession: (date: string) => Promise<PracticeSession>;
+  saveSession: (date: string, session: PracticeSession) => Promise<void>;
+  deleteSession: (date: string) => Promise<void>;
+  getSessionsInRange: (
+    startDate: string,
+    endDate: string
+  ) => Promise<{ date: string; session: PracticeSession }[]>;
+}
+
+const PracticeContext = createContext<PracticeContextType | null>(null);
+
 export function PracticeProvider({ children }: { children: ReactNode }) {
-  const [allSessions, setAllSessions] = useState<AllSessions>({});
+  const { user } = useAuth();
+  const [savedDates, setSavedDates] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchDates = useCallback(async () => {
+    if (!user) {
+      setSavedDates([]);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    const { data } = await supabase
+      .from("practice_sessions")
+      .select("session_date")
+      .eq("owner_id", user.id)
+      .order("session_date", { ascending: true });
+    setSavedDates((data ?? []).map((d) => d.session_date));
+    setLoading(false);
+  }, [user]);
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) setAllSessions(JSON.parse(raw));
-    } catch {
-      // 저장된 값 없으면 무시
-    }
-  }, []);
+    fetchDates();
+  }, [fetchDates]);
 
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(allSessions));
-    } catch {
-      // 저장 실패해도 화면은 정상 동작
-    }
-  }, [allSessions]);
-
-  const getSession = (userName: string, date: string) =>
-    allSessions[userName]?.[date] ?? emptySession();
-
-  const saveSession = (userName: string, date: string, session: PracticeSession) => {
-    setAllSessions((prev) => ({
-      ...prev,
-      [userName]: { ...(prev[userName] ?? {}), [date]: session },
-    }));
+  const getSession = async (date: string): Promise<PracticeSession> => {
+    if (!user) return emptySession();
+    const { data } = await supabase
+      .from("practice_sessions")
+      .select("session_data")
+      .eq("owner_id", user.id)
+      .eq("session_date", date)
+      .maybeSingle();
+    return (data?.session_data as PracticeSession) ?? emptySession();
   };
 
-  const getSavedDates = (userName: string) => Object.keys(allSessions[userName] ?? {}).sort();
+  const saveSession = async (date: string, session: PracticeSession) => {
+    if (!user) return;
+    await supabase
+      .from("practice_sessions")
+      .upsert(
+        { owner_id: user.id, session_date: date, session_data: session, updated_at: new Date().toISOString() },
+        { onConflict: "owner_id,session_date" }
+      );
+    await fetchDates();
+  };
 
-  const getSessionsInRange = (userName: string, startDate: string, endDate: string) => {
-    const userSessions = allSessions[userName] ?? {};
-    return Object.entries(userSessions)
-      .filter(([date]) => date >= startDate && date <= endDate)
-      .sort(([a], [b]) => (a > b ? 1 : -1))
-      .map(([date, session]) => ({ date, session }));
+  const deleteSession = async (date: string) => {
+    if (!user) return;
+    await supabase.from("practice_sessions").delete().eq("owner_id", user.id).eq("session_date", date);
+    await fetchDates();
+  };
+
+  const getSessionsInRange = async (startDate: string, endDate: string) => {
+    if (!user) return [];
+    const { data } = await supabase
+      .from("practice_sessions")
+      .select("session_date, session_data")
+      .eq("owner_id", user.id)
+      .gte("session_date", startDate)
+      .lte("session_date", endDate)
+      .order("session_date", { ascending: true });
+
+    return (data ?? []).map((d) => ({
+      date: d.session_date,
+      session: d.session_data as PracticeSession,
+    }));
   };
 
   return (
     <PracticeContext.Provider
-      value={{ getSession, saveSession, getSavedDates, getSessionsInRange }}
+      value={{ savedDates, loading, getSession, saveSession, deleteSession, getSessionsInRange }}
     >
       {children}
     </PracticeContext.Provider>

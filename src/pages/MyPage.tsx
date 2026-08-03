@@ -22,7 +22,7 @@ function stripHtml(html: string) {
 }
 
 export default function MyPage() {
-  const { role, name } = useAuth() as { role: "member" | "president"; name?: string };
+  const { role, name, user } = useAuth();
   const { notices } = useNotices();
   const { posts: boardPosts, savedIds } = useBoard();
   const { posts: anonPosts } = useAnonBoard();
@@ -39,8 +39,8 @@ export default function MyPage() {
     [boardPosts, myName]
   );
   const myAnonPosts = useMemo(
-    () => anonPosts.filter((p) => p.authorKey === myName),
-    [anonPosts, myName]
+    () => anonPosts.filter((p) => p.authorId === user?.id),
+    [anonPosts, user]
   );
 
   const totalActivityCount = myNotices.length + myBoardPosts.length + myAnonPosts.length;
@@ -234,8 +234,7 @@ export default function MyPage() {
               <Pill tone={isPresident ? "gold" : "teal"}>{isPresident ? "회장단" : "부원"}</Pill>
             </div>
             <div className="rounded-lg border border-line bg-stage p-3 text-xs leading-relaxed text-mute">
-              구글 로그인 연동 후, 여기서 이름·학번·학과 등 프로필 정보를 직접 수정하고
-              로그아웃/회원 탈퇴를 할 수 있게 될 예정이에요. 지금은 디자인 검토용 화면이에요.
+              프로필 정보 수정, 로그아웃/회원 탈퇴 등은 마이페이지 계정 설정에서 이어서 관리할 예정이에요.
             </div>
           </Card>
         )}
