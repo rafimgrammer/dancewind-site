@@ -31,7 +31,6 @@ export default function Teaching() {
           + 클래스 등록
         </Link>
 
-        {/* 모집중 / 확정 탭 */}
         <div className="mb-4 flex gap-2 border-b border-line">
           <button
             onClick={() => setStatusTab("open")}
@@ -51,7 +50,6 @@ export default function Teaching() {
           </button>
         </div>
 
-        {/* 장르 필터 */}
         <div className="mb-6 flex flex-wrap gap-1.5">
           {CATEGORIES.map((cat) => (
             <button
@@ -86,7 +84,10 @@ export default function Teaching() {
                   {c.songTitle && (
                     <p className="mt-0.5 truncate text-xs text-dawn-teal">🎵 {c.songTitle}</p>
                   )}
-                  <p className="mt-1 font-mono text-xs text-mute">{c.teacher}</p>
+                  <p className="mt-1 font-mono text-xs text-mute">
+                    {c.teacher}
+                    {c.edited && " (수정됨)"}
+                  </p>
                   <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm text-backstage/70">
                     <span>{c.classDate}</span>
                     <span>{c.classTime}</span>

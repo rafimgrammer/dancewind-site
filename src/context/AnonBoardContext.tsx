@@ -18,6 +18,7 @@ export interface AnonPost {
   displayName: string;
   body: string;
   createdAt: string;
+  edited: boolean;
   views: number;
   likes: number;
   reports: number;
@@ -32,6 +33,7 @@ interface AnonBoardContextType {
   loading: boolean;
   getById: (id: string) => AnonPost | undefined;
   addPost: (displayName: string, body: string) => Promise<{ ok: boolean; message?: string }>;
+  editPost: (id: string, body: string) => Promise<void>;
   removePost: (id: string) => Promise<void>;
   addComment: (postId: string, displayName: string, content: string, parentId: string | null) => Promise<void>;
   removeComment: (postId: string, commentId: string) => Promise<void>;
@@ -109,6 +111,7 @@ export function AnonBoardProvider({ children }: { children: ReactNode }) {
         displayName: p.display_name,
         body: p.body,
         createdAt: p.created_at,
+        edited: p.edited,
         views: p.views,
         likes: p.likes,
         reports: p.reports,
@@ -153,6 +156,12 @@ export function AnonBoardProvider({ children }: { children: ReactNode }) {
     });
     await fetchAll();
     return { ok: true };
+  };
+
+  const editPost = async (id: string, body: string) => {
+    if (!body.trim()) return;
+    await supabase.from("anon_posts").update({ body: body.trim(), edited: true }).eq("id", id);
+    await fetchAll();
   };
 
   const removePost = async (id: string) => {
@@ -244,6 +253,7 @@ export function AnonBoardProvider({ children }: { children: ReactNode }) {
         loading,
         getById,
         addPost,
+        editPost,
         removePost,
         addComment,
         removeComment,

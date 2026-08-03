@@ -61,10 +61,13 @@ export default function ReelsList() {
                     {p.confirmed && <Pill tone="gold">확정</Pill>}
                     <p className="font-display text-lg text-backstage">{p.title}</p>
                   </div>
-                  <p className="mt-1 font-mono text-xs text-mute">{p.creator}</p>
+                  <p className="mt-1 font-mono text-xs text-mute">
+                    {p.creator}
+                    {p.edited && " (수정됨)"}
+                  </p>
                   <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm text-backstage/70">
-                    <span>{p.shootDate}</span>
-                    <span>{p.shootTime}</span>
+                    <span>{p.shootDate ?? "날짜 미정"}</span>
+                    <span>{p.shootTime ?? ""}</span>
                     <span className="font-mono text-xs text-mute">
                       신청 {p.applicants.length}
                       {p.maxSpots === null ? "명" : ` / ${p.maxSpots}`}

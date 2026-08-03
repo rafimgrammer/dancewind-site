@@ -1,15 +1,17 @@
 // src/pages/TeachingForm.tsx
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { PageHeader, Card, RequireRole } from "../components/Ui";
 import { useTeaching } from "../context/TeachingContext";
 import { getYoutubeId, fetchYoutubeTitle } from "../utils/youtube";
 
 const CATEGORIES = ["케이팝", "코레오", "스트릿", "락킹", "왁킹", "보깅", "힙합", "하우스"];
-const TIME_PATTERN = /^([0-9]{1,2}):([0-5][0-9])$/; // 예: 0:45, 12:30, 1:05
+const TIME_PATTERN = /^([0-9]{1,2}):([0-5][0-9])$/;
 
 export default function TeachingForm() {
-  const { addClass } = useTeaching();
+  const { id } = useParams<{ id: string }>();
+  const isEditMode = Boolean(id);
+  const { getById, addClass, editClass } = useTeaching();
   const navigate = useNavigate();
 
   const [category, setCategory] = useState(CATEGORIES[0]);
@@ -26,11 +28,34 @@ export default function TeachingForm() {
   const [classTime, setClassTime] = useState("");
   const [unlimited, setUnlimited] = useState(false);
   const [maxSpots, setMaxSpots] = useState(10);
+  const [loaded, setLoaded] = useState(!isEditMode);
+  const [showConfirm, setShowConfirm] = useState(false);
+
+  useEffect(() => {
+    if (isEditMode && id) {
+      const existing = getById(id);
+      if (existing) {
+        setCategory(existing.category);
+        setTitle(existing.title);
+        setDescription(existing.description);
+        setYoutubeUrl(existing.youtubeUrl);
+        setSongTitle(existing.songTitle);
+        setSongStart(existing.songStart);
+        setSongEnd(existing.songEnd);
+        setClassDate(existing.classDate);
+        setClassTime(existing.classTime);
+        setUnlimited(existing.maxSpots === null);
+        setMaxSpots(existing.maxSpots ?? 10);
+        setLoaded(true);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
 
   const videoId = getYoutubeId(youtubeUrl);
 
   const validateTimeFormat = (value: string) => {
-    if (!value) return true; // 비워두는 건 허용 (기본값 0:00 처리)
+    if (!value) return true;
     return TIME_PATTERN.test(value);
   };
 
@@ -52,7 +77,7 @@ export default function TeachingForm() {
     setFetchingTitle(false);
   };
 
-  const handleSubmit = async () => {
+  const trySubmit = () => {
     if (!title.trim()) {
       alert("제목을 입력해주세요.");
       return;
@@ -69,44 +94,72 @@ export default function TeachingForm() {
       alert("종료 구간을 분:초 형식으로 입력해주세요 (예: 1:30)");
       return;
     }
-    await addClass({
-      category,
-      title: title.trim(),
-      description: description.trim(),
-      youtubeUrl: youtubeUrl.trim(),
-      songTitle: songTitle.trim(),
-      songStart: songStart.trim() || "0:00",
-      songEnd: songEnd.trim() || "0:00",
-      classDate,
-      classTime,
-      maxSpots: unlimited ? null : maxSpots,
-    });
-    navigate("/classes");
+    setShowConfirm(true);
+  };
+
+  const doSubmit = async () => {
+    if (isEditMode && id) {
+      await editClass(id, {
+        title: title.trim(),
+        description: description.trim(),
+        youtubeUrl: youtubeUrl.trim(),
+        songTitle: songTitle.trim(),
+        songStart: songStart.trim() || "0:00",
+        songEnd: songEnd.trim() || "0:00",
+        classDate,
+        classTime,
+      });
+      navigate(`/classes/${id}`);
+    } else {
+      await addClass({
+        category,
+        title: title.trim(),
+        description: description.trim(),
+        youtubeUrl: youtubeUrl.trim(),
+        songTitle: songTitle.trim(),
+        songStart: songStart.trim() || "0:00",
+        songEnd: songEnd.trim() || "0:00",
+        classDate,
+        classTime,
+        maxSpots: unlimited ? null : maxSpots,
+      });
+      navigate("/classes");
+    }
   };
 
   const inputClass =
     "w-full rounded-lg border border-line bg-stage px-3 py-2 text-sm text-backstage placeholder:text-mute outline-none focus:border-dawn-teal";
   const labelClass = "mb-1.5 block text-xs text-mute";
 
+  if (isEditMode && !loaded) {
+    return (
+      <RequireRole allow={["member", "president"]} what="클래스 수정">
+        <PageHeader eyebrow="Teaching" title="클래스를 찾는 중..." desc="" />
+      </RequireRole>
+    );
+  }
+
   return (
-    <RequireRole allow={["member", "president"]} what="클래스 등록">
+    <RequireRole allow={["member", "president"]} what={isEditMode ? "클래스 수정" : "클래스 등록"}>
       <div>
-        <PageHeader eyebrow="Teaching" title="클래스 등록" desc="부원들에게 열릴 클래스를 소개해주세요." />
+        <PageHeader
+          eyebrow="Teaching"
+          title={isEditMode ? "클래스 수정" : "클래스 등록"}
+          desc="부원들에게 열릴 클래스를 소개해주세요."
+        />
         <Card className="space-y-4">
-          <div>
-            <label className={labelClass}>카테고리</label>
-            <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              className={inputClass}
-            >
-              {CATEGORIES.map((cat) => (
-                <option key={cat} value={cat}>
-                  {cat}
-                </option>
-              ))}
-            </select>
-          </div>
+          {!isEditMode && (
+            <div>
+              <label className={labelClass}>카테고리</label>
+              <select value={category} onChange={(e) => setCategory(e.target.value)} className={inputClass}>
+                {CATEGORIES.map((cat) => (
+                  <option key={cat} value={cat}>
+                    {cat}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div>
             <label className={labelClass}>제목</label>
@@ -207,48 +260,83 @@ export default function TeachingForm() {
             </div>
           </div>
 
-          <div>
-            <label className={labelClass}>정원 (본인 포함 인원수로 입력해주세요)</label>
-            <div className="flex items-center gap-3">
-              <input
-                type="number"
-                min={1}
-                value={maxSpots}
-                onChange={(e) => setMaxSpots(Number(e.target.value))}
-                disabled={unlimited}
-                className={`${inputClass} disabled:opacity-40`}
-              />
-              <label className="flex shrink-0 items-center gap-1.5 text-xs text-backstage/80">
+          {!isEditMode && (
+            <div>
+              <label className={labelClass}>정원 (본인 포함 인원수로 입력해주세요)</label>
+              <div className="flex items-center gap-3">
                 <input
-                  type="checkbox"
-                  checked={unlimited}
-                  onChange={(e) => setUnlimited(e.target.checked)}
-                  className="accent-wind-gold"
+                  type="number"
+                  min={1}
+                  value={maxSpots}
+                  onChange={(e) => setMaxSpots(Number(e.target.value))}
+                  disabled={unlimited}
+                  className={`${inputClass} disabled:opacity-40`}
                 />
-                인원무관
-              </label>
+                <label className="flex shrink-0 items-center gap-1.5 text-xs text-backstage/80">
+                  <input
+                    type="checkbox"
+                    checked={unlimited}
+                    onChange={(e) => setUnlimited(e.target.checked)}
+                    className="accent-wind-gold"
+                  />
+                  인원무관
+                </label>
+              </div>
+              <p className="mt-1.5 text-[11px] text-mute">
+                클래스를 개설하면 본인도 자동으로 신청 인원에 포함돼요. 예: 총 8명을 원하시면 8을 입력해주세요.
+              </p>
             </div>
-            <p className="mt-1.5 text-[11px] text-mute">
-              클래스를 개설하면 본인도 자동으로 신청 인원에 포함돼요. 예: 총 8명을 원하시면 8을 입력해주세요.
-            </p>
-          </div>
+          )}
 
           <div className="flex justify-end gap-2">
             <button
-              onClick={() => navigate("/classes")}
+              onClick={() => navigate(isEditMode ? `/classes/${id}` : "/classes")}
               className="rounded-lg border border-line px-4 py-2 text-sm text-mute"
             >
               취소
             </button>
-            <button
-              onClick={handleSubmit}
-              className="rounded-lg bg-wind-gold px-4 py-2 text-sm font-semibold text-stage"
-            >
-              등록
+            <button onClick={trySubmit} className="rounded-lg bg-wind-gold px-4 py-2 text-sm font-semibold text-stage">
+              {isEditMode ? "수정 완료" : "등록"}
             </button>
           </div>
         </Card>
       </div>
+
+      {showConfirm && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-stage/70 backdrop-blur-sm"
+          onClick={() => setShowConfirm(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="mx-4 w-full max-w-sm rounded-2xl border border-line bg-afterglow p-6"
+          >
+            <p className="font-display text-lg text-backstage">
+              {isEditMode ? "수정하시겠습니까?" : "등록하시겠습니까?"}
+            </p>
+            <p className="mt-2 text-sm text-backstage/70">
+              {isEditMode ? "변경된 내용으로 클래스가 업데이트됩니다." : "클래스가 목록에 바로 등록됩니다."}
+            </p>
+            <div className="mt-6 flex justify-end gap-2">
+              <button
+                onClick={() => setShowConfirm(false)}
+                className="rounded-lg border border-line px-4 py-2 text-sm text-mute"
+              >
+                아니요
+              </button>
+              <button
+                onClick={async () => {
+                  setShowConfirm(false);
+                  await doSubmit();
+                }}
+                className="rounded-lg bg-wind-gold px-4 py-2 text-sm font-semibold text-stage"
+              >
+                {isEditMode ? "수정할게요" : "등록할게요"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </RequireRole>
   );
 }

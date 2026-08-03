@@ -91,6 +91,7 @@ export default function AnonBoard() {
                       <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-xs text-mute">
                         <span>
                           {p.displayName} · {formatTimeAgo(new Date(p.createdAt).getTime())}
+                          {p.edited && " (수정됨)"}
                         </span>
                         <span>조회 {p.views}</span>
                         {p.likes > 0 && (

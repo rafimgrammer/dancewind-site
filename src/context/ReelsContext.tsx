@@ -25,6 +25,7 @@ export interface ReelsPost {
   location: string;
   maxSpots: number | null;
   confirmed: boolean;
+  edited: boolean;
   applicants: string[];
   comments: ReelsComment[];
   createdAt: string;
@@ -44,6 +45,10 @@ interface ReelsContextType {
     location: string;
     maxSpots: number | null;
   }) => Promise<void>;
+  editPost: (
+    id: string,
+    data: { title: string; description: string; youtubeUrl: string; instagramUrl: string; location: string }
+  ) => Promise<void>;
   removePost: (id: string) => Promise<void>;
   confirmPost: (id: string) => Promise<void>;
   unconfirmPost: (id: string) => Promise<void>;
@@ -125,6 +130,7 @@ export function ReelsProvider({ children }: { children: ReactNode }) {
         location: p.location,
         maxSpots: p.max_spots,
         confirmed: p.confirmed,
+        edited: p.edited,
         applicants: applicantsByPost[p.id] ?? [],
         comments: commentsByPost[p.id] ?? [],
         createdAt: p.created_at?.slice(0, 10) ?? "",
@@ -173,6 +179,21 @@ export function ReelsProvider({ children }: { children: ReactNode }) {
         user_name: name,
       });
     }
+    await fetchAll();
+  };
+
+  const editPost: ReelsContextType["editPost"] = async (id, data) => {
+    await supabase
+      .from("reels_posts")
+      .update({
+        title: data.title,
+        description: data.description,
+        youtube_url: data.youtubeUrl,
+        instagram_url: data.instagramUrl,
+        location: data.location,
+        edited: true,
+      })
+      .eq("id", id);
     await fetchAll();
   };
 
@@ -268,6 +289,7 @@ export function ReelsProvider({ children }: { children: ReactNode }) {
         loading,
         getById,
         addPost,
+        editPost,
         removePost,
         confirmPost,
         unconfirmPost,

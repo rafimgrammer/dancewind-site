@@ -210,6 +210,7 @@ export default function AnonBoardDetail() {
             <>
               <p className="font-mono text-xs text-mute">
                 {post.displayName} · {formatTimeAgo(new Date(post.createdAt).getTime())}
+                {post.edited && " (수정됨)"}
               </p>
               <p className="mt-4 whitespace-pre-line text-sm leading-relaxed text-backstage/90">{post.body}</p>
 
@@ -220,7 +221,7 @@ export default function AnonBoardDetail() {
                 {post.reports > 0 && <span className="text-red-300/80">신고 {post.reports}</span>}
               </div>
 
-              <div className="mt-5 flex items-center justify-between border-t border-line pt-4">
+              <div className="mt-5 flex flex-wrap items-center justify-between gap-2 border-t border-line pt-4">
                 {!isMine ? (
                   <div className="flex gap-2">
                     <button
@@ -268,14 +269,24 @@ export default function AnonBoardDetail() {
                 ) : (
                   <p className="text-xs text-mute">내가 작성한 글이에요</p>
                 )}
-                {(isMine || isPresident) && (
-                  <button
-                    onClick={handleDelete}
-                    className="rounded-lg border border-line px-3 py-1.5 text-xs text-mute hover:border-red-400/50 hover:text-red-300"
-                  >
-                    삭제
-                  </button>
-                )}
+                <div className="flex gap-2">
+                  {isMine && (
+                    <button
+                      onClick={() => navigate(`/anonymous/${post.id}/edit`)}
+                      className="rounded-lg border border-dawn-teal/40 bg-dawn-teal/10 px-3 py-1.5 text-xs text-dawn-teal"
+                    >
+                      수정
+                    </button>
+                  )}
+                  {(isMine || isPresident) && (
+                    <button
+                      onClick={() => setConfirmAction("delete")}
+                      className="rounded-lg border border-line px-3 py-1.5 text-xs text-mute hover:border-red-400/50 hover:text-red-300"
+                    >
+                      삭제
+                    </button>
+                  )}
+                </div>
               </div>
 
               <div className="mt-6 border-t border-line pt-6">

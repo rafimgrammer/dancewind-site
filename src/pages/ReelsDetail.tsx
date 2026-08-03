@@ -219,19 +219,30 @@ export default function ReelsDetail() {
         <Card>
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-2">{item.confirmed && <Pill tone="gold">확정</Pill>}</div>
-            {isPresident && (
-              <button
-                onClick={() => setConfirmAction("deletePost")}
-                className="rounded-lg border border-line px-3 py-1.5 text-xs text-mute hover:border-red-400/50 hover:text-red-300"
-              >
-                삭제
-              </button>
-            )}
+            <div className="flex gap-2">
+              {isCreator && (
+                <button
+                  onClick={() => navigate(`/reels/${item.id}/edit`)}
+                  className="rounded-lg border border-dawn-teal/40 bg-dawn-teal/10 px-3 py-1.5 text-xs text-dawn-teal"
+                >
+                  수정
+                </button>
+              )}
+              {isPresident && (
+                <button
+                  onClick={() => setConfirmAction("deletePost")}
+                  className="rounded-lg border border-line px-3 py-1.5 text-xs text-mute hover:border-red-400/50 hover:text-red-300"
+                >
+                  삭제
+                </button>
+              )}
+            </div>
           </div>
 
           <p className="mt-2 font-display text-xl text-backstage">{item.title}</p>
           <p className="mt-1 font-mono text-xs text-mute">
             {item.creator} · 등록일 {item.createdAt}
+            {item.edited && " (수정됨)"}
           </p>
 
           {item.description && (

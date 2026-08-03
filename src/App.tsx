@@ -27,6 +27,7 @@ import Board from "./pages/Board";
 import BoardForm from "./pages/BoardForm";
 import BoardDetail from "./pages/BoardDetail";
 import AnonBoard from "./pages/AnonBoard";
+import AnonBoardForm from "./pages/AnonBoardForm";
 import AnonBoardDetail from "./pages/AnonBoardDetail";
 import Teaching from "./pages/Teaching";
 import TeachingForm from "./pages/TeachingForm";
@@ -64,41 +65,64 @@ export default function App() {
                           <BrowserRouter>
                             <Layout>
                               <Routes>
+                                {/* 공개 페이지 */}
                                 <Route path="/" element={<Home />} />
-                                <Route path="/login" element={<Login />} />
-                                <Route path="/onboarding" element={<Onboarding />} />
-                                <Route path="/pending" element={<Pending />} />
-                                <Route path="/privacy" element={<PrivacyPolicy />} />
-                                <Route path="/mypage" element={<MyPage />} />
-                                <Route path="/calendar" element={<CalendarPage />} />
-                                <Route path="/terms" element={<Terms />} />
                                 <Route path="/about" element={<About />} />
                                 <Route path="/videos" element={<Videos />} />
                                 <Route path="/officers" element={<Officers />} />
-                                <Route path="/anonymous/:id" element={<AnonBoardDetail />} />
                                 <Route path="/location" element={<Location />} />
                                 <Route path="/recruit" element={<Recruit />} />
                                 <Route path="/gallery" element={<Gallery />} />
+                                <Route path="/calendar" element={<CalendarPage />} />
+
+                                {/* 인증 / 온보딩 */}
+                                <Route path="/login" element={<Login />} />
+                                <Route path="/onboarding" element={<Onboarding />} />
+                                <Route path="/pending" element={<Pending />} />
+                                <Route path="/mypage" element={<MyPage />} />
+
+                                {/* 약관 */}
+                                <Route path="/privacy" element={<PrivacyPolicy />} />
+                                <Route path="/terms" element={<Terms />} />
+
+                                {/* 공지사항 */}
                                 <Route path="/notices" element={<Notices />} />
                                 <Route path="/notices/new" element={<NoticeForm />} />
-                                <Route path="/notices/:id/edit" element={<NoticeForm />} />
                                 <Route path="/notices/:id" element={<NoticeDetail />} />
+                                <Route path="/notices/:id/edit" element={<NoticeForm />} />
+
+                                {/* 자유게시판 */}
                                 <Route path="/board" element={<Board />} />
                                 <Route path="/board/new" element={<BoardForm />} />
                                 <Route path="/board/:id" element={<BoardDetail />} />
                                 <Route path="/board/:id/edit" element={<BoardForm />} />
+
+                                {/* 익명게시판 */}
                                 <Route path="/anonymous" element={<AnonBoard />} />
-                                <Route path="/classes" element={<Teaching />} />
+                                <Route path="/anonymous/:id" element={<AnonBoardDetail />} />
+                                <Route path="/anonymous/:id/edit" element={<AnonBoardForm />} />
+
+                                {/* 티칭 클래스 */}
                                 <Route path="/classes" element={<Teaching />} />
                                 <Route path="/classes/new" element={<TeachingForm />} />
+                                <Route path="/classes/:id/edit" element={<TeachingForm />} />
                                 <Route path="/classes/:id" element={<TeachingDetail />} />
+
+                                {/* 같이 릴스찍자! */}
                                 <Route path="/reels" element={<ReelsList />} />
                                 <Route path="/reels/new" element={<ReelsForm />} />
+                                <Route path="/reels/:id/edit" element={<ReelsForm />} />
                                 <Route path="/reels/:id" element={<ReelsDetail />} />
+
+                                {/* 도구 */}
                                 <Route path="/practice-matcher" element={<PracticeMatcher />} />
                                 <Route path="/tracklist-master" element={<TracklistList />} />
                                 <Route path="/tracklist-master/:id" element={<TracklistMaster />} />
+
+                                {/* 회장단 전용 */}
                                 <Route path="/member-manage" element={<MemberManage />} />
+
+                                {/* 404 */}
                                 <Route path="*" element={<NotFound />} />
                               </Routes>
                             </Layout>

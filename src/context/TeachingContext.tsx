@@ -27,6 +27,7 @@ export interface TeachingClass {
   classTime: string;
   maxSpots: number | null;
   confirmed: boolean;
+  edited: boolean;
   applicants: string[];
   comments: Comment[];
   createdAt: string;
@@ -48,6 +49,19 @@ interface TeachingContextType {
     classTime: string;
     maxSpots: number | null;
   }) => Promise<void>;
+  editClass: (
+    id: string,
+    data: {
+      title: string;
+      description: string;
+      youtubeUrl: string;
+      songTitle: string;
+      songStart: string;
+      songEnd: string;
+      classDate: string;
+      classTime: string;
+    }
+  ) => Promise<void>;
   removeClass: (id: string) => Promise<void>;
   confirmClass: (id: string) => Promise<void>;
   unconfirmClass: (id: string) => Promise<void>;
@@ -130,6 +144,7 @@ export function TeachingProvider({ children }: { children: ReactNode }) {
         classTime: c.class_time,
         maxSpots: c.max_spots,
         confirmed: c.confirmed,
+        edited: c.edited,
         applicants: applicantsByClass[c.id] ?? [],
         comments: commentsByClass[c.id] ?? [],
         createdAt: c.created_at?.slice(0, 10) ?? "",
@@ -180,6 +195,24 @@ export function TeachingProvider({ children }: { children: ReactNode }) {
         user_name: name,
       });
     }
+    await fetchAll();
+  };
+
+  const editClass: TeachingContextType["editClass"] = async (id, data) => {
+    await supabase
+      .from("teaching_classes")
+      .update({
+        title: data.title,
+        description: data.description,
+        youtube_url: data.youtubeUrl,
+        song_title: data.songTitle,
+        song_start: data.songStart,
+        song_end: data.songEnd,
+        class_date: data.classDate,
+        class_time: data.classTime,
+        edited: true,
+      })
+      .eq("id", id);
     await fetchAll();
   };
 
@@ -270,6 +303,7 @@ export function TeachingProvider({ children }: { children: ReactNode }) {
         loading,
         getById,
         addClass,
+        editClass,
         removeClass,
         confirmClass,
         unconfirmClass,
