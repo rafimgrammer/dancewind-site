@@ -37,9 +37,11 @@ interface AnonBoardContextType {
   removeComment: (postId: string, commentId: string) => Promise<void>;
   incrementViews: (id: string) => Promise<void>;
   toggleLike: (id: string) => Promise<void>;
+  toggleSave: (id: string) => Promise<void>;
   report: (id: string) => Promise<{ ok: boolean; message?: string }>;
   getRemainingCooldown: () => number;
   likedIds: Set<string>;
+  savedIds: Set<string>;
   reportedIds: Set<string>;
 }
 
@@ -49,6 +51,7 @@ export function AnonBoardProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [posts, setPosts] = useState<AnonPost[]>([]);
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
+  const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
   const [reportedIds, setReportedIds] = useState<Set<string>>(new Set());
   const [lastPostTime, setLastPostTime] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
@@ -57,6 +60,7 @@ export function AnonBoardProvider({ children }: { children: ReactNode }) {
     if (!user) {
       setPosts([]);
       setLikedIds(new Set());
+      setSavedIds(new Set());
       setReportedIds(new Set());
       setLoading(false);
       return;
@@ -74,6 +78,7 @@ export function AnonBoardProvider({ children }: { children: ReactNode }) {
       .order("created_at", { ascending: true });
 
     const { data: likeData } = await supabase.from("anon_likes").select("post_id").eq("user_id", user.id);
+    const { data: saveData } = await supabase.from("anon_saves").select("post_id").eq("user_id", user.id);
     const { data: reportData } = await supabase.from("anon_reports").select("post_id").eq("user_id", user.id);
 
     const { data: myLastPost } = await supabase
@@ -113,6 +118,7 @@ export function AnonBoardProvider({ children }: { children: ReactNode }) {
     );
 
     setLikedIds(new Set((likeData ?? []).map((l) => l.post_id)));
+    setSavedIds(new Set((saveData ?? []).map((s) => s.post_id)));
     setReportedIds(new Set((reportData ?? []).map((r) => r.post_id)));
     setLastPostTime(myLastPost ? new Date(myLastPost.created_at).getTime() : null);
 
@@ -199,6 +205,24 @@ export function AnonBoardProvider({ children }: { children: ReactNode }) {
     );
   };
 
+  const toggleSave = async (id: string) => {
+    if (!user) return;
+    const alreadySaved = savedIds.has(id);
+
+    if (alreadySaved) {
+      await supabase.from("anon_saves").delete().eq("post_id", id).eq("user_id", user.id);
+    } else {
+      await supabase.from("anon_saves").insert({ post_id: id, user_id: user.id });
+    }
+
+    setSavedIds((prev) => {
+      const next = new Set(prev);
+      if (alreadySaved) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
   const report = async (id: string) => {
     if (!user) return { ok: false, message: "로그인이 필요해요." };
     const { data, error } = await supabase.rpc("report_anon_post", {
@@ -225,9 +249,11 @@ export function AnonBoardProvider({ children }: { children: ReactNode }) {
         removeComment,
         incrementViews,
         toggleLike,
+        toggleSave,
         report,
         getRemainingCooldown,
         likedIds,
+        savedIds,
         reportedIds,
       }}
     >

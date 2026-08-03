@@ -6,7 +6,7 @@ import { useAuth } from "../context/AuthContext";
 import { useAnonBoard, type AnonComment } from "../context/AnonBoardContext";
 import { formatTimeAgo } from "../utils/timeAgo";
 
-type ConfirmAction = "like" | "report" | "delete" | null;
+type ConfirmAction = "like" | "report" | "save" | "unsave" | "delete" | null;
 
 export default function AnonBoardDetail() {
   const { id } = useParams<{ id: string }>();
@@ -18,8 +18,10 @@ export default function AnonBoardDetail() {
     removeComment,
     incrementViews,
     toggleLike,
+    toggleSave,
     report,
     likedIds,
+    savedIds,
     reportedIds,
   } = useAnonBoard();
   const navigate = useNavigate();
@@ -62,9 +64,9 @@ export default function AnonBoardDetail() {
 
   const isMine = post.authorId === user?.id;
   const isLiked = likedIds.has(post.id);
+  const isSaved = savedIds.has(post.id);
   const isReported = reportedIds.has(post.id);
 
-  // 익명 댓글 번호는 authorId 기준으로 부여 (같은 사람=같은 번호, 작성자는 번호 없음)
   const anonNumberMap = new Map<string, number>();
   let anonCounter = 0;
   post.comments.forEach((c) => {
@@ -99,6 +101,8 @@ export default function AnonBoardDetail() {
   const handleConfirm = async () => {
     if (confirmAction === "like") {
       await toggleLike(post.id);
+    } else if (confirmAction === "save" || confirmAction === "unsave") {
+      await toggleSave(post.id);
     } else if (confirmAction === "report") {
       const result = await report(post.id);
       if (!result.ok) alert(result.message);
@@ -109,9 +113,31 @@ export default function AnonBoardDetail() {
   };
 
   const confirmCopy: Record<Exclude<ConfirmAction, null>, { title: string; desc: string; action: string }> = {
-    like: { title: "좋아요를 누르시겠습니까?", desc: "좋아요를 누르면 취소할 수 없습니다.", action: "좋아요 누를게요" },
-    report: { title: "신고하시겠습니까?", desc: "신고는 철회할 수 없습니다.", action: "신고할게요" },
-    delete: { title: "정말로 삭제하시겠습니까?", desc: "삭제된 글은 복구할 수 없습니다.", action: "삭제할게요" },
+    like: {
+      title: "좋아요를 누르시겠습니까?",
+      desc: "좋아요를 누르면 취소할 수 없습니다.",
+      action: "좋아요 누를게요",
+    },
+    save: {
+      title: "저장하시겠습니까?",
+      desc: "마이페이지 저장함에서 다시 볼 수 있어요.",
+      action: "저장할게요",
+    },
+    unsave: {
+      title: "저장을 취소하시겠습니까?",
+      desc: "저장함에서 제거됩니다.",
+      action: "취소할게요",
+    },
+    report: {
+      title: "신고하시겠습니까?",
+      desc: "신고는 철회할 수 없습니다.",
+      action: "신고할게요",
+    },
+    delete: {
+      title: "정말로 삭제하시겠습니까?",
+      desc: "삭제된 글은 복구할 수 없습니다.",
+      action: "삭제할게요",
+    },
   };
 
   const renderCommentLabel = (c: AnonComment) => {
@@ -119,7 +145,7 @@ export default function AnonBoardDetail() {
     const label =
       c.displayName === "익명" && !isPostAuthor
         ? `익명 ${anonNumberMap.get(c.authorId)}`
-        : c.displayName; // 작성자는 익명이어도 그냥 "익명"으로 표시, 배지로 구분
+        : c.displayName;
     const timeLabel = formatTimeAgo(new Date(c.createdAt).getTime());
 
     return (
@@ -200,10 +226,11 @@ export default function AnonBoardDetail() {
                     <button
                       onClick={() => !isLiked && setConfirmAction("like")}
                       disabled={isLiked}
-                      className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-all ${isLiked
+                      className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-all ${
+                        isLiked
                           ? "cursor-not-allowed border-red-400/40 bg-red-400/10 text-red-400"
                           : "border-line text-mute hover:border-red-400/30 hover:text-red-300"
-                        }`}
+                      }`}
                     >
                       <svg
                         width="16"
@@ -212,7 +239,6 @@ export default function AnonBoardDetail() {
                         fill={isLiked ? "currentColor" : "none"}
                         stroke="currentColor"
                         strokeWidth="2"
-                        className={`transition-transform ${isLiked ? "scale-110" : "scale-100"}`}
                       >
                         <path
                           d="M12 21s-7-6.2-9.5-10.2C1 8 1.8 4.5 5 3.5c2-.6 3.8.2 5 2 1.2-1.8 3-2.6 5-2 3.2 1 4 4.5 2.5 7.3C19 14.8 12 21 12 21z"
@@ -220,6 +246,16 @@ export default function AnonBoardDetail() {
                         />
                       </svg>
                       <span>{post.likes}</span>
+                    </button>
+                    <button
+                      onClick={() => setConfirmAction(isSaved ? "unsave" : "save")}
+                      className={`rounded-lg border px-3 py-1.5 text-xs transition-colors ${
+                        isSaved
+                          ? "border-dawn-teal/50 bg-dawn-teal/10 text-dawn-teal"
+                          : "border-line text-mute hover:border-dawn-teal/40 hover:text-dawn-teal"
+                      }`}
+                    >
+                      {isSaved ? "저장됨" : "저장"}
                     </button>
                     <button
                       onClick={() => setConfirmAction("report")}
@@ -234,7 +270,7 @@ export default function AnonBoardDetail() {
                 )}
                 {(isMine || isPresident) && (
                   <button
-                    onClick={() => setConfirmAction("delete")}
+                    onClick={handleDelete}
                     className="rounded-lg border border-line px-3 py-1.5 text-xs text-mute hover:border-red-400/50 hover:text-red-300"
                   >
                     삭제

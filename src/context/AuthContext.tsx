@@ -22,7 +22,7 @@ interface AuthContextValue {
   name: string;
   user: User | null;
   profile: MemberProfile | null;
-  profileStatus: ProfileStatus; // "none" = 아직 신청 안 함, "pending" = 승인 대기, "approved" = 정식 부원
+  profileStatus: ProfileStatus;
   loading: boolean;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;

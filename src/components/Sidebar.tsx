@@ -1,5 +1,5 @@
 // src/components/Sidebar.tsx
-import { NavLink } from "react-router-dom";
+import { Link, NavLink } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 interface NavItem {
@@ -24,6 +24,7 @@ const MEMBER: NavItem[] = [
   { to: "/board", label: "자유게시판" },
   { to: "/anonymous", label: "익명 건의·게시판" },
   { to: "/classes", label: "티칭 클래스" },
+  { to: "/reels", label: "같이 릴스찍자!" },
   { to: "/practice-matcher", label: "연습시간 마스터" },
 ];
 
@@ -95,12 +96,37 @@ function Item({ item, onNavigate }: { item: NavItem; onNavigate?: () => void }) 
   );
 }
 
+const ROLE_LABEL: Record<string, string> = {
+  member: "부원",
+  president: "회장단",
+};
+
 export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
-  const { role } = useAuth();
+  const { role, name } = useAuth();
+  const isLoggedIn = role === "member" || role === "president";
 
   return (
     <nav className="flex h-full flex-col px-3 pb-6" aria-label="주요 메뉴">
-      <div className="mt-1 space-y-0.5">
+      {isLoggedIn && (
+        <Link
+          to="/mypage"
+          onClick={onNavigate}
+          className="mb-4 mt-1 flex items-center gap-3 rounded-xl border border-line bg-afterglow p-3 transition-colors hover:border-wind-gold/40"
+        >
+          <div
+            className={`flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full ${role === "president" ? "bg-wind-gold/20" : "bg-dawn-teal/20"
+              }`}
+          >
+            <img src="/dancewindlogo.png" alt="" className="h-full w-full object-contain p-1.5" />
+          </div>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold text-backstage">{name}</p>
+            <p className="mt-0.5 font-mono text-[11px] text-mute">{ROLE_LABEL[role]} · 마이페이지</p>
+          </div>
+        </Link>
+      )}
+
+      <div className="space-y-0.5">
         {COMMON.map((item) => (
           <Item key={item.to} item={item} onNavigate={onNavigate} />
         ))}

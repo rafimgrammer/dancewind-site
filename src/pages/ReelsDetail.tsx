@@ -1,28 +1,30 @@
-// src/pages/TeachingDetail.tsx
+// src/pages/ReelsDetail.tsx
 import { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { PageHeader, Card, Pill, RequireRole } from "../components/Ui";
 import { useAuth } from "../context/AuthContext";
-import { useTeaching, type Comment } from "../context/TeachingContext";
+import { useReels, type ReelsComment } from "../context/ReelsContext";
 import { getYoutubeId } from "../utils/youtube";
+import InstagramEmbed from "../components/InstagramEmbed";
 
 type ConfirmAction =
   | "apply"
   | "cancel"
-  | "deleteClass"
+  | "deletePost"
   | "deleteComment"
   | "confirm"
   | "unconfirm"
   | null;
 
-export default function TeachingDetail() {
+export default function ReelsDetail() {
   const { id } = useParams<{ id: string }>();
   const { role, user } = useAuth();
   const {
     getById,
-    removeClass,
-    confirmClass,
-    unconfirmClass,
+    removePost,
+    confirmPost,
+    unconfirmPost,
+    decideSchedule,
     toggleApply,
     toggleSave,
     addComment,
@@ -30,7 +32,7 @@ export default function TeachingDetail() {
     removeComment,
     isApplied,
     savedIds,
-  } = useTeaching();
+  } = useReels();
   const navigate = useNavigate();
 
   const [commentDraft, setCommentDraft] = useState("");
@@ -41,33 +43,34 @@ export default function TeachingDetail() {
   const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
   const [pendingCommentId, setPendingCommentId] = useState<string | null>(null);
 
+  const [showScheduleForm, setShowScheduleForm] = useState(false);
+  const [scheduleDate, setScheduleDate] = useState("");
+  const [scheduleTime, setScheduleTime] = useState("");
+  const [showScheduleConfirm, setShowScheduleConfirm] = useState(false);
+
   const item = id ? getById(id) : undefined;
   const isPresident = role === "president";
-  const isTeacher = item ? item.teacherId === user?.id : false;
+  const isCreator = item ? item.creatorId === user?.id : false;
 
   const applied = item ? isApplied(item.id) : false;
   const isSaved = item ? savedIds.has(item.id) : false;
   const isFull = item ? item.maxSpots !== null && item.applicants.length >= item.maxSpots : false;
-  const canConfirm = item ? isTeacher && !item.confirmed && isFull : false;
-  const canUnconfirm = item ? isTeacher && item.confirmed : false;
+  const canConfirm = item ? isCreator && !item.confirmed && isFull : false;
+  const canUnconfirm = item ? isCreator && item.confirmed : false;
 
   const topLevelComments = useMemo(() => {
     if (!item) return [];
     return [...item.comments].filter((c) => !c.parentId).reverse();
   }, [item]);
 
-  const getReplies = (parentId: string) =>
-    item ? item.comments.filter((c) => c.parentId === parentId) : [];
+  const getReplies = (parentId: string) => (item ? item.comments.filter((c) => c.parentId === parentId) : []);
 
   if (!item) {
     return (
-      <RequireRole allow={["member", "president"]} what="티칭 클래스">
+      <RequireRole allow={["member", "president"]} what="같이 릴스찍자">
         <div>
-          <PageHeader eyebrow="Teaching" title="클래스를 찾을 수 없어요" desc="삭제되었거나 존재하지 않는 클래스예요." />
-          <button
-            onClick={() => navigate("/classes")}
-            className="mt-4 rounded-lg border border-line px-4 py-2 text-sm text-mute"
-          >
+          <PageHeader eyebrow="Reels" title="릴스를 찾을 수 없어요" desc="삭제되었거나 존재하지 않는 게시물이에요." />
+          <button onClick={() => navigate("/reels")} className="mt-4 rounded-lg border border-line px-4 py-2 text-sm text-mute">
             목록으로 돌아가기
           </button>
         </div>
@@ -116,15 +119,15 @@ export default function TeachingDetail() {
   const handleConfirm = async () => {
     if (confirmAction === "apply" || confirmAction === "cancel") {
       await toggleApply(item.id);
-    } else if (confirmAction === "deleteClass") {
-      await removeClass(item.id);
-      navigate("/classes");
+    } else if (confirmAction === "deletePost") {
+      await removePost(item.id);
+      navigate("/reels");
     } else if (confirmAction === "deleteComment" && pendingCommentId) {
       await removeComment(item.id, pendingCommentId);
     } else if (confirmAction === "confirm") {
-      await confirmClass(item.id);
+      await confirmPost(item.id);
     } else if (confirmAction === "unconfirm") {
-      await unconfirmClass(item.id);
+      await unconfirmPost(item.id);
     }
     setConfirmAction(null);
     setPendingCommentId(null);
@@ -132,24 +135,24 @@ export default function TeachingDetail() {
 
   const confirmCopy: Record<Exclude<ConfirmAction, null>, { title: string; desc: string; action: string }> = {
     apply: {
-      title: "클래스를 신청하시겠습니까?",
-      desc: `${item.classDate} ${item.classTime} · 정원 ${item.applicants.length}${
+      title: "이 릴스에 신청하시겠습니까?",
+      desc: `${item.shootDate ?? "날짜 미정"} ${item.shootTime ?? ""} · 정원 ${item.applicants.length}${
         item.maxSpots === null ? "명 (인원무관)" : `/${item.maxSpots}`
       }`,
       action: "신청할게요",
     },
     cancel: {
       title: "신청을 취소하시겠습니까?",
-      desc: `${item.classDate} ${item.classTime}`,
+      desc: `${item.shootDate ?? "날짜 미정"} ${item.shootTime ?? ""}`,
       action: "취소할게요",
     },
-    deleteClass: { title: "정말로 삭제하시겠습니까?", desc: "삭제된 클래스는 복구할 수 없습니다.", action: "삭제할게요" },
+    deletePost: { title: "정말로 삭제하시겠습니까?", desc: "삭제된 게시물은 복구할 수 없습니다.", action: "삭제할게요" },
     deleteComment: { title: "댓글을 삭제하시겠습니까?", desc: "삭제된 댓글은 복구할 수 없습니다.", action: "삭제할게요" },
     confirm: { title: "확정하시겠습니까?", desc: "확정 후에는 신청/취소가 불가능해집니다.", action: "확정할게요" },
     unconfirm: { title: "확정을 취소하시겠습니까?", desc: "다시 모집중 상태가 됩니다.", action: "확정 취소할게요" },
   };
 
-  const renderComment = (c: Comment, isReply: boolean) => {
+  const renderComment = (c: ReelsComment, isReply: boolean) => {
     const isEditing = editingId === c.id;
     const isMine = c.authorId === user?.id;
 
@@ -207,21 +210,18 @@ export default function TeachingDetail() {
   };
 
   return (
-    <RequireRole allow={["member", "president"]} what="티칭 클래스">
+    <RequireRole allow={["member", "president"]} what="같이 릴스찍자">
       <div>
-        <button onClick={() => navigate("/classes")} className="mb-4 text-sm text-mute hover:text-backstage">
+        <button onClick={() => navigate("/reels")} className="mb-4 text-sm text-mute hover:text-backstage">
           ← 목록으로
         </button>
 
         <Card>
           <div className="flex items-start justify-between">
-            <div className="flex items-center gap-2">
-              <Pill tone="teal">{item.category}</Pill>
-              {item.confirmed && <Pill tone="gold">확정</Pill>}
-            </div>
+            <div className="flex items-center gap-2">{item.confirmed && <Pill tone="gold">확정</Pill>}</div>
             {isPresident && (
               <button
-                onClick={() => setConfirmAction("deleteClass")}
+                onClick={() => setConfirmAction("deletePost")}
                 className="rounded-lg border border-line px-3 py-1.5 text-xs text-mute hover:border-red-400/50 hover:text-red-300"
               >
                 삭제
@@ -231,7 +231,7 @@ export default function TeachingDetail() {
 
           <p className="mt-2 font-display text-xl text-backstage">{item.title}</p>
           <p className="mt-1 font-mono text-xs text-mute">
-            {item.teacher} · 등록일 {item.createdAt}
+            {item.creator} · 등록일 {item.createdAt}
           </p>
 
           {item.description && (
@@ -240,26 +240,28 @@ export default function TeachingDetail() {
 
           {videoId && (
             <div className="mt-5 aspect-video overflow-hidden rounded-lg">
-              <iframe className="h-full w-full" src={`https://www.youtube.com/embed/${videoId}`} title={item.songTitle || item.title} allowFullScreen />
+              <iframe className="h-full w-full" src={`https://www.youtube.com/embed/${videoId}`} title={item.title} allowFullScreen />
             </div>
           )}
 
-          {item.songTitle && <p className="mt-3 text-sm text-dawn-teal">🎵 {item.songTitle}</p>}
+          {item.instagramUrl && (
+            <div className="mt-5 flex justify-center">
+              <InstagramEmbed url={item.instagramUrl} />
+            </div>
+          )}
 
           <div className="mt-4 grid grid-cols-2 gap-3 rounded-xl border border-line bg-stage p-4 text-sm sm:grid-cols-4">
             <div>
-              <p className="text-xs text-mute">구간</p>
-              <p className="mt-1 font-mono text-backstage">
-                {item.songStart} ~ {item.songEnd}
-              </p>
-            </div>
-            <div>
               <p className="text-xs text-mute">날짜</p>
-              <p className="mt-1 text-backstage">{item.classDate}</p>
+              <p className="mt-1 text-backstage">{item.shootDate ?? "미정"}</p>
             </div>
             <div>
               <p className="text-xs text-mute">시간</p>
-              <p className="mt-1 text-backstage">{item.classTime}</p>
+              <p className="mt-1 text-backstage">{item.shootTime ?? "미정"}</p>
+            </div>
+            <div>
+              <p className="text-xs text-mute">장소</p>
+              <p className="mt-1 text-backstage">{item.location || "미정"}</p>
             </div>
             <div>
               <p className="text-xs text-mute">정원</p>
@@ -270,15 +272,33 @@ export default function TeachingDetail() {
             </div>
           </div>
 
+          {!item.shootDate && !item.confirmed && (
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-wind-gold/30 bg-wind-gold/5 px-4 py-3">
+              <p className="text-xs text-wind-gold">💬 날짜/시간이 아직 미정이에요. 댓글로 의견을 나눠보세요!</p>
+              {isCreator && (
+                <button
+                  onClick={() => {
+                    setScheduleDate("");
+                    setScheduleTime("");
+                    setShowScheduleForm(true);
+                  }}
+                  className="shrink-0 rounded-lg bg-wind-gold px-3 py-1.5 text-xs font-semibold text-stage"
+                >
+                  날짜/시간 결정
+                </button>
+              )}
+            </div>
+          )}
+
           <div className="mt-6 flex flex-wrap items-center justify-between gap-2 border-t border-line pt-4">
             <div className="flex flex-wrap items-center gap-2">
               {item.confirmed ? (
                 <span className="rounded-lg border border-dawn-teal/40 bg-dawn-teal/10 px-4 py-2 text-sm font-semibold text-dawn-teal">
-                  ✓ 확정된 클래스예요
+                  ✓ 확정된 릴스예요
                 </span>
-              ) : isTeacher ? (
+              ) : isCreator ? (
                 <span className="rounded-lg border border-wind-gold/40 bg-wind-gold/10 px-4 py-2 text-sm font-semibold text-wind-gold">
-                  👑 내가 개설한 클래스 (자동 참여중)
+                  👑 내가 개설한 릴스 (자동 참여중)
                 </span>
               ) : (
                 <button
@@ -310,7 +330,7 @@ export default function TeachingDetail() {
             <div className="flex gap-2">
               {canConfirm && (
                 <button onClick={() => setConfirmAction("confirm")} className="rounded-lg bg-wind-gold px-4 py-2 text-sm font-semibold text-stage">
-                  클래스 확정
+                  릴스 확정
                 </button>
               )}
               {canUnconfirm && (
@@ -325,9 +345,9 @@ export default function TeachingDetail() {
           </div>
 
           <div className="mt-6">
-            <p className="mb-2 text-xs text-mute">신청자 명단 ({item.applicants.length}명)</p>
+            <p className="mb-2 text-xs text-mute">참여자 명단 ({item.applicants.length}명)</p>
             {item.applicants.length === 0 ? (
-              <p className="text-sm text-mute">아직 신청자가 없어요.</p>
+              <p className="text-sm text-mute">아직 참여자가 없어요.</p>
             ) : (
               <div className="flex flex-wrap gap-2">
                 {item.applicants.map((a, idx) => (
@@ -416,6 +436,78 @@ export default function TeachingDetail() {
               </button>
               <button onClick={handleConfirm} className="rounded-lg bg-wind-gold px-4 py-2 text-sm font-semibold text-stage">
                 {confirmCopy[confirmAction].action}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showScheduleForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-stage/70 backdrop-blur-sm" onClick={() => setShowScheduleForm(false)}>
+          <div onClick={(e) => e.stopPropagation()} className="mx-4 w-full max-w-sm rounded-2xl border border-line bg-afterglow p-6">
+            <p className="font-display text-lg text-backstage">날짜/시간 결정</p>
+            <p className="mt-1 text-sm text-backstage/70">댓글로 합의된 날짜와 시간을 입력해주세요.</p>
+            <div className="mt-4 space-y-3">
+              <div>
+                <label className="mb-1.5 block text-xs text-mute">촬영 날짜</label>
+                <input
+                  type="date"
+                  value={scheduleDate}
+                  onChange={(e) => setScheduleDate(e.target.value)}
+                  className="w-full rounded-lg border border-line bg-stage px-3 py-2 text-sm text-backstage outline-none focus:border-dawn-teal"
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs text-mute">촬영 시간</label>
+                <input
+                  type="time"
+                  value={scheduleTime}
+                  onChange={(e) => setScheduleTime(e.target.value)}
+                  className="w-full rounded-lg border border-line bg-stage px-3 py-2 text-sm text-backstage outline-none focus:border-dawn-teal"
+                />
+              </div>
+            </div>
+            <div className="mt-6 flex justify-end gap-2">
+              <button onClick={() => setShowScheduleForm(false)} className="rounded-lg border border-line px-4 py-2 text-sm text-mute">
+                취소
+              </button>
+              <button
+                onClick={() => {
+                  if (!scheduleDate || !scheduleTime) {
+                    alert("날짜와 시간을 모두 입력해주세요.");
+                    return;
+                  }
+                  setShowScheduleForm(false);
+                  setShowScheduleConfirm(true);
+                }}
+                className="rounded-lg bg-wind-gold px-4 py-2 text-sm font-semibold text-stage"
+              >
+                다음
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showScheduleConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-stage/70 backdrop-blur-sm" onClick={() => setShowScheduleConfirm(false)}>
+          <div onClick={(e) => e.stopPropagation()} className="mx-4 w-full max-w-sm rounded-2xl border border-line bg-afterglow p-6">
+            <p className="font-display text-lg text-backstage">이 날짜/시간으로 결정하시겠습니까?</p>
+            <p className="mt-2 font-mono text-sm text-backstage/70">
+              {scheduleDate} {scheduleTime}
+            </p>
+            <div className="mt-6 flex justify-end gap-2">
+              <button onClick={() => setShowScheduleConfirm(false)} className="rounded-lg border border-line px-4 py-2 text-sm text-mute">
+                아니요
+              </button>
+              <button
+                onClick={async () => {
+                  await decideSchedule(item.id, scheduleDate, scheduleTime);
+                  setShowScheduleConfirm(false);
+                }}
+                className="rounded-lg bg-wind-gold px-4 py-2 text-sm font-semibold text-stage"
+              >
+                결정할게요
               </button>
             </div>
           </div>
