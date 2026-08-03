@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { PageHeader, Card, EmptyState, RequireRole } from "../components/Ui";
 import { useBoard } from "../context/BoardContext";
+import { CardSkeletonGrid } from "../components/Skeleton";
 
 const PAGE_SIZE = 6;
 type SearchType = "title" | "titleBody" | "author";
@@ -12,7 +13,7 @@ function stripHtml(html: string) {
 }
 
 export default function Board() {
-  const { posts } = useBoard();
+  const { posts, loading } = useBoard();
   const [searchType, setSearchType] = useState<SearchType>("title");
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
@@ -79,7 +80,9 @@ export default function Board() {
           </Link>
         </div>
 
-        {paged.length === 0 ? (
+        {loading ? (
+          <CardSkeletonGrid count={6} />
+        ) : paged.length === 0 ? (
           <EmptyState
             title={query ? "검색 결과가 없어요" : "아직 아무도 글을 남기지 않았어요"}
             desc={query ? "다른 검색어로 다시 시도해보세요." : "첫 스텝을 밟아보세요!"}

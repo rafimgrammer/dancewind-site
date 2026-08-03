@@ -3,11 +3,12 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { PageHeader, Card, Pill, EmptyState, RequireRole } from "../components/Ui";
 import { useTeaching } from "../context/TeachingContext";
+import { CardSkeletonGrid } from "../components/Skeleton";
 
 const CATEGORIES = ["전체", "케이팝", "코레오", "스트릿", "락킹", "왁킹", "보깅", "힙합", "하우스"];
 
 export default function Teaching() {
-  const { classes } = useTeaching();
+  const { classes, loading } = useTeaching();
   const [statusTab, setStatusTab] = useState<"open" | "confirmed">("open");
   const [categoryTab, setCategoryTab] = useState("전체");
 
@@ -34,17 +35,15 @@ export default function Teaching() {
         <div className="mb-4 flex gap-2 border-b border-line">
           <button
             onClick={() => setStatusTab("open")}
-            className={`border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${
-              statusTab === "open" ? "border-wind-gold text-wind-gold" : "border-transparent text-mute hover:text-backstage"
-            }`}
+            className={`border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${statusTab === "open" ? "border-wind-gold text-wind-gold" : "border-transparent text-mute hover:text-backstage"
+              }`}
           >
             모집중인 클래스
           </button>
           <button
             onClick={() => setStatusTab("confirmed")}
-            className={`border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${
-              statusTab === "confirmed" ? "border-dawn-teal text-dawn-teal" : "border-transparent text-mute hover:text-backstage"
-            }`}
+            className={`border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${statusTab === "confirmed" ? "border-dawn-teal text-dawn-teal" : "border-transparent text-mute hover:text-backstage"
+              }`}
           >
             확정된 클래스
           </button>
@@ -55,18 +54,19 @@ export default function Teaching() {
             <button
               key={cat}
               onClick={() => setCategoryTab(cat)}
-              className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
-                categoryTab === cat
+              className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${categoryTab === cat
                   ? "border-wind-gold bg-wind-gold/10 text-wind-gold"
                   : "border-line text-mute hover:border-dawn-teal/40 hover:text-dawn-teal"
-              }`}
+                }`}
             >
               {cat}
             </button>
           ))}
         </div>
 
-        {filtered.length === 0 ? (
+        {loading ? (
+          <CardSkeletonGrid count={6} />
+        ) : filtered.length === 0 ? (
           <EmptyState
             title={statusTab === "open" ? "모집중인 클래스가 없어요" : "확정된 클래스가 없어요"}
             desc="첫 클래스를 등록해보세요."

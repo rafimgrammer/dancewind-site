@@ -5,10 +5,11 @@ import { PageHeader, Card, EmptyState, RequireRole } from "../components/Ui";
 import { useAuth } from "../context/AuthContext";
 import { useAnonBoard } from "../context/AnonBoardContext";
 import { formatTimeAgo } from "../utils/timeAgo";
+import { CardSkeletonGrid } from "../components/Skeleton";
 
 export default function AnonBoard() {
   const { name } = useAuth();
-  const { posts, addPost, getRemainingCooldown } = useAnonBoard();
+  const { posts, addPost, getRemainingCooldown, loading } = useAnonBoard();
 
   const [draft, setDraft] = useState("");
   const [isAnonymous, setIsAnonymous] = useState(true);
@@ -74,7 +75,9 @@ export default function AnonBoard() {
           </div>
         </Card>
 
-        {posts.length === 0 ? (
+        {loading ? (
+          <CardSkeletonGrid count={6} />
+        ) : posts.length === 0 ? (
           <EmptyState title="아직 등록된 글이 없어요" desc="불편했던 점이나 제안이 있다면 편하게 남겨주세요." />
         ) : (
           <div className="space-y-3">
