@@ -2,6 +2,7 @@
 import { Link } from "react-router-dom";
 import WindLine from "../components/WindLine";
 import { Card, Pill } from "../components/Ui";
+import Reveal from "../components/Reveal";
 import history from "../data/history.json";
 import schedule from "../data/schedule.json";
 
@@ -23,7 +24,7 @@ const CHANNELS = [
 export default function Home() {
   return (
     <div className="space-y-24">
-      {/* 히어로 — 페이지의 첫인상이자 테제 */}
+      {/* 히어로 — 페이지의 첫인상이자 테제, 바로 보여야 하니 Reveal 미적용 */}
       <section className="relative overflow-hidden rounded-3xl border border-line bg-afterglow">
         <div className="grid gap-8 p-6 md:grid-cols-[1.1fr_0.9fr] md:p-10">
           <div className="flex flex-col justify-center animate-rise">
@@ -100,96 +101,106 @@ export default function Home() {
       </section>
 
       {/* 회장단 인삿말 */}
-      <section className="grid gap-8 md:grid-cols-[0.9fr_1.1fr] md:items-center">
-        <div className="animate-rise">
-          <p className="font-mono text-xs tracking-[0.2em] text-dawn-teal uppercase">Greeting</p>
-          <h2 className="mt-2 font-display text-2xl text-backstage md:text-3xl">회장단 인삿말</h2>
-        </div>
-        <Card>
-          <p className="text-[15px] leading-relaxed text-backstage/85">
-            안녕하세요, 춤바람 19대 회장 강지호입니다. 90명이 넘는 인원이 한 팀으로 움직인다는 건
-            생각보다 훨씬 많은 조율이 필요한 일이더라고요. 그래도 매주 동방에 모여 몸을 풀고, 서로의
-            동작을 봐주고, 무대 위에서 같은 박자를 나눌 때마다 이 규모가 오히려 우리의 힘이라는 걸
-            느낍니다. 처음 스텝을 밟아보는 분이든, 오래된 부원이든 이 홈페이지에서 춤바람의 리듬을
-            느껴보셨으면 해요.
-          </p>
-          <p className="mt-4 font-mono text-xs text-mute">— 19기 강지호, 춤바람 회장</p>
-        </Card>
-      </section>
+      <Reveal>
+        <section className="grid gap-8 md:grid-cols-[0.9fr_1.1fr] md:items-center">
+          <div>
+            <p className="font-mono text-xs tracking-[0.2em] text-dawn-teal uppercase">Greeting</p>
+            <h2 className="mt-2 font-display text-2xl text-backstage md:text-3xl">회장단 인삿말</h2>
+          </div>
+          <Card>
+            <p className="text-[15px] leading-relaxed text-backstage/85">
+              안녕하세요, 춤바람 19대 회장 강지호입니다. 90명이 넘는 인원이 한 팀으로 움직인다는 건
+              생각보다 훨씬 많은 조율이 필요한 일이더라고요. 그래도 매주 동방에 모여 몸을 풀고, 서로의
+              동작을 봐주고, 무대 위에서 같은 박자를 나눌 때마다 이 규모가 오히려 우리의 힘이라는 걸
+              느낍니다. 처음 스텝을 밟아보는 분이든, 오래된 부원이든 이 홈페이지에서 춤바람의 리듬을
+              느껴보셨으면 해요.
+            </p>
+            <p className="mt-4 font-mono text-xs text-mute">— 19기 강지호, 춤바람 회장</p>
+          </Card>
+        </section>
+      </Reveal>
 
       {/* 춤바람의 역사 — 실제 타임라인이므로 순서 장치 사용 */}
-      <section>
-        <p className="font-mono text-xs tracking-[0.2em] text-dawn-teal uppercase">History</p>
-        <h2 className="mt-2 font-display text-2xl text-backstage md:text-3xl">춤바람의 역사</h2>
-        <div className="mt-8 space-y-0">
-          {history.map((h, i) => (
-            <div key={h.year} className="group flex gap-5 border-l border-line pl-6 pb-8 last:pb-0">
-              <div className="relative -ml-[29px] flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-line bg-stage font-mono text-[10px] text-wind-gold">
-                {i + 1}
+      <Reveal delay={100}>
+        <section>
+          <p className="font-mono text-xs tracking-[0.2em] text-dawn-teal uppercase">History</p>
+          <h2 className="mt-2 font-display text-2xl text-backstage md:text-3xl">춤바람의 역사</h2>
+          <div className="mt-8 space-y-0">
+            {history.map((h, i) => (
+              <div key={h.year} className="group flex gap-5 border-l border-line pl-6 pb-8 last:pb-0">
+                <div className="relative -ml-[29px] flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-line bg-stage font-mono text-[10px] text-wind-gold">
+                  {i + 1}
+                </div>
+                <div>
+                  <p className="font-display text-lg text-wind-gold">{h.year}</p>
+                  <p className="mt-1 text-sm leading-relaxed text-backstage/75">{h.text}</p>
+                </div>
               </div>
-              <div>
-                <p className="font-display text-lg text-wind-gold">{h.year}</p>
-                <p className="mt-1 text-sm leading-relaxed text-backstage/75">{h.text}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
+            ))}
+          </div>
+        </section>
+      </Reveal>
 
       {/* 일정 */}
-      <section>
-        <p className="font-mono text-xs tracking-[0.2em] text-dawn-teal uppercase">Schedule</p>
-        <h2 className="mt-2 font-display text-2xl text-backstage md:text-3xl">춤바람 일정</h2>
-        <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {schedule.map((s) => (
-            <Card key={s.id} className="flex items-start justify-between gap-3">
-              <div>
-                <p className="font-mono text-xs text-mute">{s.date}</p>
-                <p className="mt-1.5 text-[15px] font-medium text-backstage">{s.label}</p>
-              </div>
-              <Pill tone={s.type === "공연" ? "gold" : s.type === "모집" ? "teal" : "mute"}>{s.type}</Pill>
-            </Card>
-          ))}
-        </div>
-      </section>
+      <Reveal delay={100}>
+        <section>
+          <p className="font-mono text-xs tracking-[0.2em] text-dawn-teal uppercase">Schedule</p>
+          <h2 className="mt-2 font-display text-2xl text-backstage md:text-3xl">춤바람 일정</h2>
+          <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {schedule.map((s) => (
+              <Card key={s.id} className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="font-mono text-xs text-mute">{s.date}</p>
+                  <p className="mt-1.5 text-[15px] font-medium text-backstage">{s.label}</p>
+                </div>
+                <Pill tone={s.type === "공연" ? "gold" : s.type === "모집" ? "teal" : "mute"}>{s.type}</Pill>
+              </Card>
+            ))}
+          </div>
+        </section>
+      </Reveal>
 
       {/* 채널 */}
-      <section>
-        <p className="font-mono text-xs tracking-[0.2em] text-dawn-teal uppercase">Channels</p>
-        <h2 className="mt-2 font-display text-2xl text-backstage md:text-3xl">춤바람 채널</h2>
-        <div className="mt-6 grid gap-3 sm:grid-cols-2">
-          {CHANNELS.map((c) => (
-            <a
-              key={c.name}
-              href={c.href}
-              target="_blank"
-              rel="noreferrer"
-              className="group rounded-2xl border border-line bg-afterglow p-5 transition-all hover:-translate-y-1 hover:border-dawn-teal/50"
-            >
-              <p className="font-display text-lg text-backstage group-hover:text-dawn-teal">{c.name}</p>
-              <p className="mt-1 font-mono text-xs text-wind-gold">{c.handle}</p>
-              <p className="mt-2 text-sm text-mute">{c.desc}</p>
-            </a>
-          ))}
-        </div>
-      </section>
+      <Reveal delay={100}>
+        <section>
+          <p className="font-mono text-xs tracking-[0.2em] text-dawn-teal uppercase">Channels</p>
+          <h2 className="mt-2 font-display text-2xl text-backstage md:text-3xl">춤바람 채널</h2>
+          <div className="mt-6 grid gap-3 sm:grid-cols-2">
+            {CHANNELS.map((c) => (
+              <a
+                key={c.name}
+                href={c.href}
+                target="_blank"
+                rel="noreferrer"
+                className="group rounded-2xl border border-line bg-afterglow p-5 transition-all hover:-translate-y-1 hover:border-dawn-teal/50"
+              >
+                <p className="font-display text-lg text-backstage group-hover:text-dawn-teal">{c.name}</p>
+                <p className="mt-1 font-mono text-xs text-wind-gold">{c.handle}</p>
+                <p className="mt-2 text-sm text-mute">{c.desc}</p>
+              </a>
+            ))}
+          </div>
+        </section>
+      </Reveal>
 
       {/* 모집 CTA 배너 */}
-      <section className="relative overflow-hidden rounded-3xl border border-wind-gold/30 bg-gradient-to-br from-afterglow to-stage p-8 text-center md:p-12">
-        <p className="font-mono text-xs tracking-[0.2em] text-dawn-teal uppercase">Recruiting</p>
-        <h2 className="mt-3 font-display text-3xl text-backstage md:text-4xl">
-          이번 바람은, <span className="text-wind-gold">당신 차례.</span>
-        </h2>
-        <p className="mx-auto mt-3 max-w-md text-sm text-backstage/70">
-          경험이 없어도 괜찮아요. 리듬을 즐기려는 마음이면 충분합니다.
-        </p>
-        <Link
-          to="/recruit"
-          className="mt-6 inline-flex rounded-full bg-wind-gold px-7 py-3 text-sm font-semibold text-stage transition-transform hover:-translate-y-0.5"
-        >
-          지원 방법 확인하기
-        </Link>
-      </section>
+      <Reveal delay={100}>
+        <section className="relative overflow-hidden rounded-3xl border border-wind-gold/30 bg-gradient-to-br from-afterglow to-stage p-8 text-center md:p-12">
+          <p className="font-mono text-xs tracking-[0.2em] text-dawn-teal uppercase">Recruiting</p>
+          <h2 className="mt-3 font-display text-3xl text-backstage md:text-4xl">
+            이번 바람은, <span className="text-wind-gold">당신 차례.</span>
+          </h2>
+          <p className="mx-auto mt-3 max-w-md text-sm text-backstage/70">
+            경험이 없어도 괜찮아요. 리듬을 즐기려는 마음이면 충분합니다.
+          </p>
+          <Link
+            to="/recruit"
+            className="mt-6 inline-flex rounded-full bg-wind-gold px-7 py-3 text-sm font-semibold text-stage transition-transform hover:-translate-y-0.5"
+          >
+            지원 방법 확인하기
+          </Link>
+        </section>
+      </Reveal>
     </div>
   );
 }
