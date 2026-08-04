@@ -43,6 +43,10 @@ interface MemberManageContextType {
   requestKick: (targetId: string, requestedBy: string) => Promise<void>;
   approveKick: (requestId: string, approverName: string) => Promise<void>;
   cancelKickRequest: (requestId: string) => Promise<void>;
+  editMemberInfo: (
+    id: string,
+    data: { name: string; studentId: string; department: string; cohort: string }
+  ) => Promise<void>;
   presidentCount: number;
 }
 
@@ -157,7 +161,6 @@ export function MemberManageProvider({ children }: { children: ReactNode }) {
     const nextApprovedBy = [...request.approvedBy, approverName];
 
     if (nextApprovedBy.length >= presidentCount) {
-      // 전원 동의 완료 → 실제 강퇴 실행 + 요청 삭제
       await supabase.from("members").delete().eq("id", request.targetId);
       await supabase.from("kick_requests").delete().eq("id", requestId);
     } else {
@@ -168,6 +171,19 @@ export function MemberManageProvider({ children }: { children: ReactNode }) {
 
   const cancelKickRequest = async (requestId: string) => {
     await supabase.from("kick_requests").delete().eq("id", requestId);
+    await fetchAll();
+  };
+
+  const editMemberInfo: MemberManageContextType["editMemberInfo"] = async (id, data) => {
+    await supabase
+      .from("members")
+      .update({
+        name: data.name,
+        student_id: data.studentId,
+        department: data.department,
+        cohort: data.cohort,
+      })
+      .eq("id", id);
     await fetchAll();
   };
 
@@ -183,6 +199,7 @@ export function MemberManageProvider({ children }: { children: ReactNode }) {
         requestKick,
         approveKick,
         cancelKickRequest,
+        editMemberInfo,
         presidentCount,
       }}
     >

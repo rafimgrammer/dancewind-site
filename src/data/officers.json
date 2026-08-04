@@ -2,5 +2,5 @@
   { "id": "o1", "role": "회장", "name": "29기 임예진", "part": "힙합 / 안무 총괄", "note": "90명을 무대에 세우는 사람.", "photo": "/images/officers/yejin.jpg"},
   { "id": "o2", "role": "부회장", "name": "28기 하지원", "part": "대외협력", "note": "동방 예약부터 학교 협조 공문까지.", "photo": "/images/officers/jiwon.jpg" },
   { "id": "o3", "role": "총무", "name": "29기 김수민", "part": "예산 관리", "note": "회비와 공연 예산, 숫자는 제가 볼게요.", "photo": "/images/officers/sumin.jpg" },
-  { "id": "o4", "role": "스태프장", "name": "29.5기 장예원", "part": "공연 준비 / 연출 총괄", "note": "스태프가 없으면 무대도 없다.", "photo": "/images/officers/yewon.jpg" }
+  { "id": "o4", "role": "스태프장", "name": "29기 장예원", "part": "공연 준비 / 연출 총괄", "note": "스태프가 없으면 무대도 없다.", "photo": "/images/officers/yewon.jpg" }
 ]

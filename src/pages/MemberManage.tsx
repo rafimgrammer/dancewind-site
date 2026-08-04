@@ -21,6 +21,7 @@ export default function MemberManage() {
     requestKick,
     approveKick,
     cancelKickRequest,
+    editMemberInfo,
     presidentCount,
   } = useMemberManage();
 
@@ -31,6 +32,10 @@ export default function MemberManage() {
   const [cohortFilter, setCohortFilter] = useState("전체");
   const [sortType, setSortType] = useState<SortType>("cohort");
   const [confirmTarget, setConfirmTarget] = useState<ConfirmTarget | null>(null);
+
+  const [profileTarget, setProfileTarget] = useState<Member | null>(null);
+  const [editForm, setEditForm] = useState({ name: "", studentId: "", department: "", cohort: "" });
+  const [showEditConfirm, setShowEditConfirm] = useState(false);
 
   const cohorts = useMemo(() => {
     const set = new Set(members.map((m) => m.cohort));
@@ -51,7 +56,6 @@ export default function MemberManage() {
 
     return [...base].sort((a, b) => {
       if (sortType === "name") return a.name.localeCompare(b.name, "ko");
-      // 기수순: 숫자 기준 내림차순(최신 기수 먼저), 같은 기수면 이름순
       const cohortA = parseFloat(a.cohort) || 0;
       const cohortB = parseFloat(b.cohort) || 0;
       if (cohortB !== cohortA) return cohortB - cohortA;
@@ -62,7 +66,7 @@ export default function MemberManage() {
   const presidentMembers = filteredMembers.filter((m) => m.role === "president");
   const regularMembers = filteredMembers.filter((m) => m.role === "member");
 
-  const currentCohort = cohorts[1] ?? "-"; // cohorts[0]은 "전체"
+  const currentCohort = cohorts[1] ?? "-";
   const newestCohortCount = members.filter((m) => m.cohort === currentCohort).length;
 
   const runConfirm = async () => {
@@ -83,11 +87,39 @@ export default function MemberManage() {
     },
   };
 
+  const openProfile = (m: Member) => {
+    setProfileTarget(m);
+    setEditForm({ name: m.name, studentId: m.studentId, department: m.department, cohort: m.cohort });
+  };
+
+  const trySaveProfile = () => {
+    if (
+      !editForm.name.trim() ||
+      !editForm.studentId.trim() ||
+      !editForm.department.trim() ||
+      !editForm.cohort.trim()
+    ) {
+      alert("모든 항목을 입력해주세요.");
+      return;
+    }
+    setShowEditConfirm(true);
+  };
+
+  const saveProfile = async () => {
+    if (!profileTarget) return;
+    await editMemberInfo(profileTarget.id, editForm);
+    setShowEditConfirm(false);
+    setProfileTarget(null);
+  };
+
   const renderMemberCard = (m: Member) => {
     const hasActiveRequest = kickRequests.some((r) => r.targetId === m.id);
     return (
       <Card key={m.id} className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
+        <button
+          onClick={() => openProfile(m)}
+          className="flex flex-1 items-center gap-3 rounded-lg text-left transition-opacity hover:opacity-80"
+        >
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-afterglow-2 font-display text-sm text-wind-gold">
             {m.name[0]}
           </div>
@@ -103,7 +135,7 @@ export default function MemberManage() {
               {m.department} · {m.studentId}
             </p>
           </div>
-        </div>
+        </button>
         <div className="flex shrink-0 gap-2">
           <button
             onClick={() => setConfirmTarget({ type: "requestKick", id: m.id, name: m.name })}
@@ -122,7 +154,6 @@ export default function MemberManage() {
       <div>
         <PageHeader eyebrow="Member Manage" title="전체 부원 관리" desc="가입 승인과 부원 명단을 관리해요." />
 
-        {/* 통계 카드 */}
         <div className="mb-6 grid gap-3 sm:grid-cols-3">
           <Card>
             <p className="text-xs text-mute">전체 부원</p>
@@ -140,7 +171,6 @@ export default function MemberManage() {
           </Card>
         </div>
 
-        {/* 탭 */}
         <div className="mb-6 flex gap-2 overflow-x-auto border-b border-line">
           <button
             onClick={() => setTab("pending")}
@@ -168,7 +198,6 @@ export default function MemberManage() {
           </button>
         </div>
 
-        {/* 승인 대기 */}
         {tab === "pending" && (
           <div className="space-y-3">
             {pending.length === 0 ? (
@@ -210,7 +239,6 @@ export default function MemberManage() {
           </div>
         )}
 
-        {/* 전체 부원 */}
         {tab === "members" && (
           <div>
             <div className="mb-4 flex flex-wrap gap-2">
@@ -272,7 +300,6 @@ export default function MemberManage() {
           </div>
         )}
 
-        {/* 강퇴 요청 */}
         {tab === "kickRequests" && (
           <div className="space-y-3">
             {kickRequests.length === 0 ? (
@@ -348,6 +375,111 @@ export default function MemberManage() {
                 className="rounded-lg bg-wind-gold px-4 py-2 text-sm font-semibold text-stage"
               >
                 {confirmCopy[confirmTarget.type].action}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {profileTarget && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-stage/70 backdrop-blur-sm"
+          onClick={() => setProfileTarget(null)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="mx-4 w-full max-w-sm rounded-2xl border border-line bg-afterglow p-6"
+          >
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-afterglow-2 font-display text-lg text-wind-gold">
+                {profileTarget.name[0]}
+              </div>
+              <div>
+                <p className="font-display text-lg text-backstage">{profileTarget.name}</p>
+                <Pill tone={profileTarget.role === "president" ? "gold" : "teal"}>
+                  {profileTarget.role === "president" ? "회장단" : "부원"}
+                </Pill>
+              </div>
+            </div>
+
+            <div className="mt-5 space-y-3">
+              <div>
+                <label className="mb-1.5 block text-xs text-mute">이름</label>
+                <input
+                  value={editForm.name}
+                  onChange={(e) => setEditForm((prev) => ({ ...prev, name: e.target.value }))}
+                  className="w-full rounded-lg border border-line bg-stage px-3 py-2 text-sm text-backstage outline-none focus:border-dawn-teal"
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs text-mute">학번</label>
+                <input
+                  value={editForm.studentId}
+                  onChange={(e) => setEditForm((prev) => ({ ...prev, studentId: e.target.value }))}
+                  className="w-full rounded-lg border border-line bg-stage px-3 py-2 text-sm text-backstage outline-none focus:border-dawn-teal"
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs text-mute">학과</label>
+                <input
+                  value={editForm.department}
+                  onChange={(e) => setEditForm((prev) => ({ ...prev, department: e.target.value }))}
+                  className="w-full rounded-lg border border-line bg-stage px-3 py-2 text-sm text-backstage outline-none focus:border-dawn-teal"
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs text-mute">기수</label>
+                <input
+                  value={editForm.cohort}
+                  onChange={(e) => setEditForm((prev) => ({ ...prev, cohort: e.target.value }))}
+                  className="w-full rounded-lg border border-line bg-stage px-3 py-2 text-sm text-backstage outline-none focus:border-dawn-teal"
+                />
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end gap-2">
+              <button
+                onClick={() => setProfileTarget(null)}
+                className="rounded-lg border border-line px-4 py-2 text-sm text-mute"
+              >
+                닫기
+              </button>
+              <button
+                onClick={trySaveProfile}
+                className="rounded-lg bg-wind-gold px-4 py-2 text-sm font-semibold text-stage"
+              >
+                정보 수정
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showEditConfirm && profileTarget && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-stage/70 backdrop-blur-sm"
+          onClick={() => setShowEditConfirm(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="mx-4 w-full max-w-sm rounded-2xl border border-line bg-afterglow p-6"
+          >
+            <p className="font-display text-lg text-backstage">정보를 수정하시겠습니까?</p>
+            <p className="mt-2 text-sm text-backstage/70">
+              {profileTarget.name}님의 정보가 변경된 내용으로 업데이트됩니다.
+            </p>
+            <div className="mt-6 flex justify-end gap-2">
+              <button
+                onClick={() => setShowEditConfirm(false)}
+                className="rounded-lg border border-line px-4 py-2 text-sm text-mute"
+              >
+                아니요
+              </button>
+              <button
+                onClick={saveProfile}
+                className="rounded-lg bg-wind-gold px-4 py-2 text-sm font-semibold text-stage"
+              >
+                수정할게요
               </button>
             </div>
           </div>
