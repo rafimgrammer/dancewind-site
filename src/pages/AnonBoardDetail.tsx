@@ -20,6 +20,7 @@ export default function AnonBoardDetail() {
     toggleLike,
     toggleSave,
     report,
+    fetchComments,
     likedIds,
     savedIds,
     reportedIds,
@@ -35,6 +36,7 @@ export default function AnonBoardDetail() {
   const [replyDraft, setReplyDraft] = useState("");
   const [replyAnon, setReplyAnon] = useState(true);
   const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
+  const [commentsLoading, setCommentsLoading] = useState(true);
 
   const post = id ? getById(id) : undefined;
 
@@ -43,6 +45,15 @@ export default function AnonBoardDetail() {
       incrementViews(id);
       counted.current = true;
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
+
+  // 목록을 불러올 땐 댓글 개수만 알고 있으니까, 상세 페이지에 들어왔을 때
+  // 이 글의 댓글 본문을 따로 불러와요.
+  useEffect(() => {
+    if (!id) return;
+    setCommentsLoading(true);
+    fetchComments(id).finally(() => setCommentsLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
@@ -290,7 +301,11 @@ export default function AnonBoardDetail() {
               </div>
 
               <div className="mt-6 border-t border-line pt-6">
-                <p className="mb-3 text-xs text-mute">댓글 {post.comments.length}</p>
+                {commentsLoading ? (
+                  <p className="mb-3 text-xs text-mute">댓글 불러오는 중...</p>
+                ) : (
+                  <p className="mb-3 text-xs text-mute">댓글 {post.comments.length}</p>
+                )}
 
                 {topLevelComments.length > 0 && (
                   <div className="mb-4 space-y-3">

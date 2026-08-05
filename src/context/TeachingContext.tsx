@@ -33,6 +33,13 @@ export interface TeachingClass {
   createdAt: string;
 }
 
+export interface MyTeachingComment {
+  classId: string;
+  classTitle: string;
+  content: string;
+  date: string;
+}
+
 interface TeachingContextType {
   classes: TeachingClass[];
   loading: boolean;
@@ -70,6 +77,11 @@ interface TeachingContextType {
   addComment: (id: string, content: string, parentId: string | null) => Promise<void>;
   editComment: (classId: string, commentId: string, content: string) => Promise<void>;
   removeComment: (classId: string, commentId: string) => Promise<void>;
+  // 목록을 불러올 땐 댓글까지 통째로 가져오지 않아요.
+  // 상세 페이지에 들어갔을 때만 그 클래스의 댓글을 따로 불러와요.
+  fetchComments: (classId: string) => Promise<void>;
+  // 마이페이지의 "댓글 쓴 글" 탭 전용
+  fetchMyComments: () => Promise<MyTeachingComment[]>;
   isApplied: (id: string) => boolean;
   savedIds: Set<string>;
 }
@@ -98,11 +110,9 @@ export function TeachingProvider({ children }: { children: ReactNode }) {
       .select("*")
       .order("created_at", { ascending: false });
 
+    // 신청자 명단은 목록/정원 표시에 바로 필요해서 그대로 가져오고,
+    // 댓글은 여기서 같이 안 가져와요(상세 페이지에서만 필요하니까요).
     const { data: applicantData } = await supabase.from("teaching_applicants").select("*");
-    const { data: commentData } = await supabase
-      .from("teaching_comments")
-      .select("*")
-      .order("created_at", { ascending: true });
 
     const { data: saveData } = await supabase
       .from("teaching_saves")
@@ -113,19 +123,6 @@ export function TeachingProvider({ children }: { children: ReactNode }) {
     (applicantData ?? []).forEach((a) => {
       if (!applicantsByClass[a.class_id]) applicantsByClass[a.class_id] = [];
       applicantsByClass[a.class_id].push(a.user_name);
-    });
-
-    const commentsByClass: Record<string, Comment[]> = {};
-    (commentData ?? []).forEach((c) => {
-      if (!commentsByClass[c.class_id]) commentsByClass[c.class_id] = [];
-      commentsByClass[c.class_id].push({
-        id: c.id,
-        authorId: c.author_id,
-        author: c.author_name,
-        content: c.content,
-        date: c.created_at?.slice(0, 10) ?? "",
-        parentId: c.parent_id,
-      });
     });
 
     setClasses(
@@ -146,7 +143,7 @@ export function TeachingProvider({ children }: { children: ReactNode }) {
         confirmed: c.confirmed,
         edited: c.edited,
         applicants: applicantsByClass[c.id] ?? [],
-        comments: commentsByClass[c.id] ?? [],
+        comments: [],
         createdAt: c.created_at?.slice(0, 10) ?? "",
       }))
     );
@@ -166,6 +163,48 @@ export function TeachingProvider({ children }: { children: ReactNode }) {
 
   const getById = (id: string) => classes.find((c) => c.id === id);
   const isApplied = (id: string) => myApplications.has(id);
+
+  const fetchComments = async (classId: string) => {
+    const { data: commentData } = await supabase
+      .from("teaching_comments")
+      .select("*")
+      .eq("class_id", classId)
+      .order("created_at", { ascending: true });
+
+    const comments: Comment[] = (commentData ?? []).map((c) => ({
+      id: c.id,
+      authorId: c.author_id,
+      author: c.author_name,
+      content: c.content,
+      date: c.created_at?.slice(0, 10) ?? "",
+      parentId: c.parent_id,
+    }));
+
+    setClasses((prev) => prev.map((c) => (c.id === classId ? { ...c, comments } : c)));
+  };
+
+  const fetchMyComments = async (): Promise<MyTeachingComment[]> => {
+    if (!user) return [];
+
+    const { data: myComments } = await supabase
+      .from("teaching_comments")
+      .select("*")
+      .eq("author_id", user.id)
+      .order("created_at", { ascending: false });
+
+    if (!myComments || myComments.length === 0) return [];
+
+    const classIds = [...new Set(myComments.map((c) => c.class_id))];
+    const { data: relatedClasses } = await supabase.from("teaching_classes").select("id, title").in("id", classIds);
+    const titleMap = new Map((relatedClasses ?? []).map((c) => [c.id, c.title as string]));
+
+    return myComments.map((c) => ({
+      classId: c.class_id,
+      classTitle: titleMap.get(c.class_id) ?? "삭제된 클래스",
+      content: c.content,
+      date: c.created_at?.slice(0, 10) ?? "",
+    }));
+  };
 
   const addClass: TeachingContextType["addClass"] = async (data) => {
     if (!user) return;
@@ -282,18 +321,18 @@ export function TeachingProvider({ children }: { children: ReactNode }) {
       content: content.trim(),
       parent_id: parentId,
     });
-    await fetchAll();
+    await fetchComments(id);
   };
 
-  const editComment = async (_classId: string, commentId: string, content: string) => {
+  const editComment = async (classId: string, commentId: string, content: string) => {
     if (!content.trim()) return;
     await supabase.from("teaching_comments").update({ content: content.trim() }).eq("id", commentId);
-    await fetchAll();
+    await fetchComments(classId);
   };
 
-  const removeComment = async (_classId: string, commentId: string) => {
+  const removeComment = async (classId: string, commentId: string) => {
     await supabase.from("teaching_comments").delete().eq("id", commentId);
-    await fetchAll();
+    await fetchComments(classId);
   };
 
   return (
@@ -312,6 +351,8 @@ export function TeachingProvider({ children }: { children: ReactNode }) {
         addComment,
         editComment,
         removeComment,
+        fetchComments,
+        fetchMyComments,
         isApplied,
         savedIds,
       }}

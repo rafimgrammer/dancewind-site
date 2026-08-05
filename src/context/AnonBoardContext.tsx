@@ -26,6 +26,13 @@ export interface AnonPost {
   comments: AnonComment[];
 }
 
+export interface MyAnonComment {
+  postId: string;
+  postPreview: string;
+  content: string;
+  createdAt: string;
+}
+
 const COOLDOWN_MS = 5 * 60 * 1000;
 
 interface AnonBoardContextType {
@@ -42,6 +49,13 @@ interface AnonBoardContextType {
   toggleSave: (id: string) => Promise<void>;
   report: (id: string) => Promise<{ ok: boolean; message?: string }>;
   getRemainingCooldown: () => number;
+  // 목록 페이지에서 "댓글 N개"를 보여주려고 개수만 따로 들고 있어요.
+  // (댓글 본문 전체를 다 가져오지 않기 위해서예요)
+  commentCounts: Record<string, number>;
+  // 상세 페이지에 들어갔을 때만 그 글의 댓글 본문을 실제로 불러와요.
+  fetchComments: (postId: string) => Promise<void>;
+  // 마이페이지의 "댓글 쓴 글" 탭 전용
+  fetchMyComments: () => Promise<MyAnonComment[]>;
   likedIds: Set<string>;
   savedIds: Set<string>;
   reportedIds: Set<string>;
@@ -49,9 +63,14 @@ interface AnonBoardContextType {
 
 const AnonBoardContext = createContext<AnonBoardContextType | null>(null);
 
+function stripHtml(html: string) {
+  return html.replace(/<[^>]*>/g, "");
+}
+
 export function AnonBoardProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [posts, setPosts] = useState<AnonPost[]>([]);
+  const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
   const [reportedIds, setReportedIds] = useState<Set<string>>(new Set());
@@ -61,6 +80,7 @@ export function AnonBoardProvider({ children }: { children: ReactNode }) {
   const fetchAll = useCallback(async () => {
     if (!user) {
       setPosts([]);
+      setCommentCounts({});
       setLikedIds(new Set());
       setSavedIds(new Set());
       setReportedIds(new Set());
@@ -74,10 +94,9 @@ export function AnonBoardProvider({ children }: { children: ReactNode }) {
       .select("*")
       .order("created_at", { ascending: false });
 
-    const { data: commentData } = await supabase
-      .from("anon_comments")
-      .select("*")
-      .order("created_at", { ascending: true });
+    // 댓글 본문 전체가 아니라 post_id만 가져와서 개수만 세요.
+    // (목록 페이지는 "댓글 N개" 숫자만 필요하지 본문은 필요 없어요)
+    const { data: commentIdData } = await supabase.from("anon_comments").select("post_id");
 
     const { data: likeData } = await supabase.from("anon_likes").select("post_id").eq("user_id", user.id);
     const { data: saveData } = await supabase.from("anon_saves").select("post_id").eq("user_id", user.id);
@@ -91,18 +110,11 @@ export function AnonBoardProvider({ children }: { children: ReactNode }) {
       .limit(1)
       .maybeSingle();
 
-    const commentsByPost: Record<string, AnonComment[]> = {};
-    (commentData ?? []).forEach((c) => {
-      if (!commentsByPost[c.post_id]) commentsByPost[c.post_id] = [];
-      commentsByPost[c.post_id].push({
-        id: c.id,
-        authorId: c.author_id,
-        displayName: c.display_name,
-        content: c.content,
-        createdAt: c.created_at,
-        parentId: c.parent_id,
-      });
+    const counts: Record<string, number> = {};
+    (commentIdData ?? []).forEach((c) => {
+      counts[c.post_id] = (counts[c.post_id] ?? 0) + 1;
     });
+    setCommentCounts(counts);
 
     setPosts(
       (postData ?? []).map((p) => ({
@@ -116,7 +128,7 @@ export function AnonBoardProvider({ children }: { children: ReactNode }) {
         likes: p.likes,
         reports: p.reports,
         blinded: p.blinded,
-        comments: commentsByPost[p.id] ?? [],
+        comments: [],
       }))
     );
 
@@ -138,6 +150,60 @@ export function AnonBoardProvider({ children }: { children: ReactNode }) {
     if (!lastPostTime) return 0;
     const remaining = COOLDOWN_MS - (Date.now() - lastPostTime);
     return remaining > 0 ? remaining : 0;
+  };
+
+  const fetchComments = async (postId: string) => {
+    const { data: commentData } = await supabase
+      .from("anon_comments")
+      .select("*")
+      .eq("post_id", postId)
+      .order("created_at", { ascending: true });
+
+    const comments: AnonComment[] = (commentData ?? []).map((c) => ({
+      id: c.id,
+      authorId: c.author_id,
+      displayName: c.display_name,
+      content: c.content,
+      createdAt: c.created_at,
+      parentId: c.parent_id,
+    }));
+
+    setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, comments } : p)));
+    setCommentCounts((prev) => ({ ...prev, [postId]: comments.length }));
+  };
+
+  const fetchMyComments = async (): Promise<MyAnonComment[]> => {
+    if (!user) return [];
+
+    const { data: myComments } = await supabase
+      .from("anon_comments")
+      .select("*")
+      .eq("author_id", user.id)
+      .order("created_at", { ascending: false });
+
+    if (!myComments || myComments.length === 0) return [];
+
+    const postIds = [...new Set(myComments.map((c) => c.post_id))];
+    const { data: relatedPosts } = await supabase
+      .from("anon_posts")
+      .select("id, body, blinded")
+      .in("id", postIds);
+    const postMap = new Map((relatedPosts ?? []).map((p) => [p.id, p]));
+
+    return myComments.map((c) => {
+      const relatedPost = postMap.get(c.post_id);
+      const preview = !relatedPost
+        ? "삭제된 글"
+        : relatedPost.blinded
+          ? "블라인드 처리된 글"
+          : stripHtml(relatedPost.body).slice(0, 50);
+      return {
+        postId: c.post_id,
+        postPreview: preview,
+        content: c.content,
+        createdAt: c.created_at,
+      };
+    });
   };
 
   const addPost = async (displayName: string, body: string) => {
@@ -178,12 +244,12 @@ export function AnonBoardProvider({ children }: { children: ReactNode }) {
       content: content.trim(),
       parent_id: parentId,
     });
-    await fetchAll();
+    await fetchComments(postId);
   };
 
-  const removeComment = async (_postId: string, commentId: string) => {
+  const removeComment = async (postId: string, commentId: string) => {
     await supabase.from("anon_comments").delete().eq("id", commentId);
-    await fetchAll();
+    await fetchComments(postId);
   };
 
   const incrementViews = async (id: string) => {
@@ -262,6 +328,9 @@ export function AnonBoardProvider({ children }: { children: ReactNode }) {
         toggleSave,
         report,
         getRemainingCooldown,
+        commentCounts,
+        fetchComments,
+        fetchMyComments,
         likedIds,
         savedIds,
         reportedIds,

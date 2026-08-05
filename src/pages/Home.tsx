@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import WindLine from "../components/WindLine";
 import { Card, Pill } from "../components/Ui";
 import Reveal from "../components/Reveal";
+import VisitorCounter from "../components/VisitorCounter";
 import history from "../data/history.json";
 import schedule from "../data/schedule.json";
 
@@ -181,6 +182,11 @@ export default function Home() {
             ))}
           </div>
         </section>
+      </Reveal>
+
+      {/* 오늘 방문자수 */}
+      <Reveal delay={100}>
+        <VisitorCounter />
       </Reveal>
 
       {/* 모집 CTA 배너 */}

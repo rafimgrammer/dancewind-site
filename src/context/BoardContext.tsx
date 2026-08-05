@@ -25,6 +25,13 @@ export interface BoardPost {
   comments: BoardComment[];
 }
 
+export interface MyBoardComment {
+  postId: string;
+  postTitle: string;
+  content: string;
+  createdAt: string;
+}
+
 interface BoardContextType {
   posts: BoardPost[];
   loading: boolean;
@@ -37,6 +44,11 @@ interface BoardContextType {
   toggleSave: (id: string) => Promise<void>;
   addComment: (postId: string, content: string, parentId: string | null) => Promise<void>;
   removeComment: (postId: string, commentId: string) => Promise<void>;
+  // 게시글 목록을 불러올 땐 댓글까지 통째로 가져오지 않아요.
+  // 상세 페이지에 들어갔을 때만 그 글의 댓글을 따로 불러와요.
+  fetchComments: (postId: string) => Promise<void>;
+  // 마이페이지의 "댓글 쓴 글" 탭 전용: 내가 쓴 댓글만 딱 필요한 만큼만 가져와요.
+  fetchMyComments: () => Promise<MyBoardComment[]>;
   likedIds: Set<string>;
   savedIds: Set<string>;
 }
@@ -60,6 +72,8 @@ export function BoardProvider({ children }: { children: ReactNode }) {
     }
     setLoading(true);
 
+    // 댓글은 여기서 같이 안 가져와요. 게시글이 많아지고 댓글이 쌓일수록
+    // 목록 페이지 하나 여는 데 필요한 데이터량이 계속 불어나는 걸 막기 위해서예요.
     const { data: postData } = await supabase
       .from("board_posts")
       .select("*")
@@ -69,24 +83,6 @@ export function BoardProvider({ children }: { children: ReactNode }) {
       .from("board_reactions")
       .select("*")
       .eq("user_id", user.id);
-
-    const { data: commentData } = await supabase
-      .from("board_comments")
-      .select("*")
-      .order("created_at", { ascending: true });
-
-    const commentsByPost: Record<string, BoardComment[]> = {};
-    (commentData ?? []).forEach((c) => {
-      if (!commentsByPost[c.post_id]) commentsByPost[c.post_id] = [];
-      commentsByPost[c.post_id].push({
-        id: c.id,
-        authorId: c.author_id,
-        authorName: c.author_name,
-        content: c.content,
-        createdAt: c.created_at,
-        parentId: c.parent_id,
-      });
-    });
 
     setPosts(
       (postData ?? []).map((p) => ({
@@ -99,7 +95,7 @@ export function BoardProvider({ children }: { children: ReactNode }) {
         views: p.views,
         likes: p.likes,
         edited: p.edited,
-        comments: commentsByPost[p.id] ?? [],
+        comments: [],
       }))
     );
 
@@ -120,6 +116,48 @@ export function BoardProvider({ children }: { children: ReactNode }) {
   }, [fetchAll]);
 
   const getById = (id: string) => posts.find((p) => p.id === id);
+
+  const fetchComments = async (postId: string) => {
+    const { data: commentData } = await supabase
+      .from("board_comments")
+      .select("*")
+      .eq("post_id", postId)
+      .order("created_at", { ascending: true });
+
+    const comments: BoardComment[] = (commentData ?? []).map((c) => ({
+      id: c.id,
+      authorId: c.author_id,
+      authorName: c.author_name,
+      content: c.content,
+      createdAt: c.created_at,
+      parentId: c.parent_id,
+    }));
+
+    setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, comments } : p)));
+  };
+
+  const fetchMyComments = async (): Promise<MyBoardComment[]> => {
+    if (!user) return [];
+
+    const { data: myComments } = await supabase
+      .from("board_comments")
+      .select("*")
+      .eq("author_id", user.id)
+      .order("created_at", { ascending: false });
+
+    if (!myComments || myComments.length === 0) return [];
+
+    const postIds = [...new Set(myComments.map((c) => c.post_id))];
+    const { data: relatedPosts } = await supabase.from("board_posts").select("id, title").in("id", postIds);
+    const titleMap = new Map((relatedPosts ?? []).map((p) => [p.id, p.title as string]));
+
+    return myComments.map((c) => ({
+      postId: c.post_id,
+      postTitle: titleMap.get(c.post_id) ?? "삭제된 글",
+      content: c.content,
+      createdAt: c.created_at,
+    }));
+  };
 
   const addPost = async (title: string, body: string) => {
     if (!title.trim() || !user) return;
@@ -201,12 +239,12 @@ export function BoardProvider({ children }: { children: ReactNode }) {
       content: content.trim(),
       parent_id: parentId,
     });
-    await fetchAll();
+    await fetchComments(postId);
   };
 
-  const removeComment = async (_postId: string, commentId: string) => {
+  const removeComment = async (postId: string, commentId: string) => {
     await supabase.from("board_comments").delete().eq("id", commentId);
-    await fetchAll();
+    await fetchComments(postId);
   };
 
   return (
@@ -223,6 +261,8 @@ export function BoardProvider({ children }: { children: ReactNode }) {
         toggleSave,
         addComment,
         removeComment,
+        fetchComments,
+        fetchMyComments,
         likedIds,
         savedIds,
       }}

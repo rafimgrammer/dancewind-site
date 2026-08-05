@@ -1,5 +1,5 @@
 // src/pages/TeachingDetail.tsx
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { PageHeader, Card, Pill, RequireRole } from "../components/Ui";
 import { useAuth } from "../context/AuthContext";
@@ -28,6 +28,7 @@ export default function TeachingDetail() {
     addComment,
     editComment,
     removeComment,
+    fetchComments,
     isApplied,
     savedIds,
   } = useTeaching();
@@ -40,6 +41,7 @@ export default function TeachingDetail() {
   const [replyDraft, setReplyDraft] = useState("");
   const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
   const [pendingCommentId, setPendingCommentId] = useState<string | null>(null);
+  const [commentsLoading, setCommentsLoading] = useState(true);
 
   const item = id ? getById(id) : undefined;
   const isPresident = role === "president";
@@ -50,6 +52,15 @@ export default function TeachingDetail() {
   const isFull = item ? item.maxSpots !== null && item.applicants.length >= item.maxSpots : false;
   const canConfirm = item ? isTeacher && !item.confirmed && isFull : false;
   const canUnconfirm = item ? isTeacher && item.confirmed : false;
+
+  // 목록을 불러올 땐 댓글을 안 가져오니까, 상세 페이지에 들어왔을 때
+  // 이 클래스의 댓글만 따로 불러와요.
+  useEffect(() => {
+    if (!id) return;
+    setCommentsLoading(true);
+    fetchComments(id).finally(() => setCommentsLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
 
   const topLevelComments = useMemo(() => {
     if (!item) return [];
@@ -351,7 +362,11 @@ export default function TeachingDetail() {
           </div>
 
           <div className="mt-8 border-t border-line pt-6">
-            <p className="mb-3 text-xs text-mute">댓글 ({item.comments.length})</p>
+            {commentsLoading ? (
+              <p className="mb-3 text-xs text-mute">댓글 불러오는 중...</p>
+            ) : (
+              <p className="mb-3 text-xs text-mute">댓글 ({item.comments.length})</p>
+            )}
 
             <div className="mb-4 flex gap-2">
               <input

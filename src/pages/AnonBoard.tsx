@@ -9,7 +9,7 @@ import { CardSkeletonGrid } from "../components/Skeleton";
 
 export default function AnonBoard() {
   const { name } = useAuth();
-  const { posts, addPost, getRemainingCooldown, loading } = useAnonBoard();
+  const { posts, addPost, getRemainingCooldown, loading, commentCounts } = useAnonBoard();
 
   const [draft, setDraft] = useState("");
   const [isAnonymous, setIsAnonymous] = useState(true);
@@ -105,7 +105,7 @@ export default function AnonBoard() {
                             {p.likes}
                           </span>
                         )}
-                        <span>댓글 {p.comments.length}</span>
+                        <span>댓글 {commentCounts[p.id] ?? 0}</span>
                         {p.reports > 0 && <span className="text-red-300/80">신고 {p.reports}</span>}
                       </div>
                     </>

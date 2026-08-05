@@ -18,6 +18,7 @@ export default function BoardDetail() {
     toggleSave,
     addComment,
     removeComment,
+    fetchComments,
     likedIds,
     savedIds,
   } = useBoard();
@@ -31,6 +32,7 @@ export default function BoardDetail() {
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [replyDraft, setReplyDraft] = useState("");
   const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
+  const [commentsLoading, setCommentsLoading] = useState(true);
 
   const post = id ? getById(id) : undefined;
 
@@ -39,6 +41,15 @@ export default function BoardDetail() {
       incrementViews(id);
       counted.current = true;
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
+
+  // 목록을 불러올 땐 댓글을 안 가져오니까, 상세 페이지에 들어왔을 때
+  // 이 글의 댓글만 따로 불러와요.
+  useEffect(() => {
+    if (!id) return;
+    setCommentsLoading(true);
+    fetchComments(id).finally(() => setCommentsLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
@@ -233,7 +244,11 @@ export default function BoardDetail() {
 
           {/* 댓글 */}
           <div className="mt-8 border-t border-line pt-6">
-            <p className="mb-3 text-xs text-mute">댓글 {post.comments.length}</p>
+            {commentsLoading ? (
+              <p className="mb-3 text-xs text-mute">댓글 불러오는 중...</p>
+            ) : (
+              <p className="mb-3 text-xs text-mute">댓글 {post.comments.length}</p>
+            )}
 
             {topLevelComments.length > 0 && (
               <div className="mb-4 space-y-3">

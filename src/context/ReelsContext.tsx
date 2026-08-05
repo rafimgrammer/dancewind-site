@@ -31,6 +31,13 @@ export interface ReelsPost {
   createdAt: string;
 }
 
+export interface MyReelsComment {
+  postId: string;
+  postTitle: string;
+  content: string;
+  date: string;
+}
+
 interface ReelsContextType {
   posts: ReelsPost[];
   loading: boolean;
@@ -58,6 +65,11 @@ interface ReelsContextType {
   addComment: (id: string, content: string, parentId: string | null) => Promise<void>;
   editComment: (postId: string, commentId: string, content: string) => Promise<void>;
   removeComment: (postId: string, commentId: string) => Promise<void>;
+  // 목록을 불러올 땐 댓글까지 통째로 가져오지 않아요.
+  // 상세 페이지에 들어갔을 때만 그 릴스의 댓글을 따로 불러와요.
+  fetchComments: (postId: string) => Promise<void>;
+  // 마이페이지의 "댓글 쓴 글" 탭 전용
+  fetchMyComments: () => Promise<MyReelsComment[]>;
   isApplied: (id: string) => boolean;
   savedIds: Set<string>;
 }
@@ -86,11 +98,9 @@ export function ReelsProvider({ children }: { children: ReactNode }) {
       .select("*")
       .order("created_at", { ascending: false });
 
+    // 신청자 명단은 목록/정원 표시에 바로 필요해서 그대로 가져오고,
+    // 댓글은 여기서 같이 안 가져와요(상세 페이지에서만 필요하니까요).
     const { data: applicantData } = await supabase.from("reels_applicants").select("*");
-    const { data: commentData } = await supabase
-      .from("reels_comments")
-      .select("*")
-      .order("created_at", { ascending: true });
 
     const { data: saveData } = await supabase
       .from("reels_saves")
@@ -101,19 +111,6 @@ export function ReelsProvider({ children }: { children: ReactNode }) {
     (applicantData ?? []).forEach((a) => {
       if (!applicantsByPost[a.post_id]) applicantsByPost[a.post_id] = [];
       applicantsByPost[a.post_id].push(a.user_name);
-    });
-
-    const commentsByPost: Record<string, ReelsComment[]> = {};
-    (commentData ?? []).forEach((c) => {
-      if (!commentsByPost[c.post_id]) commentsByPost[c.post_id] = [];
-      commentsByPost[c.post_id].push({
-        id: c.id,
-        authorId: c.author_id,
-        author: c.author_name,
-        content: c.content,
-        date: c.created_at?.slice(0, 10) ?? "",
-        parentId: c.parent_id,
-      });
     });
 
     setPosts(
@@ -132,7 +129,7 @@ export function ReelsProvider({ children }: { children: ReactNode }) {
         confirmed: p.confirmed,
         edited: p.edited,
         applicants: applicantsByPost[p.id] ?? [],
-        comments: commentsByPost[p.id] ?? [],
+        comments: [],
         createdAt: p.created_at?.slice(0, 10) ?? "",
       }))
     );
@@ -152,6 +149,48 @@ export function ReelsProvider({ children }: { children: ReactNode }) {
 
   const getById = (id: string) => posts.find((p) => p.id === id);
   const isApplied = (id: string) => myApplications.has(id);
+
+  const fetchComments = async (postId: string) => {
+    const { data: commentData } = await supabase
+      .from("reels_comments")
+      .select("*")
+      .eq("post_id", postId)
+      .order("created_at", { ascending: true });
+
+    const comments: ReelsComment[] = (commentData ?? []).map((c) => ({
+      id: c.id,
+      authorId: c.author_id,
+      author: c.author_name,
+      content: c.content,
+      date: c.created_at?.slice(0, 10) ?? "",
+      parentId: c.parent_id,
+    }));
+
+    setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, comments } : p)));
+  };
+
+  const fetchMyComments = async (): Promise<MyReelsComment[]> => {
+    if (!user) return [];
+
+    const { data: myComments } = await supabase
+      .from("reels_comments")
+      .select("*")
+      .eq("author_id", user.id)
+      .order("created_at", { ascending: false });
+
+    if (!myComments || myComments.length === 0) return [];
+
+    const postIds = [...new Set(myComments.map((c) => c.post_id))];
+    const { data: relatedPosts } = await supabase.from("reels_posts").select("id, title").in("id", postIds);
+    const titleMap = new Map((relatedPosts ?? []).map((p) => [p.id, p.title as string]));
+
+    return myComments.map((c) => ({
+      postId: c.post_id,
+      postTitle: titleMap.get(c.post_id) ?? "삭제된 게시물",
+      content: c.content,
+      date: c.created_at?.slice(0, 10) ?? "",
+    }));
+  };
 
   const addPost: ReelsContextType["addPost"] = async (data) => {
     if (!user) return;
@@ -268,18 +307,18 @@ export function ReelsProvider({ children }: { children: ReactNode }) {
       content: content.trim(),
       parent_id: parentId,
     });
-    await fetchAll();
+    await fetchComments(id);
   };
 
-  const editComment = async (_postId: string, commentId: string, content: string) => {
+  const editComment = async (postId: string, commentId: string, content: string) => {
     if (!content.trim()) return;
     await supabase.from("reels_comments").update({ content: content.trim() }).eq("id", commentId);
-    await fetchAll();
+    await fetchComments(postId);
   };
 
-  const removeComment = async (_postId: string, commentId: string) => {
+  const removeComment = async (postId: string, commentId: string) => {
     await supabase.from("reels_comments").delete().eq("id", commentId);
-    await fetchAll();
+    await fetchComments(postId);
   };
 
   return (
@@ -299,6 +338,8 @@ export function ReelsProvider({ children }: { children: ReactNode }) {
         addComment,
         editComment,
         removeComment,
+        fetchComments,
+        fetchMyComments,
         isApplied,
         savedIds,
       }}

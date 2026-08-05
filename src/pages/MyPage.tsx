@@ -1,13 +1,13 @@
 // src/pages/MyPage.tsx
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { PageHeader, Card, Pill, RequireRole, EmptyState } from "../components/Ui";
 import { useAuth } from "../context/AuthContext";
 import { useNotices } from "../context/NoticesContext";
-import { useBoard } from "../context/BoardContext";
-import { useAnonBoard } from "../context/AnonBoardContext";
-import { useTeaching } from "../context/TeachingContext";
-import { useReels } from "../context/ReelsContext";
+import { useBoard, type MyBoardComment } from "../context/BoardContext";
+import { useAnonBoard, type MyAnonComment } from "../context/AnonBoardContext";
+import { useTeaching, type MyTeachingComment } from "../context/TeachingContext";
+import { useReels, type MyReelsComment } from "../context/ReelsContext";
 import { formatTimeAgo } from "../utils/timeAgo";
 
 type Tab = "activity" | "applications" | "saved" | "account";
@@ -50,10 +50,20 @@ interface ListItem {
 export default function MyPage() {
   const { role, name, user, profile } = useAuth();
   const { notices } = useNotices();
-  const { posts: boardPosts, likedIds: boardLikedIds, savedIds } = useBoard();
-  const { posts: anonPosts, likedIds: anonLikedIds, savedIds: anonSavedIds } = useAnonBoard();
-  const { classes, savedIds: teachingSavedIds } = useTeaching();
-  const { posts: reelsPosts, isApplied: isReelsApplied, savedIds: reelsSavedIds } = useReels();
+  const { posts: boardPosts, likedIds: boardLikedIds, savedIds, fetchMyComments: fetchMyBoardComments } = useBoard();
+  const {
+    posts: anonPosts,
+    likedIds: anonLikedIds,
+    savedIds: anonSavedIds,
+    fetchMyComments: fetchMyAnonComments,
+  } = useAnonBoard();
+  const { classes, savedIds: teachingSavedIds, fetchMyComments: fetchMyTeachingComments } = useTeaching();
+  const {
+    posts: reelsPosts,
+    isApplied: isReelsApplied,
+    savedIds: reelsSavedIds,
+    fetchMyComments: fetchMyReelsComments,
+  } = useReels();
 
   const myName = name ?? "익명의 부원";
   const isPresident = role === "president";
@@ -82,6 +92,41 @@ export default function MyPage() {
     const cfg = visibleBoards.find((b) => b.key === key)!;
     setSelectedSubTab(cfg.subTabs[0]);
   };
+
+  // "댓글 쓴 글" 탭은 게시판 전체를 다 훑는 대신, 내가 쓴 댓글만 딱 필요한 만큼 불러와요.
+  const [myBoardComments, setMyBoardComments] = useState<MyBoardComment[]>([]);
+  const [myAnonComments, setMyAnonComments] = useState<MyAnonComment[]>([]);
+
+  useEffect(() => {
+    if (selectedBoard === "board" && activeSubTab === "commented") {
+      fetchMyBoardComments().then(setMyBoardComments);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedBoard, activeSubTab]);
+
+  useEffect(() => {
+    if (selectedBoard === "anonymous" && activeSubTab === "commented") {
+      fetchMyAnonComments().then(setMyAnonComments);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedBoard, activeSubTab]);
+
+  const [myTeachingComments, setMyTeachingComments] = useState<MyTeachingComment[]>([]);
+  const [myReelsComments, setMyReelsComments] = useState<MyReelsComment[]>([]);
+
+  useEffect(() => {
+    if (selectedBoard === "classes" && activeSubTab === "commented") {
+      fetchMyTeachingComments().then(setMyTeachingComments);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedBoard, activeSubTab]);
+
+  useEffect(() => {
+    if (selectedBoard === "reels" && activeSubTab === "commented") {
+      fetchMyReelsComments().then(setMyReelsComments);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedBoard, activeSubTab]);
 
   const myNoticesCount = isPresident ? notices.filter((n) => n.author === myName).length : 0;
   const myBoardPostCount = boardPosts.filter((p) => p.authorId === user?.id).length;
@@ -127,18 +172,16 @@ export default function MyPage() {
           }));
       }
       const map = new Map<string, ListItem>();
-      boardPosts.forEach((p) => {
-        p.comments
-          .filter((c) => c.authorId === user?.id)
-          .forEach((c) => {
-            map.set(p.id, {
-              id: p.id,
-              title: p.title,
-              preview: c.content,
-              meta: formatTimeAgo(new Date(c.createdAt).getTime()),
-              href: `/board/${p.id}`,
-            });
+      myBoardComments.forEach((c) => {
+        if (!map.has(c.postId)) {
+          map.set(c.postId, {
+            id: c.postId,
+            title: c.postTitle,
+            preview: c.content,
+            meta: formatTimeAgo(new Date(c.createdAt).getTime()),
+            href: `/board/${c.postId}`,
           });
+        }
       });
       return Array.from(map.values());
     }
@@ -165,18 +208,16 @@ export default function MyPage() {
           }));
       }
       const map = new Map<string, ListItem>();
-      anonPosts.forEach((p) => {
-        p.comments
-          .filter((c) => c.authorId === user?.id)
-          .forEach((c) => {
-            map.set(p.id, {
-              id: p.id,
-              title: p.blinded ? "블라인드 처리된 글" : stripHtml(p.body).slice(0, 50),
-              preview: c.content,
-              meta: formatTimeAgo(new Date(c.createdAt).getTime()),
-              href: `/anonymous/${p.id}`,
-            });
+      myAnonComments.forEach((c) => {
+        if (!map.has(c.postId)) {
+          map.set(c.postId, {
+            id: c.postId,
+            title: c.postPreview,
+            preview: c.content,
+            meta: formatTimeAgo(new Date(c.createdAt).getTime()),
+            href: `/anonymous/${c.postId}`,
           });
+        }
       });
       return Array.from(map.values());
     }
@@ -194,18 +235,16 @@ export default function MyPage() {
           }));
       }
       const map = new Map<string, ListItem>();
-      classes.forEach((c) => {
-        c.comments
-          .filter((cm) => cm.authorId === user?.id)
-          .forEach((cm) => {
-            map.set(c.id, {
-              id: c.id,
-              title: c.title,
-              preview: cm.content,
-              meta: cm.date,
-              href: `/classes/${c.id}`,
-            });
+      myTeachingComments.forEach((cm) => {
+        if (!map.has(cm.classId)) {
+          map.set(cm.classId, {
+            id: cm.classId,
+            title: cm.classTitle,
+            preview: cm.content,
+            meta: cm.date,
+            href: `/classes/${cm.classId}`,
           });
+        }
       });
       return Array.from(map.values());
     }
@@ -223,18 +262,16 @@ export default function MyPage() {
           }));
       }
       const map = new Map<string, ListItem>();
-      reelsPosts.forEach((p) => {
-        p.comments
-          .filter((cm) => cm.authorId === user?.id)
-          .forEach((cm) => {
-            map.set(p.id, {
-              id: p.id,
-              title: p.title,
-              preview: cm.content,
-              meta: cm.date,
-              href: `/reels/${p.id}`,
-            });
+      myReelsComments.forEach((cm) => {
+        if (!map.has(cm.postId)) {
+          map.set(cm.postId, {
+            id: cm.postId,
+            title: cm.postTitle,
+            preview: cm.content,
+            meta: cm.date,
+            href: `/reels/${cm.postId}`,
           });
+        }
       });
       return Array.from(map.values());
     }
@@ -246,10 +283,14 @@ export default function MyPage() {
     notices,
     boardPosts,
     boardLikedIds,
+    myBoardComments,
     anonPosts,
     anonLikedIds,
+    myAnonComments,
     classes,
+    myTeachingComments,
     reelsPosts,
+    myReelsComments,
     myName,
     user,
   ]);

@@ -1,5 +1,5 @@
 // src/pages/ReelsDetail.tsx
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { PageHeader, Card, Pill, RequireRole } from "../components/Ui";
 import { useAuth } from "../context/AuthContext";
@@ -30,6 +30,7 @@ export default function ReelsDetail() {
     addComment,
     editComment,
     removeComment,
+    fetchComments,
     isApplied,
     savedIds,
   } = useReels();
@@ -42,6 +43,7 @@ export default function ReelsDetail() {
   const [replyDraft, setReplyDraft] = useState("");
   const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
   const [pendingCommentId, setPendingCommentId] = useState<string | null>(null);
+  const [commentsLoading, setCommentsLoading] = useState(true);
 
   const [showScheduleForm, setShowScheduleForm] = useState(false);
   const [scheduleDate, setScheduleDate] = useState("");
@@ -57,6 +59,15 @@ export default function ReelsDetail() {
   const isFull = item ? item.maxSpots !== null && item.applicants.length >= item.maxSpots : false;
   const canConfirm = item ? isCreator && !item.confirmed && isFull : false;
   const canUnconfirm = item ? isCreator && item.confirmed : false;
+
+  // 목록을 불러올 땐 댓글을 안 가져오니까, 상세 페이지에 들어왔을 때
+  // 이 릴스의 댓글만 따로 불러와요.
+  useEffect(() => {
+    if (!id) return;
+    setCommentsLoading(true);
+    fetchComments(id).finally(() => setCommentsLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
 
   const topLevelComments = useMemo(() => {
     if (!item) return [];
@@ -371,7 +382,11 @@ export default function ReelsDetail() {
           </div>
 
           <div className="mt-8 border-t border-line pt-6">
-            <p className="mb-3 text-xs text-mute">댓글 ({item.comments.length})</p>
+            {commentsLoading ? (
+              <p className="mb-3 text-xs text-mute">댓글 불러오는 중...</p>
+            ) : (
+              <p className="mb-3 text-xs text-mute">댓글 ({item.comments.length})</p>
+            )}
 
             <div className="mb-4 flex gap-2">
               <input
