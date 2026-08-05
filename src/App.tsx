@@ -10,6 +10,7 @@ import { TracklistProvider } from "./context/TracklistContext";
 import { ReelsProvider } from "./context/ReelsContext";
 import { MemberManageProvider } from "./context/MemberManageContext";
 import { NotificationProvider } from "./context/NotificationContext";
+import { PresenceProvider } from "./context/PresenceContext";
 import Layout from "./components/Layout";
 
 import Home from "./pages/Home";
@@ -52,95 +53,97 @@ import PracticeMatcherList from "./pages/PracticeMatcherList";
 export default function App() {
   return (
     <AuthProvider>
-      <NotificationProvider>
-        <NoticesProvider>
-          <BoardProvider>
-            <TeachingProvider>
-              <PracticeProvider>
-                <CalendarProvider>
-                  <AnonBoardProvider>
-                    <TracklistProvider>
-                      <MemberManageProvider>
-                        <ReelsProvider>
-                          <BrowserRouter>
-                            <Layout>
-                              <Routes>
-                                {/* 공개 페이지 */}
-                                <Route path="/" element={<Home />} />
-                                <Route path="/about" element={<About />} />
-                                <Route path="/videos" element={<Videos />} />
-                                <Route path="/officers" element={<Officers />} />
-                                <Route path="/location" element={<Location />} />
-                                <Route path="/recruit" element={<Recruit />} />
-                                <Route path="/gallery" element={<Gallery />} />
-                                <Route path="/calendar" element={<CalendarPage />} />
+      <PresenceProvider>
+        <NotificationProvider>
+          <NoticesProvider>
+            <BoardProvider>
+              <TeachingProvider>
+                <PracticeProvider>
+                  <CalendarProvider>
+                    <AnonBoardProvider>
+                      <TracklistProvider>
+                        <MemberManageProvider>
+                          <ReelsProvider>
+                            <BrowserRouter>
+                              <Layout>
+                                <Routes>
+                                  {/* 공개 페이지 */}
+                                  <Route path="/" element={<Home />} />
+                                  <Route path="/about" element={<About />} />
+                                  <Route path="/videos" element={<Videos />} />
+                                  <Route path="/officers" element={<Officers />} />
+                                  <Route path="/location" element={<Location />} />
+                                  <Route path="/recruit" element={<Recruit />} />
+                                  <Route path="/gallery" element={<Gallery />} />
+                                  <Route path="/calendar" element={<CalendarPage />} />
 
-                                {/* 인증 / 온보딩 */}
-                                <Route path="/login" element={<Login />} />
-                                <Route path="/onboarding" element={<Onboarding />} />
-                                <Route path="/pending" element={<Pending />} />
-                                <Route path="/mypage" element={<MyPage />} />
+                                  {/* 인증 / 온보딩 */}
+                                  <Route path="/login" element={<Login />} />
+                                  <Route path="/onboarding" element={<Onboarding />} />
+                                  <Route path="/pending" element={<Pending />} />
+                                  <Route path="/mypage" element={<MyPage />} />
 
-                                {/* 약관 */}
-                                <Route path="/privacy" element={<PrivacyPolicy />} />
-                                <Route path="/terms" element={<Terms />} />
+                                  {/* 약관 */}
+                                  <Route path="/privacy" element={<PrivacyPolicy />} />
+                                  <Route path="/terms" element={<Terms />} />
 
-                                {/* 공지사항 */}
-                                <Route path="/notices" element={<Notices />} />
-                                <Route path="/notices/new" element={<NoticeForm />} />
-                                <Route path="/notices/:id" element={<NoticeDetail />} />
-                                <Route path="/notices/:id/edit" element={<NoticeForm />} />
+                                  {/* 공지사항 */}
+                                  <Route path="/notices" element={<Notices />} />
+                                  <Route path="/notices/new" element={<NoticeForm />} />
+                                  <Route path="/notices/:id" element={<NoticeDetail />} />
+                                  <Route path="/notices/:id/edit" element={<NoticeForm />} />
 
-                                {/* 팀 연습 */}
-                                <Route path="/practice-matcher" element={<PracticeMatcherList />} />
-                                <Route path="/practice-matcher/:id" element={<PracticeMatcher />} />
+                                  {/* 팀 연습 */}
+                                  <Route path="/practice-matcher" element={<PracticeMatcherList />} />
+                                  <Route path="/practice-matcher/:id" element={<PracticeMatcher />} />
 
-                                {/* 자유게시판 */}
-                                <Route path="/board" element={<Board />} />
-                                <Route path="/board/new" element={<BoardForm />} />
-                                <Route path="/board/:id" element={<BoardDetail />} />
-                                <Route path="/board/:id/edit" element={<BoardForm />} />
+                                  {/* 자유게시판 */}
+                                  <Route path="/board" element={<Board />} />
+                                  <Route path="/board/new" element={<BoardForm />} />
+                                  <Route path="/board/:id" element={<BoardDetail />} />
+                                  <Route path="/board/:id/edit" element={<BoardForm />} />
 
-                                {/* 익명게시판 */}
-                                <Route path="/anonymous" element={<AnonBoard />} />
-                                <Route path="/anonymous/:id" element={<AnonBoardDetail />} />
-                                <Route path="/anonymous/:id/edit" element={<AnonBoardForm />} />
+                                  {/* 익명게시판 */}
+                                  <Route path="/anonymous" element={<AnonBoard />} />
+                                  <Route path="/anonymous/:id" element={<AnonBoardDetail />} />
+                                  <Route path="/anonymous/:id/edit" element={<AnonBoardForm />} />
 
-                                {/* 티칭 클래스 */}
-                                <Route path="/classes" element={<Teaching />} />
-                                <Route path="/classes/new" element={<TeachingForm />} />
-                                <Route path="/classes/:id/edit" element={<TeachingForm />} />
-                                <Route path="/classes/:id" element={<TeachingDetail />} />
+                                  {/* 티칭 클래스 */}
+                                  <Route path="/classes" element={<Teaching />} />
+                                  <Route path="/classes/new" element={<TeachingForm />} />
+                                  <Route path="/classes/:id/edit" element={<TeachingForm />} />
+                                  <Route path="/classes/:id" element={<TeachingDetail />} />
 
-                                {/* 같이 릴스찍자! */}
-                                <Route path="/reels" element={<ReelsList />} />
-                                <Route path="/reels/new" element={<ReelsForm />} />
-                                <Route path="/reels/:id/edit" element={<ReelsForm />} />
-                                <Route path="/reels/:id" element={<ReelsDetail />} />
+                                  {/* 같이 릴스찍자! */}
+                                  <Route path="/reels" element={<ReelsList />} />
+                                  <Route path="/reels/new" element={<ReelsForm />} />
+                                  <Route path="/reels/:id/edit" element={<ReelsForm />} />
+                                  <Route path="/reels/:id" element={<ReelsDetail />} />
 
-                                {/* 도구 */}
-                                <Route path="/practice-matcher" element={<PracticeMatcher />} />
-                                <Route path="/tracklist-master" element={<TracklistList />} />
-                                <Route path="/tracklist-master/:id" element={<TracklistMaster />} />
+                                  {/* 도구 */}
+                                  <Route path="/practice-matcher" element={<PracticeMatcher />} />
+                                  <Route path="/tracklist-master" element={<TracklistList />} />
+                                  <Route path="/tracklist-master/:id" element={<TracklistMaster />} />
 
-                                {/* 회장단 전용 */}
-                                <Route path="/member-manage" element={<MemberManage />} />
+                                  {/* 회장단 전용 */}
+                                  <Route path="/member-manage" element={<MemberManage />} />
 
-                                {/* 404 */}
-                                <Route path="*" element={<NotFound />} />
-                              </Routes>
-                            </Layout>
-                          </BrowserRouter>
-                        </ReelsProvider>
-                      </MemberManageProvider>
-                    </TracklistProvider>
-                  </AnonBoardProvider>
-                </CalendarProvider>
-              </PracticeProvider>
-            </TeachingProvider>
-          </BoardProvider>
-        </NoticesProvider>
-      </NotificationProvider>
+                                  {/* 404 */}
+                                  <Route path="*" element={<NotFound />} />
+                                </Routes>
+                              </Layout>
+                            </BrowserRouter>
+                          </ReelsProvider>
+                        </MemberManageProvider>
+                      </TracklistProvider>
+                    </AnonBoardProvider>
+                  </CalendarProvider>
+                </PracticeProvider>
+              </TeachingProvider>
+            </BoardProvider>
+          </NoticesProvider>
+        </NotificationProvider>
+      </PresenceProvider>
     </AuthProvider>
   );
 }

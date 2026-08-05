@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useNotifications } from "../context/NotificationContext";
+import { usePresence } from "../context/PresenceContext";
 import { formatTimeAgo } from "../utils/timeAgo";
 
 const ROLE_LABEL: Record<string, string> = {
@@ -10,6 +11,62 @@ const ROLE_LABEL: Record<string, string> = {
   member: "부원",
   president: "회장단",
 };
+
+function OnlineUsersButton() {
+  const { role } = useAuth();
+  const { onlineUsers, onlineCount } = usePresence();
+  const isLoggedIn = role === "member" || role === "president";
+  const [open, setOpen] = useState(false);
+
+  if (onlineCount === 0) return null;
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => isLoggedIn && setOpen((v) => !v)}
+        className={`flex items-center gap-1.5 rounded-full border border-line px-3 py-1.5 text-xs text-backstage/85 transition-colors ${
+          isLoggedIn ? "hover:border-dawn-teal/60 hover:text-dawn-teal cursor-pointer" : "cursor-default"
+        }`}
+        aria-label="접속중인 부원"
+      >
+        <span className="relative flex h-2 w-2">
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-dawn-teal opacity-60" />
+          <span className="relative inline-flex h-2 w-2 rounded-full bg-dawn-teal" />
+        </span>
+        <span className="hidden sm:inline">{onlineCount}명 접속 중</span>
+        <span className="sm:hidden">{onlineCount}</span>
+      </button>
+
+      {open && isLoggedIn && (
+        <div
+          className="fixed inset-x-4 top-16 z-50 animate-rise rounded-xl border border-line bg-afterglow shadow-xl shadow-black/40 sm:absolute sm:inset-x-auto sm:right-0 sm:top-auto sm:z-auto sm:mt-2 sm:w-64"
+          role="menu"
+        >
+          <div className="border-b border-line px-4 py-3">
+            <p className="font-display text-sm text-backstage">지금 접속 중인 부원</p>
+          </div>
+          <div className="max-h-80 overflow-y-auto py-1">
+            {onlineUsers.map((u) => (
+              <div key={u.id} className="flex items-center gap-2.5 px-4 py-2">
+                <div
+                  className={`flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full ${
+                    u.role === "president" ? "bg-wind-gold/20" : "bg-dawn-teal/20"
+                  }`}
+                >
+                  <img src="/dancewindlogo.png" alt="" className="h-full w-full object-contain p-1" />
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate text-sm text-backstage">{u.name}</p>
+                  <p className="font-mono text-[11px] text-mute">{ROLE_LABEL[u.role]}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function Topbar({ onMenuClick }: { onMenuClick?: () => void }) {
   const { role, name, signOut } = useAuth();
@@ -45,6 +102,8 @@ export default function Topbar({ onMenuClick }: { onMenuClick?: () => void }) {
       </div>
 
       <div className="flex items-center gap-2">
+        <OnlineUsersButton />
+
         {!isLoggedIn && (
           <Link
             to="/login"
