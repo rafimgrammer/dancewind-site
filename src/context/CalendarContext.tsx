@@ -2,6 +2,7 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "./AuthContext";
+import { toTimeString } from "../utils/time";
 
 export type EventVisibility = "public" | "member" | "president";
 
@@ -12,7 +13,7 @@ export interface CalendarEvent {
   time: string;
   location: string;
   visibility: EventVisibility;
-  source: "general" | "class"; // 캘린더 직접 등록 or 티칭클래스에서 파생
+  source: "general" | "class" | "team_practice";
 }
 
 interface CalendarContextType {
@@ -32,7 +33,6 @@ export function CalendarProvider({ children }: { children: ReactNode }) {
   const fetchAll = useCallback(async () => {
     setLoading(true);
 
-    // 1. 일반 캘린더 이벤트 (RLS가 알아서 공개범위별로 필터링해줌)
     const { data: generalData } = await supabase
       .from("calendar_events")
       .select("*")
@@ -48,20 +48,14 @@ export function CalendarProvider({ children }: { children: ReactNode }) {
       source: "general",
     }));
 
-    // 2. 확정된 티칭 클래스 중, 내가 신청했거나 개설한 것만 캘린더에 표시
     let classEvents: CalendarEvent[] = [];
-    if (user) {
-      const { data: myApplications } = await supabase
-        .from("teaching_applicants")
-        .select("class_id")
-        .eq("user_id", user.id);
+    let teamPracticeEvents: CalendarEvent[] = [];
 
+    if (user) {
+      const { data: myApplications } = await supabase.from("teaching_applicants").select("class_id").eq("user_id", user.id);
       const appliedClassIds = new Set((myApplications ?? []).map((a) => a.class_id));
 
-      const { data: classData } = await supabase
-        .from("teaching_classes")
-        .select("*")
-        .eq("confirmed", true);
+      const { data: classData } = await supabase.from("teaching_classes").select("*").eq("confirmed", true);
 
       classEvents = (classData ?? [])
         .filter((c) => appliedClassIds.has(c.id) || c.teacher_id === user.id)
@@ -74,9 +68,47 @@ export function CalendarProvider({ children }: { children: ReactNode }) {
           visibility: "member" as EventVisibility,
           source: "class" as const,
         }));
+
+      const { data: teamsData } = await supabase
+        .from("practice_teams")
+        .select("id, team_name, leader_id")
+        .eq("calendar_synced", true);
+
+      const { data: teamMemberRows } = await supabase
+        .from("practice_team_members")
+        .select("team_id")
+        .eq("user_id", user.id);
+      const myTeamIds = new Set((teamMemberRows ?? []).map((r) => r.team_id));
+
+      const visibleTeams = (teamsData ?? []).filter((t) => t.leader_id === user.id || myTeamIds.has(t.id));
+
+      if (visibleTeams.length > 0) {
+        const teamIds = visibleTeams.map((t) => t.id);
+        const { data: sessionsData } = await supabase
+          .from("practice_team_sessions")
+          .select("team_id, session_date, session_data")
+          .in("team_id", teamIds);
+
+        const teamNameById = new Map(visibleTeams.map((t) => [t.id, t.team_name]));
+
+        teamPracticeEvents = (sessionsData ?? [])
+          .filter((s: any) => s.session_data?.mainSlot)
+          .map((s: any) => {
+            const slot = s.session_data.mainSlot;
+            return {
+              id: `team-practice-${s.team_id}-${s.session_date}`,
+              date: s.session_date,
+              title: `🕺 ${teamNameById.get(s.team_id) ?? "팀"} 연습`,
+              time: `${toTimeString(slot.start)} ~ ${toTimeString(slot.end)}`,
+              location: "",
+              visibility: "member" as EventVisibility,
+              source: "team_practice" as const,
+            };
+          });
+      }
     }
 
-    setEvents([...generalEvents, ...classEvents]);
+    setEvents([...generalEvents, ...classEvents, ...teamPracticeEvents]);
     setLoading(false);
   }, [user]);
 

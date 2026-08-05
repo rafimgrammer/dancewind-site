@@ -1,8 +1,10 @@
 // src/pages/Calendar.tsx
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { PageHeader, Card } from "../components/Ui";
 import { useAuth } from "../context/AuthContext";
 import { useCalendar, type EventVisibility } from "../context/CalendarContext";
+import { usePractice, type PracticeTeam } from "../context/PracticeContext";
 import { buildMonthGrid } from "../utils/calendarGrid";
 
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
@@ -20,8 +22,9 @@ const VISIBILITY_DOT: Record<EventVisibility, string> = {
 };
 
 export default function CalendarPage() {
-  const { role } = useAuth();
+  const { role, isStaffHead } = useAuth();
   const { events, addEvent, removeEvent } = useCalendar();
+  const { getBehindScenesTeams } = usePractice();
   const isPresident = role === "president";
   const isLoggedIn = role === "member" || role === "president";
 
@@ -32,12 +35,27 @@ export default function CalendarPage() {
   const [showForm, setShowForm] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
+  const [showStaffView, setShowStaffView] = useState(false);
+  const [behindScenesTeams, setBehindScenesTeams] = useState<PracticeTeam[]>([]);
+  const [staffLoading, setStaffLoading] = useState(false);
+
   const [formDate, setFormDate] = useState("");
   const [formTitle, setFormTitle] = useState("");
   const [formTime, setFormTime] = useState("");
   const [formLocation, setFormLocation] = useState("");
   const [formVisibility, setFormVisibility] = useState<EventVisibility>("public");
   const [showAddConfirm, setShowAddConfirm] = useState(false);
+
+  useEffect(() => {
+    if (isStaffHead && showStaffView) {
+      setStaffLoading(true);
+      getBehindScenesTeams().then((data) => {
+        setBehindScenesTeams(data);
+        setStaffLoading(false);
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isStaffHead, showStaffView]);
 
   const cells = useMemo(() => buildMonthGrid(year, month), [year, month]);
 
@@ -115,6 +133,44 @@ export default function CalendarPage() {
   return (
     <div>
       <PageHeader eyebrow="Calendar" title="춤바람 캘린더" desc="공연부터 연습 일정까지, 한눈에 확인해요." />
+
+      {isStaffHead && (
+        <button
+          onClick={() => setShowStaffView((v) => !v)}
+          className={`mb-4 flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-semibold transition-colors ${
+            showStaffView ? "border-wind-gold bg-wind-gold/10 text-wind-gold" : "border-line text-mute hover:border-wind-gold/40"
+          }`}
+        >
+          🎥 비하인드 촬영 가능 팀 {showStaffView ? "숨기기" : `보기 (${behindScenesTeams.length})`}
+        </button>
+      )}
+
+      {showStaffView && (
+        <Card className="mb-6 border-wind-gold/30">
+          <p className="font-display text-lg text-backstage">비하인드 촬영 가능 팀</p>
+          <p className="mt-1 text-xs text-mute">스텝장 전용으로 표시되는 목록이에요.</p>
+          {staffLoading ? (
+            <p className="mt-3 text-sm text-mute">불러오는 중...</p>
+          ) : behindScenesTeams.length === 0 ? (
+            <p className="mt-3 text-sm text-mute">현재 촬영 가능한 팀이 없어요.</p>
+          ) : (
+            <div className="mt-3 space-y-2">
+              {behindScenesTeams.map((t) => (
+                <Link key={t.id} to={`/practice-matcher/${t.id}`}>
+                  <div className="rounded-lg border border-line bg-stage px-3 py-2.5 transition-colors hover:border-wind-gold/40">
+                    <span className="rounded-full border border-wind-gold/40 bg-wind-gold/10 px-2 py-0.5 text-[11px] text-wind-gold">
+                      {t.teamName}
+                    </span>
+                    <p className="mt-1 font-mono text-xs text-mute">
+                      팀장 {t.leaderName} · 팀원 {t.members.length}명
+                    </p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
+        </Card>
+      )}
 
       <Card>
         <div className="flex items-center justify-between">

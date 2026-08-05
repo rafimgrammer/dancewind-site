@@ -46,6 +46,7 @@ import Login from "./pages/Login";
 import Onboarding from "./pages/Onboarding";
 import Pending from "./pages/Pending";
 import MyPage from "./pages/MyPage";
+import PracticeMatcherList from "./pages/PracticeMatcherList";
 
 
 export default function App() {
@@ -61,7 +62,6 @@ export default function App() {
                     <TracklistProvider>
                       <MemberManageProvider>
                         <ReelsProvider>
-
                           <BrowserRouter>
                             <Layout>
                               <Routes>
@@ -90,6 +90,10 @@ export default function App() {
                                 <Route path="/notices/new" element={<NoticeForm />} />
                                 <Route path="/notices/:id" element={<NoticeDetail />} />
                                 <Route path="/notices/:id/edit" element={<NoticeForm />} />
+
+                                {/* 팀 연습 */}
+                                <Route path="/practice-matcher" element={<PracticeMatcherList />} />
+                                <Route path="/practice-matcher/:id" element={<PracticeMatcher />} />
 
                                 {/* 자유게시판 */}
                                 <Route path="/board" element={<Board />} />
@@ -127,7 +131,6 @@ export default function App() {
                               </Routes>
                             </Layout>
                           </BrowserRouter>
-
                         </ReelsProvider>
                       </MemberManageProvider>
                     </TracklistProvider>

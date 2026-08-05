@@ -15,11 +15,13 @@ export interface MemberProfile {
   cohort: string;
   role: "member" | "president";
   status: "pending" | "approved";
+  is_staff_head: boolean;
 }
 
 interface AuthContextValue {
   role: Role;
   name: string;
+  isStaffHead: boolean;
   user: User | null;
   profile: MemberProfile | null;
   profileStatus: ProfileStatus;
@@ -79,10 +81,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       : "guest";
 
   const name = profile ? `${profile.cohort} ${profile.name}` : "게스트";
+  const isStaffHead = profile?.is_staff_head ?? false;
 
   return (
     <AuthContext.Provider
-      value={{ role, name, user, profile, profileStatus, loading, signOut, refreshProfile }}
+      value={{ role, name, isStaffHead, user, profile, profileStatus, loading, signOut, refreshProfile }}
     >
       {children}
     </AuthContext.Provider>

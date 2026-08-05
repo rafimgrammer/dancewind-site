@@ -47,6 +47,7 @@ interface MemberManageContextType {
     id: string,
     data: { name: string; studentId: string; department: string; cohort: string }
   ) => Promise<void>;
+  toggleStaffHead: (id: string, value: boolean) => Promise<void>;  // 이 줄 추가
   presidentCount: number;
 }
 
@@ -187,6 +188,11 @@ export function MemberManageProvider({ children }: { children: ReactNode }) {
     await fetchAll();
   };
 
+  const toggleStaffHead = async (id: string, value: boolean) => {
+  await supabase.from("members").update({ is_staff_head: value }).eq("id", id);
+  await fetchAll();
+};
+
   return (
     <MemberManageContext.Provider
       value={{
@@ -200,6 +206,7 @@ export function MemberManageProvider({ children }: { children: ReactNode }) {
         approveKick,
         cancelKickRequest,
         editMemberInfo,
+        toggleStaffHead,
         presidentCount,
       }}
     >
