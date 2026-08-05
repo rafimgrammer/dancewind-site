@@ -16,7 +16,7 @@ const CHANNELS = [
   },
   {
     name: "YouTube",
-    handle: "춤바람 CHUMBARAM",
+    handle: "한림대학교 중앙동아리 춤바람 [DANCEWIND]",
     href: "https://youtube.com/@2dancewind2023?si=jPvCFrEvj8KHF4H1",
     desc: "정기공연 풀영상 아카이브",
   },

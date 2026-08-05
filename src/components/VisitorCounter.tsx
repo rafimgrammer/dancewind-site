@@ -53,21 +53,27 @@ export default function VisitorCounter() {
       const alreadyCountedToday = sessionStorage.getItem(storageKey);
 
       if (!alreadyCountedToday) {
-        sessionStorage.setItem(storageKey, "1");
         const { data, error } = await supabase.rpc("increment_daily_visit");
         if (!error && typeof data === "number") {
+          sessionStorage.setItem(storageKey, "1");
           setTodayCount(data);
           return;
+        }
+        if (error) {
+          console.error("방문자수 증가 실패:", error);
         }
       }
 
       // 이미 이번 세션에서 카운트했거나, 어떤 이유로든 증가 요청이 실패했으면
       // 조회만 해서 현재 값을 보여줘요.
-      const { data } = await supabase
+      const { data, error: selectError } = await supabase
         .from("site_visits")
         .select("count")
         .eq("visit_date", todayKey())
         .maybeSingle();
+      if (selectError) {
+        console.error("방문자수 조회 실패:", selectError);
+      }
       setTodayCount(data?.count ?? 0);
     };
 
