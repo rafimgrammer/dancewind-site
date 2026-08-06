@@ -21,6 +21,7 @@ const COMMON: NavItem[] = [
 
 const MEMBER: NavItem[] = [
   { to: "/notices", label: "공지사항" },
+  { to: "/updates", label: "사이트 업데이트" },
   { to: "/board", label: "자유게시판" },
   { to: "/anonymous", label: "익명 건의·게시판" },
   { to: "/classes", label: "티칭 클래스" },

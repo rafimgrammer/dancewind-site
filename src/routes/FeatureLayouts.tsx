@@ -15,6 +15,8 @@ import { CalendarProvider } from "../context/CalendarContext";
 import { TracklistProvider } from "../context/TracklistContext";
 import { ReelsProvider } from "../context/ReelsContext";
 import { MemberManageProvider } from "../context/MemberManageContext";
+import { UpdatesProvider } from "../context/UpdatesContext";
+import { HomeContentProvider } from "../context/HomeContentContext";
 
 export function NoticesLayout() {
   return (
@@ -88,6 +90,22 @@ export function MemberManageLayout() {
     <MemberManageProvider>
       <Outlet />
     </MemberManageProvider>
+  );
+}
+
+export function UpdatesLayout() {
+  return (
+    <UpdatesProvider>
+      <Outlet />
+    </UpdatesProvider>
+  );
+}
+
+export function HomeContentLayout() {
+  return (
+    <HomeContentProvider>
+      <Outlet />
+    </HomeContentProvider>
   );
 }
 

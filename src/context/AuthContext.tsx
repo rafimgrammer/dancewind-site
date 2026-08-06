@@ -16,12 +16,16 @@ export interface MemberProfile {
   role: "member" | "president";
   status: "pending" | "approved";
   is_staff_head: boolean;
+  is_site_admin: boolean;
 }
 
 interface AuthContextValue {
   role: Role;
   name: string;
   isStaffHead: boolean;
+  // 사이트 업데이트 로그를 작성할 수 있는 숨겨진 권한이에요.
+  // role/화면에 보이는 표시는 그대로 "부원"이고, 회장단 권한과는 완전히 별개예요.
+  isSiteAdmin: boolean;
   user: User | null;
   profile: MemberProfile | null;
   profileStatus: ProfileStatus;
@@ -82,10 +86,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const name = profile ? `${profile.cohort} ${profile.name}` : "게스트";
   const isStaffHead = profile?.is_staff_head ?? false;
+  const isSiteAdmin = profile?.is_site_admin ?? false;
 
   return (
     <AuthContext.Provider
-      value={{ role, name, isStaffHead, user, profile, profileStatus, loading, signOut, refreshProfile }}
+      value={{ role, name, isStaffHead, isSiteAdmin, user, profile, profileStatus, loading, signOut, refreshProfile }}
     >
       {children}
     </AuthContext.Provider>

@@ -13,6 +13,8 @@ import {
   TracklistLayout,
   MemberManageLayout,
   MyPageLayout,
+  UpdatesLayout,
+  HomeContentLayout,
 } from "./routes/FeatureLayouts";
 import Layout from "./components/Layout";
 
@@ -51,6 +53,7 @@ import Onboarding from "./pages/Onboarding";
 import Pending from "./pages/Pending";
 import MyPage from "./pages/MyPage";
 import PracticeMatcherList from "./pages/PracticeMatcherList";
+import Updates from "./pages/Updates";
 
 
 export default function App() {
@@ -62,7 +65,9 @@ export default function App() {
             <Layout>
               <Routes>
                 {/* 공개 페이지 — 기능별 Context 필요 없음 */}
-                <Route path="/" element={<Home />} />
+                <Route element={<HomeContentLayout />}>
+                  <Route path="/" element={<Home />} />
+                </Route>
                 <Route path="/about" element={<About />} />
                 <Route path="/videos" element={<Videos />} />
                 <Route path="/officers" element={<Officers />} />
@@ -90,6 +95,11 @@ export default function App() {
                   <Route path="/notices/new" element={<NoticeForm />} />
                   <Route path="/notices/:id" element={<NoticeDetail />} />
                   <Route path="/notices/:id/edit" element={<NoticeForm />} />
+                </Route>
+
+                {/* 사이트 업데이트 로그 */}
+                <Route element={<UpdatesLayout />}>
+                  <Route path="/updates" element={<Updates />} />
                 </Route>
 
                 {/* 팀 연습 매칭 */}
