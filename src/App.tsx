@@ -15,6 +15,10 @@ import {
   MyPageLayout,
   UpdatesLayout,
   HomeContentLayout,
+  AboutContentLayout,
+  OfficersLayout,
+  LocationContentLayout,
+  RecruitContentLayout,
 } from "./routes/FeatureLayouts";
 import Layout from "./components/Layout";
 
@@ -68,11 +72,19 @@ export default function App() {
                 <Route element={<HomeContentLayout />}>
                   <Route path="/" element={<Home />} />
                 </Route>
-                <Route path="/about" element={<About />} />
+                <Route element={<AboutContentLayout />}>
+                  <Route path="/about" element={<About />} />
+                </Route>
                 <Route path="/videos" element={<Videos />} />
-                <Route path="/officers" element={<Officers />} />
-                <Route path="/location" element={<Location />} />
-                <Route path="/recruit" element={<Recruit />} />
+                <Route element={<OfficersLayout />}>
+                  <Route path="/officers" element={<Officers />} />
+                </Route>
+                <Route element={<LocationContentLayout />}>
+                  <Route path="/location" element={<Location />} />
+                </Route>
+                <Route element={<RecruitContentLayout />}>
+                  <Route path="/recruit" element={<Recruit />} />
+                </Route>
                 <Route path="/gallery" element={<Gallery />} />
 
                 {/* 인증 / 온보딩 */}

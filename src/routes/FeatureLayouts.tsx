@@ -17,6 +17,10 @@ import { ReelsProvider } from "../context/ReelsContext";
 import { MemberManageProvider } from "../context/MemberManageContext";
 import { UpdatesProvider } from "../context/UpdatesContext";
 import { HomeContentProvider } from "../context/HomeContentContext";
+import { AboutContentProvider } from "../context/AboutContentContext";
+import { OfficersProvider } from "../context/OfficersContext";
+import { LocationContentProvider } from "../context/LocationContentContext";
+import { RecruitContentProvider } from "../context/RecruitContentContext";
 
 export function NoticesLayout() {
   return (
@@ -106,6 +110,38 @@ export function HomeContentLayout() {
     <HomeContentProvider>
       <Outlet />
     </HomeContentProvider>
+  );
+}
+
+export function AboutContentLayout() {
+  return (
+    <AboutContentProvider>
+      <Outlet />
+    </AboutContentProvider>
+  );
+}
+
+export function OfficersLayout() {
+  return (
+    <OfficersProvider>
+      <Outlet />
+    </OfficersProvider>
+  );
+}
+
+export function LocationContentLayout() {
+  return (
+    <LocationContentProvider>
+      <Outlet />
+    </LocationContentProvider>
+  );
+}
+
+export function RecruitContentLayout() {
+  return (
+    <RecruitContentProvider>
+      <Outlet />
+    </RecruitContentProvider>
   );
 }
 

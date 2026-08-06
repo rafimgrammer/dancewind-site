@@ -1,5 +1,10 @@
-import { useEffect, useRef } from "react";
+// src/pages/Location.tsx
+import { useEffect, useRef, useState } from "react";
 import { PageHeader, Card } from "../components/Ui";
+import { Skeleton } from "../components/Skeleton";
+import { EditModeBanner, IconButton, ConfirmModal, type PendingConfirm } from "../components/InlineAdmin";
+import { useAuth } from "../context/AuthContext";
+import { useLocationContent } from "../context/LocationContentContext";
 
 const KAKAO_KEY = import.meta.env.VITE_KAKAO_MAP_KEY;
 const LAT = 37.88651;
@@ -50,8 +55,43 @@ function KakaoMap() {
 }
 
 export default function Location() {
+  const { role } = useAuth();
+  const isPresident = role === "president";
+  const { content, loading, editContent } = useLocationContent();
+
+  const [editMode, setEditMode] = useState(false);
+  const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState({ title: "", description: "" });
+
+  const runConfirm = async () => {
+    if (!pendingConfirm) return;
+    await pendingConfirm.onConfirm();
+    setPendingConfirm(null);
+  };
+
+  const startEdit = () => {
+    if (!content) return;
+    setDraft({ title: content.title, description: content.description });
+    setEditing(true);
+  };
+
+  const save = () => {
+    setPendingConfirm({
+      title: "위치 안내 문구를 저장하시겠습니까?",
+      desc: "바로 모든 방문자에게 반영돼요.",
+      actionLabel: "저장할게요",
+      onConfirm: async () => {
+        await editContent(draft);
+        setEditing(false);
+      },
+    });
+  };
+
   return (
     <div>
+      {isPresident && <EditModeBanner editMode={editMode} onToggle={() => setEditMode((v) => !v)} />}
+
       <PageHeader eyebrow="Location" title="동방 찾아오시는 길" desc="학생회관 지하, 거울과 스피커가 있는 그 방입니다." />
       <div className="grid min-w-0 gap-6 md:grid-cols-[1.2fr_0.8fr]">
         <Card className="aspect-[16/10] min-w-0 overflow-hidden p-0">
@@ -59,13 +99,46 @@ export default function Location() {
         </Card>
         <div className="min-w-0 space-y-4">
           <Card>
-            <p className="font-display text-lg text-backstage">한림대학교 캠퍼스라이프센터 B1 춤바람 동방</p>
-            <p className="mt-2 text-sm leading-relaxed text-backstage/75">
-              정문에서 캠퍼스라이프센터까지 도보 3분, 지하 계단으로 내려온 다음 화장실 앞 연습실 왼쪽 방이예요.
-            </p>
+            {loading || !content ? (
+              <div className="space-y-2">
+                <Skeleton className="h-5 w-3/4" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-2/3" />
+              </div>
+            ) : editing ? (
+              <div className="space-y-2.5">
+                <input
+                  value={draft.title}
+                  onChange={(e) => setDraft({ ...draft, title: e.target.value })}
+                  className="w-full rounded-lg border border-dawn-teal/50 bg-stage px-3 py-2 text-sm text-backstage outline-none"
+                />
+                <textarea
+                  value={draft.description}
+                  onChange={(e) => setDraft({ ...draft, description: e.target.value })}
+                  rows={4}
+                  className="w-full resize-none rounded-lg border border-dawn-teal/50 bg-stage px-3 py-2 text-sm text-backstage outline-none"
+                />
+                <div className="flex gap-2">
+                  <button onClick={save} className="rounded-lg bg-wind-gold px-3 py-1.5 text-xs font-semibold text-stage">저장</button>
+                  <button onClick={() => setEditing(false)} className="rounded-lg border border-line px-3 py-1.5 text-xs text-mute">취소</button>
+                </div>
+              </div>
+            ) : (
+              <>
+                {editMode && isPresident && (
+                  <div className="mb-3">
+                    <IconButton onClick={startEdit} label="✎ 문구 수정" />
+                  </div>
+                )}
+                <p className="font-display text-lg text-backstage">{content.title}</p>
+                <p className="mt-2 text-sm leading-relaxed text-backstage/75">{content.description}</p>
+              </>
+            )}
           </Card>
         </div>
       </div>
+
+      <ConfirmModal pending={pendingConfirm} onCancel={() => setPendingConfirm(null)} onConfirm={runConfirm} />
     </div>
   );
 }
