@@ -484,7 +484,7 @@ export default function Home() {
                         <div className="flex items-center gap-2">
                           <p className="font-display text-lg text-wind-gold">{h.year}</p>
                           {editMode && isPresident && (
-                            <div className="flex gap-1.5 opacity-0 transition-opacity group-hover:opacity-100">
+                            <div className="flex gap-1.5">
                               <IconButton onClick={() => startEditHistory(h.id, h.year, h.description)} label="수정" />
                               <IconButton onClick={() => confirmDeleteHistory(h.id)} label="삭제" tone="red" />
                             </div>
@@ -608,7 +608,7 @@ export default function Home() {
                         <p className="font-mono text-xs text-mute">{s.eventDate}</p>
                         <p className="mt-1.5 text-[15px] font-medium text-backstage">{s.label}</p>
                         {editMode && isPresident && (
-                          <div className="mt-2 flex gap-1.5 opacity-0 transition-opacity group-hover:opacity-100">
+                          <div className="mt-2 flex gap-1.5">
                             <IconButton
                               onClick={() => startEditSchedule(s.id, s.eventDate, s.label, s.type)}
                               label="수정"
