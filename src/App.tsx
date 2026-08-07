@@ -19,6 +19,7 @@ import {
   OfficersLayout,
   LocationContentLayout,
   RecruitContentLayout,
+  GalleryLayout,
 } from "./routes/FeatureLayouts";
 import Layout from "./components/Layout";
 
@@ -58,6 +59,7 @@ import Pending from "./pages/Pending";
 import MyPage from "./pages/MyPage";
 import PracticeMatcherList from "./pages/PracticeMatcherList";
 import Updates from "./pages/Updates";
+import GalleryAlbum from "./pages/GalleryAlbum";
 
 
 export default function App() {
@@ -85,7 +87,10 @@ export default function App() {
                 <Route element={<RecruitContentLayout />}>
                   <Route path="/recruit" element={<Recruit />} />
                 </Route>
-                <Route path="/gallery" element={<Gallery />} />
+                <Route element={<GalleryLayout />}>
+                  <Route path="/gallery" element={<Gallery />} />
+                  <Route path="/gallery/:id" element={<GalleryAlbum />} />
+                </Route>
 
                 {/* 인증 / 온보딩 */}
                 <Route path="/login" element={<Login />} />

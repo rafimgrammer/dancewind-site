@@ -21,6 +21,7 @@ import { AboutContentProvider } from "../context/AboutContentContext";
 import { OfficersProvider } from "../context/OfficersContext";
 import { LocationContentProvider } from "../context/LocationContentContext";
 import { RecruitContentProvider } from "../context/RecruitContentContext";
+import { GalleryProvider } from "../context/GalleryContext";
 
 export function NoticesLayout() {
   return (
@@ -142,6 +143,14 @@ export function RecruitContentLayout() {
     <RecruitContentProvider>
       <Outlet />
     </RecruitContentProvider>
+  );
+}
+
+export function GalleryLayout() {
+  return (
+    <GalleryProvider>
+      <Outlet />
+    </GalleryProvider>
   );
 }
 

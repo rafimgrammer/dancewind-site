@@ -1,0 +1,175 @@
+// src/context/GalleryContext.tsx
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
+import { supabase } from "../lib/supabase";
+
+export interface GalleryPhoto {
+  id: string;
+  albumId: string;
+  photoUrl: string;
+  sortOrder: number;
+}
+
+export interface GalleryAlbum {
+  id: string;
+  title: string;
+  eventDate: string;
+  category: string;
+  coverPhotoUrl: string | null;
+  photos: GalleryPhoto[];
+}
+
+interface GalleryContextType {
+  albums: GalleryAlbum[];
+  loading: boolean;
+  getAlbumById: (id: string) => GalleryAlbum | undefined;
+  addAlbum: (title: string, eventDate: string, category: string) => Promise<string | null>;
+  editAlbum: (id: string, title: string, eventDate: string, category: string) => Promise<void>;
+  removeAlbum: (id: string) => Promise<void>;
+  uploadPhotos: (albumId: string, files: File[]) => Promise<{ ok: boolean; message?: string }>;
+  removePhoto: (photoId: string) => Promise<void>;
+  setCoverPhoto: (albumId: string, photoUrl: string) => Promise<void>;
+}
+
+const GalleryContext = createContext<GalleryContextType | null>(null);
+
+const MAX_FILE_MB = 8;
+
+export function GalleryProvider({ children }: { children: ReactNode }) {
+  const [albums, setAlbums] = useState<GalleryAlbum[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchAll = useCallback(async () => {
+    setLoading(true);
+    const [{ data: albumData }, { data: photoData }] = await Promise.all([
+      supabase.from("gallery_albums").select("*").order("event_date", { ascending: false }),
+      supabase.from("gallery_photos").select("*").order("sort_order", { ascending: true }),
+    ]);
+
+    const photosByAlbum: Record<string, GalleryPhoto[]> = {};
+    (photoData ?? []).forEach((p) => {
+      if (!photosByAlbum[p.album_id]) photosByAlbum[p.album_id] = [];
+      photosByAlbum[p.album_id].push({
+        id: p.id,
+        albumId: p.album_id,
+        photoUrl: p.photo_url,
+        sortOrder: p.sort_order,
+      });
+    });
+
+    setAlbums(
+      (albumData ?? []).map((a) => ({
+        id: a.id,
+        title: a.title,
+        eventDate: a.event_date,
+        category: a.category,
+        coverPhotoUrl: a.cover_photo_url,
+        photos: photosByAlbum[a.id] ?? [],
+      }))
+    );
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    fetchAll();
+  }, [fetchAll]);
+
+  const getAlbumById = (id: string) => albums.find((a) => a.id === id);
+
+  const addAlbum = async (title: string, eventDate: string, category: string): Promise<string | null> => {
+    if (!title.trim() || !eventDate) return null;
+    const { data, error } = await supabase
+      .from("gallery_albums")
+      .insert({ title: title.trim(), event_date: eventDate, category })
+      .select("id")
+      .single();
+    await fetchAll();
+    if (error || !data) return null;
+    return data.id;
+  };
+
+  const editAlbum = async (id: string, title: string, eventDate: string, category: string) => {
+    if (!title.trim() || !eventDate) return;
+    await supabase
+      .from("gallery_albums")
+      .update({ title: title.trim(), event_date: eventDate, category })
+      .eq("id", id);
+    await fetchAll();
+  };
+
+  const removeAlbum = async (id: string) => {
+    await supabase.from("gallery_albums").delete().eq("id", id);
+    await fetchAll();
+  };
+
+  const uploadPhotos = async (albumId: string, files: File[]): Promise<{ ok: boolean; message?: string }> => {
+    const album = albums.find((a) => a.id === albumId);
+    let nextOrder = album ? album.photos.length : 0;
+    const uploadedUrls: string[] = [];
+
+    for (const file of files) {
+      if (!file.type.startsWith("image/")) continue;
+      if (file.size > MAX_FILE_MB * 1024 * 1024) {
+        return { ok: false, message: `${file.name}은(는) ${MAX_FILE_MB}MB를 넘어서 업로드할 수 없어요.` };
+      }
+
+      const ext = file.name.split(".").pop() ?? "jpg";
+      const path = `${albumId}/${Date.now()}-${nextOrder}.${ext}`;
+
+      const { error: uploadError } = await supabase.storage.from("gallery-photos").upload(path, file, {
+        cacheControl: "3600",
+        upsert: false,
+      });
+      if (uploadError) {
+        return { ok: false, message: "업로드 중 문제가 발생했어요: " + uploadError.message };
+      }
+
+      const { data: publicUrlData } = supabase.storage.from("gallery-photos").getPublicUrl(path);
+      uploadedUrls.push(publicUrlData.publicUrl);
+      nextOrder += 1;
+    }
+
+    if (uploadedUrls.length === 0) {
+      return { ok: false, message: "이미지 파일만 업로드할 수 있어요." };
+    }
+
+    await supabase.from("gallery_photos").insert(
+      uploadedUrls.map((url, i) => ({
+        album_id: albumId,
+        photo_url: url,
+        sort_order: (album ? album.photos.length : 0) + i,
+      }))
+    );
+
+    // 앨범에 커버 사진이 아직 없으면 첫 업로드 사진을 커버로 지정해줘요.
+    if (album && !album.coverPhotoUrl && uploadedUrls[0]) {
+      await supabase.from("gallery_albums").update({ cover_photo_url: uploadedUrls[0] }).eq("id", albumId);
+    }
+
+    await fetchAll();
+    return { ok: true };
+  };
+
+  const removePhoto = async (photoId: string) => {
+    await supabase.from("gallery_photos").delete().eq("id", photoId);
+    await fetchAll();
+  };
+
+  const setCoverPhoto = async (albumId: string, photoUrl: string) => {
+    await supabase.from("gallery_albums").update({ cover_photo_url: photoUrl }).eq("id", albumId);
+    await fetchAll();
+  };
+
+  return (
+    <GalleryContext.Provider
+      value={{ albums, loading, getAlbumById, addAlbum, editAlbum, removeAlbum, uploadPhotos, removePhoto, setCoverPhoto }}
+    >
+      {children}
+    </GalleryContext.Provider>
+  );
+}
+
+export function useGallery() {
+  const ctx = useContext(GalleryContext);
+  if (!ctx) throw new Error("useGallery는 GalleryProvider 안에서만 써야 해요.");
+  return ctx;
+}
