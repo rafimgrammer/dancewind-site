@@ -198,7 +198,7 @@ export default function GalleryAlbum() {
           <p className="mt-3 text-sm text-backstage/80">
             {uploading ? "업로드하는 중..." : "사진을 여기로 끌어다 놓거나 클릭해서 선택하세요"}
           </p>
-          <p className="mt-1 text-xs text-mute">여러 장을 한 번에 올릴 수 있어요 (장당 8MB 이하)</p>
+          <p className="mt-1 text-xs text-mute">여러 장을 한 번에 올릴 수 있어요 (너무 용량이 큰 사진은 제외돼요)</p>
         </div>
       )}
 

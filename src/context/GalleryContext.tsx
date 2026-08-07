@@ -33,6 +33,41 @@ interface GalleryContextType {
 const GalleryContext = createContext<GalleryContextType | null>(null);
 
 const MAX_FILE_MB = 8;
+const MAX_DIMENSION = 2000; // 이보다 긴 변을 이 픽셀 수에 맞춰 줄여요
+const JPEG_QUALITY = 0.82;
+
+// 업로드 전에 브라우저에서 이미지를 리사이즈 + 재압축해요.
+// 폰카메라 원본(15~20MB대)도 대부분 1~2MB 이하로 줄어들어서, 8MB 제한에 걸릴 일이 거의 없어져요.
+async function compressImage(file: File): Promise<File> {
+  try {
+    const bitmap = await createImageBitmap(file);
+    const scale = Math.min(1, MAX_DIMENSION / Math.max(bitmap.width, bitmap.height));
+    const width = Math.round(bitmap.width * scale);
+    const height = Math.round(bitmap.height * scale);
+
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return file;
+    ctx.drawImage(bitmap, 0, 0, width, height);
+    bitmap.close();
+
+    const blob: Blob | null = await new Promise((resolve) =>
+      canvas.toBlob((b) => resolve(b), "image/jpeg", JPEG_QUALITY)
+    );
+    if (!blob) return file;
+
+    // 압축한 결과가 오히려 더 크면(원래 작은 사진이었던 경우) 그냥 원본을 써요.
+    if (blob.size >= file.size) return file;
+
+    const newName = file.name.replace(/\.[^.]+$/, "") + ".jpg";
+    return new File([blob], newName, { type: "image/jpeg" });
+  } catch {
+    // HEIC 등 브라우저가 디코딩 못 하는 형식이면 압축 없이 원본으로 시도해요.
+    return file;
+  }
+}
 
 export function GalleryProvider({ children }: { children: ReactNode }) {
   const [albums, setAlbums] = useState<GalleryAlbum[]>([]);
@@ -105,11 +140,19 @@ export function GalleryProvider({ children }: { children: ReactNode }) {
     const album = albums.find((a) => a.id === albumId);
     let nextOrder = album ? album.photos.length : 0;
     const uploadedUrls: string[] = [];
+    const skipped: string[] = [];
 
-    for (const file of files) {
-      if (!file.type.startsWith("image/")) continue;
+    for (const rawFile of files) {
+      if (!rawFile.type.startsWith("image/")) {
+        skipped.push(`${rawFile.name} (이미지 파일 아님)`);
+        continue;
+      }
+
+      const file = await compressImage(rawFile);
+
       if (file.size > MAX_FILE_MB * 1024 * 1024) {
-        return { ok: false, message: `${file.name}은(는) ${MAX_FILE_MB}MB를 넘어서 업로드할 수 없어요.` };
+        skipped.push(`${file.name} (압축 후에도 ${MAX_FILE_MB}MB 초과)`);
+        continue;
       }
 
       const ext = file.name.split(".").pop() ?? "jpg";
@@ -120,7 +163,8 @@ export function GalleryProvider({ children }: { children: ReactNode }) {
         upsert: false,
       });
       if (uploadError) {
-        return { ok: false, message: "업로드 중 문제가 발생했어요: " + uploadError.message };
+        skipped.push(`${file.name} (업로드 실패: ${uploadError.message})`);
+        continue;
       }
 
       const { data: publicUrlData } = supabase.storage.from("gallery-photos").getPublicUrl(path);
@@ -128,24 +172,31 @@ export function GalleryProvider({ children }: { children: ReactNode }) {
       nextOrder += 1;
     }
 
+    if (uploadedUrls.length > 0) {
+      await supabase.from("gallery_photos").insert(
+        uploadedUrls.map((url, i) => ({
+          album_id: albumId,
+          photo_url: url,
+          sort_order: (album ? album.photos.length : 0) + i,
+        }))
+      );
+
+      // 앨범에 커버 사진이 아직 없으면 첫 업로드 사진을 커버로 지정해줘요.
+      if (album && !album.coverPhotoUrl) {
+        await supabase.from("gallery_albums").update({ cover_photo_url: uploadedUrls[0] }).eq("id", albumId);
+      }
+      await fetchAll();
+    }
+
     if (uploadedUrls.length === 0) {
-      return { ok: false, message: "이미지 파일만 업로드할 수 있어요." };
+      return { ok: false, message: "업로드할 수 있는 사진이 없었어요.\n" + skipped.join("\n") };
     }
-
-    await supabase.from("gallery_photos").insert(
-      uploadedUrls.map((url, i) => ({
-        album_id: albumId,
-        photo_url: url,
-        sort_order: (album ? album.photos.length : 0) + i,
-      }))
-    );
-
-    // 앨범에 커버 사진이 아직 없으면 첫 업로드 사진을 커버로 지정해줘요.
-    if (album && !album.coverPhotoUrl && uploadedUrls[0]) {
-      await supabase.from("gallery_albums").update({ cover_photo_url: uploadedUrls[0] }).eq("id", albumId);
+    if (skipped.length > 0) {
+      return {
+        ok: true,
+        message: `${uploadedUrls.length}장 업로드 완료, ${skipped.length}장은 제외됐어요.\n` + skipped.join("\n"),
+      };
     }
-
-    await fetchAll();
     return { ok: true };
   };
 
