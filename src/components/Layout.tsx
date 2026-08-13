@@ -36,7 +36,10 @@ export default function Layout({ children }: { children: ReactNode }) {
               onClick={() => setDrawerOpen(false)}
               aria-hidden="true"
             />
-            <aside className="absolute left-0 top-0 h-full w-72 animate-rise bg-stage border-r border-line">
+            <aside
+              className="absolute left-0 top-0 h-full w-72 animate-rise bg-stage border-r border-line"
+              style={{ paddingTop: "env(safe-area-inset-top)" }}
+            >
               <div className="flex items-center justify-between px-5 py-6">
                 <Link
                   to="/"

@@ -87,7 +87,10 @@ export default function Topbar({ onMenuClick }: { onMenuClick?: () => void }) {
   };
 
   return (
-    <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-line bg-stage/90 px-4 backdrop-blur md:px-8">
+    <header
+      className="sticky top-0 z-40 flex items-center justify-between border-b border-line bg-stage/90 px-4 backdrop-blur md:px-8"
+      style={{ paddingTop: "env(safe-area-inset-top)", height: "calc(4rem + env(safe-area-inset-top))" }}
+    >
       <div className="flex items-center gap-3">
         <button
           onClick={onMenuClick}

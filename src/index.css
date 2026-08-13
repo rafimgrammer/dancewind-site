@@ -46,6 +46,16 @@
   to { opacity: 1; }
 }
 
+/* 앱처럼 설치했을 때(standalone) 아이폰 상태표시줄/홈 인디케이터에
+   컨텐츠가 가려지지 않도록 안전영역만큼 여백을 줘요.
+   브라우저 탭으로 볼 땐 이 값이 0이라 평소랑 똑같아요. */
+.pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.001ms !important;

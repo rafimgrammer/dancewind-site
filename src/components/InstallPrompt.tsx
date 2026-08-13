@@ -1,4 +1,4 @@
-    // src/components/InstallPrompt.tsx
+// src/components/InstallPrompt.tsx
 import { useEffect, useState } from "react";
 
 interface BeforeInstallPromptEvent extends Event {
@@ -64,7 +64,10 @@ export default function InstallPrompt() {
   if (dismissed || (!deferredPrompt && !showIosHint)) return null;
 
   return (
-    <div className="fixed inset-x-4 bottom-4 z-40 mx-auto flex max-w-md items-center gap-3 rounded-2xl border border-line bg-afterglow p-4 shadow-2xl shadow-black/40 sm:inset-x-auto sm:right-6">
+    <div
+      className="fixed inset-x-4 bottom-4 z-40 mx-auto flex max-w-md items-center gap-3 rounded-2xl border border-line bg-afterglow p-4 shadow-2xl shadow-black/40 sm:inset-x-auto sm:right-6"
+      style={{ marginBottom: "env(safe-area-inset-bottom)" }}
+    >
       <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-stage">
         <img src="/icons/icon-192.png" alt="" className="h-full w-full object-cover" />
       </div>
