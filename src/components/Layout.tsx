@@ -5,6 +5,7 @@ import PageTransition from "./PageTransition";
 import { useNearBottom } from "../hooks/useNearBottom";
 import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
+import InstallPrompt from "./InstallPrompt";
 
 export default function Layout({ children }: { children: ReactNode }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -80,6 +81,8 @@ export default function Layout({ children }: { children: ReactNode }) {
           />
         </div>
       </div>
+
+      <InstallPrompt />
     </div>
   );
 }
