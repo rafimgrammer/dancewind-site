@@ -3,7 +3,7 @@
 // Supabase API/실시간(웹소켓) 요청은 절대 가로채지 않고,
 // "페이지 이동" 요청에 대해서만 오프라인일 때 캐시된 화면을 보여주는 정도만 해요.
 
-const CACHE_NAME = "chumbaram-shell-v1";
+const CACHE_NAME = "chumbaram-shell-v2";
 const APP_SHELL = ["/", "/index.html"];
 
 self.addEventListener("install", (event) => {
