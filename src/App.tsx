@@ -20,6 +20,7 @@ import {
   LocationContentLayout,
   RecruitContentLayout,
   GalleryLayout,
+  FormationLayout,
 } from "./routes/FeatureLayouts";
 import Layout from "./components/Layout";
 
@@ -60,6 +61,8 @@ import MyPage from "./pages/MyPage";
 import PracticeMatcherList from "./pages/PracticeMatcherList";
 import Updates from "./pages/Updates";
 import GalleryAlbum from "./pages/GalleryAlbum";
+import FormationList from "./pages/FormationList";
+import FormationEditor from "./pages/FormationEditor";
 
 
 export default function App() {
@@ -90,6 +93,10 @@ export default function App() {
                 <Route element={<GalleryLayout />}>
                   <Route path="/gallery" element={<Gallery />} />
                   <Route path="/gallery/:id" element={<GalleryAlbum />} />
+                </Route>
+                <Route element={<FormationLayout />}>
+                  <Route path="/formation" element={<FormationList />} />
+                  <Route path="/formation/:id" element={<FormationEditor />} />
                 </Route>
 
                 {/* 인증 / 온보딩 */}

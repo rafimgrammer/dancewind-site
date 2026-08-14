@@ -27,6 +27,7 @@ const MEMBER: NavItem[] = [
   { to: "/classes", label: "티칭 클래스" },
   { to: "/reels", label: "같이 릴스찍자!" },
   { to: "/practice-matcher", label: "연습시간 마스터" },
+  { to: "/formation", label: "안무 대형 플래너" },
 ];
 
 const PRESIDENT: NavItem[] = [

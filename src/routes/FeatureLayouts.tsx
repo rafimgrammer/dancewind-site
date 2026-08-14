@@ -22,6 +22,7 @@ import { OfficersProvider } from "../context/OfficersContext";
 import { LocationContentProvider } from "../context/LocationContentContext";
 import { RecruitContentProvider } from "../context/RecruitContentContext";
 import { GalleryProvider } from "../context/GalleryContext";
+import { FormationProvider } from "../context/FormationContext";
 
 export function NoticesLayout() {
   return (
@@ -151,6 +152,14 @@ export function GalleryLayout() {
     <GalleryProvider>
       <Outlet />
     </GalleryProvider>
+  );
+}
+
+export function FormationLayout() {
+  return (
+    <FormationProvider>
+      <Outlet />
+    </FormationProvider>
   );
 }
 
