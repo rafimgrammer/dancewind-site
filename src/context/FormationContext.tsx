@@ -13,6 +13,7 @@ export interface FormationProject {
   createdByName: string;
   createdAt: string;
   updatedAt: string;
+  locked: boolean;
 }
 
 export interface FormationScene {
@@ -36,6 +37,7 @@ interface FormationContextType {
   removeProject: (id: string) => Promise<void>;
   getProjectById: (id: string) => FormationProject | undefined;
   updateMemberLabels: (projectId: string, labels: string[]) => Promise<void>;
+  toggleLock: (projectId: string, locked: boolean) => Promise<void>;
   fetchScenes: (projectId: string) => Promise<FormationScene[]>;
   addScene: (projectId: string, positions: Point[], name: string) => Promise<FormationScene | null>;
   updateScenePositions: (sceneId: string, positions: Point[]) => Promise<void>;
@@ -75,6 +77,7 @@ export function FormationProvider({ children }: { children: ReactNode }) {
         createdByName: p.created_by_name,
         createdAt: p.created_at,
         updatedAt: p.updated_at,
+        locked: p.locked ?? false,
       }))
     );
     setLoading(false);
@@ -130,6 +133,11 @@ export function FormationProvider({ children }: { children: ReactNode }) {
       .from("formation_projects")
       .update({ member_labels: labels, updated_at: new Date().toISOString() })
       .eq("id", projectId);
+    await fetchAll();
+  };
+
+  const toggleLock = async (projectId: string, locked: boolean) => {
+    await supabase.from("formation_projects").update({ locked }).eq("id", projectId);
     await fetchAll();
   };
 
@@ -225,6 +233,7 @@ export function FormationProvider({ children }: { children: ReactNode }) {
         removeProject,
         getProjectById,
         updateMemberLabels,
+        toggleLock,
         fetchScenes,
         addScene,
         updateScenePositions,

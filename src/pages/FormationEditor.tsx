@@ -9,6 +9,14 @@ import { assignByShortestTotalDistance, type Point } from "../utils/hungarian";
 import { generateTemplate, TEMPLATE_LABELS, type TemplateType } from "../utils/formationTemplates";
 
 const DOT_COLORS = ["bg-wind-gold", "bg-dawn-teal"];
+const GRID_STEP = 0.1;
+const SNAP_THRESHOLD = 0.018; // 눈금 근처에서만 자석처럼 붙고, 멀면 그냥 자유 배치돼요.
+const GRID_LINES = Array.from({ length: 11 }, (_, i) => i * GRID_STEP);
+
+function snapAxis(value: number): number {
+  const nearest = Math.round(value / GRID_STEP) * GRID_STEP;
+  return Math.abs(nearest - value) <= SNAP_THRESHOLD ? nearest : value;
+}
 
 export default function FormationEditor() {
   const { id } = useParams<{ id: string }>();
@@ -23,6 +31,7 @@ export default function FormationEditor() {
     renameScene,
     removeScene,
     updateMemberLabels,
+    toggleLock,
     fetchApprovedMembers,
     shareProject,
   } = useFormation();
@@ -37,6 +46,8 @@ export default function FormationEditor() {
   const [showPaths, setShowPaths] = useState(true);
 
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
+  const [snapX, setSnapX] = useState<number | null>(null);
+  const [snapY, setSnapY] = useState<number | null>(null);
   const [editingLabelIndex, setEditingLabelIndex] = useState<number | null>(null);
   const [labelDraft, setLabelDraft] = useState("");
 
@@ -103,29 +114,41 @@ export default function FormationEditor() {
   const currentScene = scenes[activeIndex];
   const prevScene = activeIndex > 0 ? scenes[activeIndex - 1] : null;
   const isOwner = project.createdBy === user?.id;
+  const canEdit = isOwner && !project.locked;
+
+  const handleToggleLock = async () => {
+    if (!id) return;
+    await toggleLock(id, !project.locked);
+  };
 
   const clientToRelative = (clientX: number, clientY: number): Point => {
     const rect = stageRef.current!.getBoundingClientRect();
-    const x = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
-    const y = Math.min(1, Math.max(0, (clientY - rect.top) / rect.height));
+    const rawX = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
+    const rawY = Math.min(1, Math.max(0, (clientY - rect.top) / rect.height));
+    const x = snapAxis(rawX);
+    const y = snapAxis(rawY);
+    setSnapX(x !== rawX ? x : null);
+    setSnapY(y !== rawY ? y : null);
     return { x, y };
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
-    if (!isOwner || draggingIndex === null) return;
+    if (!canEdit || draggingIndex === null) return;
     const p = clientToRelative(e.clientX, e.clientY);
     setPositions((prev) => prev.map((pt, i) => (i === draggingIndex ? p : pt)));
   };
 
   const handlePointerUp = async () => {
-    if (!isOwner || draggingIndex === null || !currentScene) return;
+    if (!canEdit || draggingIndex === null || !currentScene) return;
     setDraggingIndex(null);
+    setSnapX(null);
+    setSnapY(null);
     await updateScenePositions(currentScene.id, positions);
     setScenes((prev) => prev.map((s, i) => (i === activeIndex ? { ...s, positions } : s)));
   };
 
   const startEditLabel = (i: number) => {
-    if (!isOwner) return;
+    if (!canEdit) return;
     setEditingLabelIndex(i);
     setLabelDraft(labels[i] ?? String(i + 1));
   };
@@ -233,18 +256,32 @@ export default function FormationEditor() {
             <h1 className="mt-1 font-display text-2xl text-backstage md:text-3xl">{project.songTitle}</h1>
             <p className="mt-1 font-mono text-xs text-mute">{project.memberCount}명</p>
           </div>
-          {isOwner ? (
-            <button
-              onClick={openShare}
-              className="rounded-full bg-wind-gold px-4 py-2 text-sm font-semibold text-stage"
-            >
-              공유하기
-            </button>
-          ) : (
-            <span className="rounded-full border border-dawn-teal/40 bg-dawn-teal/10 px-3 py-1.5 text-xs text-dawn-teal">
-              보기 전용 (공유받음)
-            </span>
-          )}
+          <div className="flex items-center gap-2">
+            {isOwner && (
+              <button
+                onClick={handleToggleLock}
+                className={`rounded-full border px-3.5 py-2 text-sm font-medium transition-colors ${
+                  project.locked
+                    ? "border-wind-gold bg-wind-gold/15 text-wind-gold"
+                    : "border-line text-backstage/80 hover:border-dawn-teal/50"
+                }`}
+              >
+                {project.locked ? "🔒 잠금됨" : "🔓 잠금"}
+              </button>
+            )}
+            {isOwner ? (
+              <button
+                onClick={openShare}
+                className="rounded-full bg-wind-gold px-4 py-2 text-sm font-semibold text-stage"
+              >
+                공유하기
+              </button>
+            ) : (
+              <span className="rounded-full border border-dawn-teal/40 bg-dawn-teal/10 px-3 py-1.5 text-xs text-dawn-teal">
+                보기 전용 (공유받음)
+              </span>
+            )}
+          </div>
         </div>
 
         {/* 장면 탭 */}
@@ -264,7 +301,7 @@ export default function FormationEditor() {
               </button>
             ))}
           </div>
-          {isOwner && (
+          {canEdit && (
             <div className="relative shrink-0">
               <button
                 onClick={() => setTemplatePickerOpen((v) => !v)}
@@ -299,7 +336,7 @@ export default function FormationEditor() {
 
         {/* 장면 이름 + 도구 */}
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          {isOwner ? (
+          {canEdit ? (
             editingSceneName ? (
               <div className="flex items-center gap-2">
                 <input
@@ -344,14 +381,57 @@ export default function FormationEditor() {
           onPointerUp={handlePointerUp}
           onPointerLeave={handlePointerUp}
           className="relative aspect-[16/10] w-full touch-none overflow-hidden rounded-2xl border border-line bg-afterglow"
-          style={{
-            backgroundImage:
-              "linear-gradient(to right, var(--color-line) 1px, transparent 1px), linear-gradient(to bottom, var(--color-line) 1px, transparent 1px)",
-            backgroundSize: "10% 10%",
-            backgroundPosition: "center",
-            opacity: 1,
-          }}
         >
+          {/* 격자 — 옅은 흰색, 센터 세로선만 핑크로 강조 */}
+          <svg className="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+            {GRID_LINES.map((v) => (
+              <line
+                key={`v-${v}`}
+                x1={v * 100}
+                y1={0}
+                x2={v * 100}
+                y2={100}
+                stroke="white"
+                strokeOpacity={v === 0.5 ? 0 : 0.18}
+                strokeWidth="0.35"
+                vectorEffect="non-scaling-stroke"
+              />
+            ))}
+            {GRID_LINES.map((v) => (
+              <line
+                key={`h-${v}`}
+                x1={0}
+                y1={v * 100}
+                x2={100}
+                y2={v * 100}
+                stroke="white"
+                strokeOpacity="0.18"
+                strokeWidth="0.35"
+                vectorEffect="non-scaling-stroke"
+              />
+            ))}
+
+            {/* 센터 세로선 */}
+            <line
+              x1="50"
+              y1="0"
+              x2="50"
+              y2="100"
+              stroke="var(--color-wind-gold)"
+              strokeOpacity="0.6"
+              strokeWidth="0.6"
+              vectorEffect="non-scaling-stroke"
+            />
+
+            {/* 드래그 중 눈금에 붙으면 그 축이 강조돼요 */}
+            {snapX !== null && (
+              <line x1={snapX * 100} y1={0} x2={snapX * 100} y2={100} stroke="var(--color-dawn-teal)" strokeOpacity="0.85" strokeWidth="0.7" vectorEffect="non-scaling-stroke" />
+            )}
+            {snapY !== null && (
+              <line x1={0} y1={snapY * 100} x2={100} y2={snapY * 100} stroke="var(--color-dawn-teal)" strokeOpacity="0.85" strokeWidth="0.7" vectorEffect="non-scaling-stroke" />
+            )}
+          </svg>
+
           <div className="pointer-events-none absolute inset-x-0 top-2 text-center font-mono text-[10px] tracking-[0.3em] text-mute/50">
             STAGE FRONT
           </div>
@@ -404,14 +484,14 @@ export default function FormationEditor() {
               >
                 <button
                   onPointerDown={(e) => {
-                    if (!isOwner) return;
+                    if (!canEdit) return;
                     e.currentTarget.setPointerCapture(e.pointerId);
                     setDraggingIndex(i);
                   }}
                   title={labels[i] ?? String(i + 1)}
                   className={`flex h-5 w-5 items-center justify-center rounded-full border-2 border-stage font-bold text-stage shadow-lg shadow-black/30 sm:h-9 sm:w-9 ${
                     hasCustomLabel ? "text-[9px] sm:text-sm" : "font-mono text-[8px] sm:text-[11px]"
-                  } ${isOwner ? "cursor-grab active:cursor-grabbing" : "cursor-default"} ${
+                  } ${canEdit ? "cursor-grab active:cursor-grabbing" : "cursor-default"} ${
                     DOT_COLORS[i % DOT_COLORS.length]
                   }`}
                 >
@@ -424,7 +504,7 @@ export default function FormationEditor() {
 
         {/* 부원 이름 설정 — 캔버스 위 작은 글씨 대신 여기서 편하게 입력해요 */}
         <div className="mt-4">
-          <p className="mb-2 text-xs text-mute">부원 이름 {isOwner ? "(눌러서 수정)" : ""}</p>
+          <p className="mb-2 text-xs text-mute">부원 이름 {canEdit ? "(눌러서 수정)" : ""}</p>
           <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
             {Array.from({ length: project.memberCount }, (_, i) => (
               <div key={i} className="flex items-center gap-1.5 rounded-lg border border-line bg-afterglow px-2 py-1.5">
@@ -435,7 +515,7 @@ export default function FormationEditor() {
                 >
                   {i + 1}
                 </span>
-                {isOwner ? (
+                {canEdit ? (
                   editingLabelIndex === i ? (
                     <input
                       autoFocus
@@ -462,7 +542,11 @@ export default function FormationEditor() {
         </div>
 
         <p className="mt-3 text-xs text-mute">
-          {isOwner ? "점을 드래그해서 위치를 옮길 수 있어요." : "공유받은 대형이에요 — 보기만 가능해요."}
+          {!isOwner
+            ? "공유받은 대형이에요 — 보기만 가능해요."
+            : project.locked
+              ? "잠겨 있어요 — 위 잠금 버튼을 눌러 해제하면 다시 수정할 수 있어요."
+              : "점을 드래그해서 위치를 옮길 수 있어요. 눈금 근처로 가면 자동으로 붙어요."}
         </p>
       </div>
 
