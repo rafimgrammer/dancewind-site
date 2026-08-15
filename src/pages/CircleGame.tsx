@@ -109,7 +109,7 @@ export default function CircleGame() {
               onPointerDown={handlePointerDown}
               onPointerMove={handlePointerMove}
               onPointerUp={handlePointerUp}
-              onPointerLeave={handlePointerUp}
+              onPointerCancel={handlePointerUp}
               className="relative aspect-square w-full touch-none select-none overflow-hidden rounded-2xl border border-line bg-afterglow"
             >
               <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none">

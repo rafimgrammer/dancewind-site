@@ -379,7 +379,7 @@ export default function FormationEditor() {
           ref={stageRef}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
-          onPointerLeave={handlePointerUp}
+          onPointerCancel={handlePointerUp}
           className="relative aspect-[16/10] w-full touch-none overflow-hidden rounded-2xl border border-line bg-afterglow"
         >
           {/* 격자 — 옅은 흰색, 센터 세로선만 핑크로 강조 */}
