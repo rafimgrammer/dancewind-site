@@ -21,6 +21,8 @@ import {
   RecruitContentLayout,
   GalleryLayout,
   FormationLayout,
+  CircleGameLayout,
+  ReactionGameLayout,
 } from "./routes/FeatureLayouts";
 import Layout from "./components/Layout";
 
@@ -63,6 +65,9 @@ import Updates from "./pages/Updates";
 import GalleryAlbum from "./pages/GalleryAlbum";
 import FormationList from "./pages/FormationList";
 import FormationEditor from "./pages/FormationEditor";
+import CircleGame from "./pages/CircleGame";
+import ReactionGame from "./pages/ReactionGame";
+import MemberDirectory from "./pages/MemberDirectory";
 
 
 export default function App() {
@@ -98,6 +103,13 @@ export default function App() {
                   <Route path="/formation" element={<FormationList />} />
                   <Route path="/formation/:id" element={<FormationEditor />} />
                 </Route>
+                <Route element={<CircleGameLayout />}>
+                  <Route path="/circle-game" element={<CircleGame />} />
+                </Route>
+                <Route element={<ReactionGameLayout />}>
+                  <Route path="/reaction-game" element={<ReactionGame />} />
+                </Route>
+                <Route path="/members" element={<MemberDirectory />} />
 
                 {/* 인증 / 온보딩 */}
                 <Route path="/login" element={<Login />} />

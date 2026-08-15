@@ -8,7 +8,7 @@ export function PageHeader({ eyebrow, title, desc }: { eyebrow: string; title: s
     <header className="mb-8 animate-rise">
       <p className="font-mono text-xs tracking-[0.2em] text-dawn-teal uppercase">{eyebrow}</p>
       <h1 className="mt-2 font-display text-3xl text-backstage md:text-4xl">{title}</h1>
-      {desc && <p className="mt-3 max-w-xl text-sm leading-relaxed text-backstage/70">{desc}</p>}
+      {desc && <p className="mt-3 max-w-xl whitespace-pre-line text-sm leading-relaxed text-backstage/70">{desc}</p>}
       <WindLine className="mt-6 h-6 w-full max-w-md opacity-70" />
     </header>
   );

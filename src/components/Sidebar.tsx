@@ -8,6 +8,11 @@ interface NavItem {
   emphasize?: boolean;
 }
 
+interface NavGroup {
+  label: string;
+  items: NavItem[];
+}
+
 const COMMON: NavItem[] = [
   { to: "/", label: "HOME" },
   { to: "/about", label: "춤바람 소개" },
@@ -19,15 +24,34 @@ const COMMON: NavItem[] = [
   { to: "/gallery", label: "활동 갤러리" },
 ];
 
-const MEMBER: NavItem[] = [
-  { to: "/notices", label: "공지사항" },
-  { to: "/updates", label: "사이트 업데이트" },
-  { to: "/board", label: "자유게시판" },
-  { to: "/anonymous", label: "익명 건의·게시판" },
-  { to: "/classes", label: "티칭 클래스" },
-  { to: "/reels", label: "같이 릴스찍자!" },
-  { to: "/practice-matcher", label: "연습시간 마스터" },
-  { to: "/formation", label: "안무 대형 플래너" },
+// 부원 전용 메뉴는 카테고리로 묶어서 아코디언으로 열고 닫아요.
+const MEMBER_GROUPS: NavGroup[] = [
+  {
+    label: "소통",
+    items: [
+      { to: "/notices", label: "공지사항" },
+      { to: "/updates", label: "사이트 업데이트" },
+      { to: "/board", label: "자유게시판" },
+      { to: "/anonymous", label: "익명 건의·게시판" },
+      { to: "/members", label: "부원 목록" },
+      { to: "/classes", label: "티칭 클래스" },
+      { to: "/reels", label: "같이 릴스찍자!" },
+    ],
+  },
+  {
+    label: "활동",
+    items: [
+      { to: "/practice-matcher", label: "연습시간 마스터" },
+      { to: "/formation", label: "안무 대형 플래너" },
+    ],
+  },
+  {
+    label: "미니게임",
+    items: [
+      { to: "/circle-game", label: "완벽한 원 그리기" },
+      { to: "/reaction-game", label: "반응속도 테스트" },
+    ],
+  },
 ];
 
 const PRESIDENT: NavItem[] = [
@@ -61,7 +85,7 @@ const SOCIAL_LINKS = [
 
 function GroupLabel({ children }: { children: string }) {
   return (
-    <p className="px-3 pt-5 pb-1.5 text-[11px] tracking-[0.18em] text-mute font-mono uppercase">
+    <p className="px-3 pt-5 pb-1.5 text-xs font-semibold tracking-wide text-mute">
       {children}
     </p>
   );
@@ -136,12 +160,16 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
 
       {(role === "member" || role === "president") && (
         <>
-          <GroupLabel>부원 전용</GroupLabel>
-          <div className="space-y-0.5">
-            {MEMBER.map((item) => (
-              <Item key={item.to} item={item} onNavigate={onNavigate} />
-            ))}
-          </div>
+          {MEMBER_GROUPS.map((group) => (
+            <div key={group.label}>
+              <GroupLabel>{group.label}</GroupLabel>
+              <div className="space-y-0.5">
+                {group.items.map((item) => (
+                  <Item key={item.to} item={item} onNavigate={onNavigate} />
+                ))}
+              </div>
+            </div>
+          ))}
         </>
       )}
 

@@ -23,6 +23,8 @@ import { LocationContentProvider } from "../context/LocationContentContext";
 import { RecruitContentProvider } from "../context/RecruitContentContext";
 import { GalleryProvider } from "../context/GalleryContext";
 import { FormationProvider } from "../context/FormationContext";
+import { CircleGameProvider } from "../context/CircleGameContext";
+import { ReactionGameProvider } from "../context/ReactionGameContext";
 
 export function NoticesLayout() {
   return (
@@ -160,6 +162,22 @@ export function FormationLayout() {
     <FormationProvider>
       <Outlet />
     </FormationProvider>
+  );
+}
+
+export function CircleGameLayout() {
+  return (
+    <CircleGameProvider>
+      <Outlet />
+    </CircleGameProvider>
+  );
+}
+
+export function ReactionGameLayout() {
+  return (
+    <ReactionGameProvider>
+      <Outlet />
+    </ReactionGameProvider>
   );
 }
 
