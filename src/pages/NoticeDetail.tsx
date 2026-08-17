@@ -4,8 +4,13 @@ import { useNavigate, useParams } from "react-router-dom";
 import { PageHeader, Card, Pill, RequireRole } from "../components/Ui";
 import { useAuth } from "../context/AuthContext";
 import { useNotices } from "../context/NoticesContext";
+import KakaoShareButton from "../components/KakaoShareButton";
 
 type ConfirmAction = "pin" | "unpin" | "delete" | null;
+
+function stripHtml(html: string) {
+  return html.replace(/<[^>]*>/g, "");
+}
 
 export default function NoticeDetail() {
   const { id } = useParams<{ id: string }>();
@@ -79,6 +84,8 @@ export default function NoticeDetail() {
     },
   };
 
+  const shareDescription = stripHtml(notice.body).slice(0, 60);
+
   return (
     <RequireRole allow={["member", "president"]} what="공지사항">
       <div>
@@ -102,32 +109,44 @@ export default function NoticeDetail() {
             dangerouslySetInnerHTML={{ __html: notice.body }}
           />
 
-          {isPresident && (
-            <div className="mt-8 flex justify-end gap-2">
-              <button
-                onClick={() => setConfirmAction(notice.pinned ? "unpin" : "pin")}
-                className={`rounded-lg border px-3 py-1.5 text-xs transition-colors ${
-                  notice.pinned
-                    ? "border-wind-gold/50 text-wind-gold"
-                    : "border-line text-mute hover:border-wind-gold/40 hover:text-wind-gold"
-                }`}
-              >
-                {notice.pinned ? "고정 해제" : "고정하기"}
-              </button>
-              <button
-                onClick={() => navigate(`/notices/${notice.id}/edit`)}
-                className="rounded-lg border border-dawn-teal/40 bg-dawn-teal/10 px-3 py-1.5 text-xs text-dawn-teal"
-              >
-                수정
-              </button>
-              <button
-                onClick={() => setConfirmAction("delete")}
-                className="rounded-lg border border-line px-3 py-1.5 text-xs text-mute hover:border-red-400/50 hover:text-red-300"
-              >
-                삭제
-              </button>
-            </div>
-          )}
+          <div className="mt-8 flex flex-wrap items-center justify-between gap-2">
+            <KakaoShareButton
+              templateArgs={{
+                title: notice.title,
+                description: shareDescription || "춤바람 공지사항을 확인해보세요.",
+                image_url: "https://hallymdancewind.com/share/event-share.png",
+                button_title: "공지 확인하기",
+                link_url: `https://hallymdancewind.com/notices/${notice.id}`,
+              }}
+            />
+
+            {isPresident && (
+              <div className="flex justify-end gap-2">
+                <button
+                  onClick={() => setConfirmAction(notice.pinned ? "unpin" : "pin")}
+                  className={`rounded-lg border px-3 py-1.5 text-xs transition-colors ${
+                    notice.pinned
+                      ? "border-wind-gold/50 text-wind-gold"
+                      : "border-line text-mute hover:border-wind-gold/40 hover:text-wind-gold"
+                  }`}
+                >
+                  {notice.pinned ? "고정 해제" : "고정하기"}
+                </button>
+                <button
+                  onClick={() => navigate(`/notices/${notice.id}/edit`)}
+                  className="rounded-lg border border-dawn-teal/40 bg-dawn-teal/10 px-3 py-1.5 text-xs text-dawn-teal"
+                >
+                  수정
+                </button>
+                <button
+                  onClick={() => setConfirmAction("delete")}
+                  className="rounded-lg border border-line px-3 py-1.5 text-xs text-mute hover:border-red-400/50 hover:text-red-300"
+                >
+                  삭제
+                </button>
+              </div>
+            )}
+          </div>
         </Card>
       </div>
 
