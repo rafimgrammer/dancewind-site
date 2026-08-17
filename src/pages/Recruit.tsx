@@ -178,7 +178,7 @@ export default function Recruit() {
                 templateArgs={{
                   title: `춤바람 신입부원 모집 — ${content.termLabel}`,
                   description: `${content.periodText} · ${content.scheduleText}`,
-                  image_url: "https://hallymdancewind.com/share/recruit-share.png",
+                  image_url: "https://hallymdancewind.com/share/recruit-share.png?v=2",
                   button_title: "지원 방법 보기",
                   link_url: "https://hallymdancewind.com/recruit",
                 }}
