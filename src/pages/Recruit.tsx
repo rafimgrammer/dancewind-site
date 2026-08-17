@@ -5,6 +5,7 @@ import { Skeleton } from "../components/Skeleton";
 import { EditModeBanner, IconButton, ConfirmModal, type PendingConfirm } from "../components/InlineAdmin";
 import { useAuth } from "../context/AuthContext";
 import { useRecruitContent, type RecruitContent } from "../context/RecruitContentContext";
+import KakaoShareButton from "../components/KakaoShareButton";
 
 export default function Recruit() {
   const { role } = useAuth();
@@ -154,23 +155,35 @@ export default function Recruit() {
             <p className="mt-4 font-display text-2xl text-backstage">{content.periodText}</p>
             <p className="mt-1 text-sm text-backstage/70">{content.scheduleText}</p>
 
-            {content.applyOpen ? (
-              <a
-                href={content.applyUrl || "#"}
-                target="_blank"
-                rel="noreferrer"
-                className="mt-6 inline-flex rounded-full bg-wind-gold px-6 py-3 text-sm font-semibold text-stage transition-transform hover:-translate-y-0.5"
-              >
-                지원서 작성하기
-              </a>
-            ) : (
-              <button
-                disabled
-                className="mt-6 inline-flex cursor-not-allowed rounded-full border border-line px-6 py-3 text-sm font-semibold text-mute"
-              >
-                지원 기간이 종료되었어요
-              </button>
-            )}
+            <div className="mt-6 flex flex-wrap items-center gap-3">
+              {content.applyOpen ? (
+                <a
+                  href={content.applyUrl || "#"}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex rounded-full bg-wind-gold px-6 py-3 text-sm font-semibold text-stage transition-transform hover:-translate-y-0.5"
+                >
+                  지원서 작성하기
+                </a>
+              ) : (
+                <button
+                  disabled
+                  className="inline-flex cursor-not-allowed rounded-full border border-line px-6 py-3 text-sm font-semibold text-mute"
+                >
+                  지원 기간이 종료되었어요
+                </button>
+              )}
+              <KakaoShareButton
+                label="친구에게 모집 소식 공유하기"
+                templateArgs={{
+                  title: `춤바람 신입부원 모집 — ${content.termLabel}`,
+                  description: `${content.periodText} · ${content.scheduleText}`,
+                  image_url: "https://hallymdancewind.com/share/recruit-share.png",
+                  button_title: "지원 방법 보기",
+                  link_url: "https://hallymdancewind.com/recruit",
+                }}
+              />
+            </div>
           </>
         )}
       </div>
