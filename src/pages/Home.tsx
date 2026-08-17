@@ -57,8 +57,8 @@ export default function Home() {
               <KakaoShareButton
                 label="카카오톡으로 초대하기"
                 templateArgs={{
-                  title: "춤바람 — 90명의 스텝이 하나의 박자로",
-                  description: "한림대학교 스트릿 댄스 동아리 춤바람 홈페이지입니다.",
+                  title: "춤바람 — 모두의 스텝이 하나의 박자로",
+                  description: "한림대학교 중앙 댄스 동아리 춤바람 홈페이지입니다.",
                   image_url: "https://hallymdancewind.com/share/home-share.png",
                   button_title: "홈페이지 구경하기",
                   link_url: "https://hallymdancewind.com",
