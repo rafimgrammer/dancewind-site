@@ -6,6 +6,7 @@ interface NavItem {
   to: string;
   label: string;
   emphasize?: boolean;
+  sub?: boolean;
 }
 
 interface NavGroup {
@@ -32,6 +33,7 @@ const MEMBER_GROUPS: NavGroup[] = [
       { to: "/notices", label: "공지사항" },
       { to: "/updates", label: "사이트 업데이트" },
       { to: "/board", label: "자유게시판" },
+      { to: "/best-board", label: "BEST 게시판", sub: true },
       { to: "/anonymous", label: "익명 건의·게시판" },
       { to: "/members", label: "부원 목록" },
       { to: "/classes", label: "티칭 클래스" },
@@ -92,6 +94,24 @@ function GroupLabel({ children }: { children: string }) {
 }
 
 function Item({ item, onNavigate }: { item: NavItem; onNavigate?: () => void }) {
+  if (item.sub) {
+    return (
+      <NavLink
+        to={item.to}
+        onClick={onNavigate}
+        className={({ isActive }) =>
+          [
+            "ml-4 flex items-center gap-1.5 border-l border-line/70 py-1.5 pl-3 text-[13px] transition-colors duration-200",
+            isActive ? "border-wind-gold text-wind-gold font-semibold" : "text-backstage/55 hover:text-backstage/85",
+          ].join(" ")
+        }
+      >
+        <span>🔥</span>
+        {item.label}
+      </NavLink>
+    );
+  }
+
   return (
     <NavLink
       to={item.to}

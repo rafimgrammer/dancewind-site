@@ -49,6 +49,8 @@ interface BoardContextType {
   fetchComments: (postId: string) => Promise<void>;
   // 마이페이지의 "댓글 쓴 글" 탭 전용: 내가 쓴 댓글만 딱 필요한 만큼만 가져와요.
   fetchMyComments: () => Promise<MyBoardComment[]>;
+  // 목록 페이지에서 "댓글 N개"를 보여주려고 개수만 따로 들고 있어요.
+  commentCounts: Record<string, number>;
   likedIds: Set<string>;
   savedIds: Set<string>;
 }
@@ -58,6 +60,7 @@ const BoardContext = createContext<BoardContextType | null>(null);
 export function BoardProvider({ children }: { children: ReactNode }) {
   const { user, name } = useAuth();
   const [posts, setPosts] = useState<BoardPost[]>([]);
+  const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
@@ -65,6 +68,7 @@ export function BoardProvider({ children }: { children: ReactNode }) {
   const fetchAll = useCallback(async () => {
     if (!user) {
       setPosts([]);
+      setCommentCounts({});
       setLikedIds(new Set());
       setSavedIds(new Set());
       setLoading(false);
@@ -83,6 +87,14 @@ export function BoardProvider({ children }: { children: ReactNode }) {
       .from("board_reactions")
       .select("*")
       .eq("user_id", user.id);
+
+    // 댓글 본문 전체가 아니라 post_id만 가져와서 개수만 세요.
+    const { data: commentIdData } = await supabase.from("board_comments").select("post_id");
+    const counts: Record<string, number> = {};
+    (commentIdData ?? []).forEach((c) => {
+      counts[c.post_id] = (counts[c.post_id] ?? 0) + 1;
+    });
+    setCommentCounts(counts);
 
     setPosts(
       (postData ?? []).map((p) => ({
@@ -134,6 +146,7 @@ export function BoardProvider({ children }: { children: ReactNode }) {
     }));
 
     setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, comments } : p)));
+    setCommentCounts((prev) => ({ ...prev, [postId]: comments.length }));
   };
 
   const fetchMyComments = async (): Promise<MyBoardComment[]> => {
@@ -263,6 +276,7 @@ export function BoardProvider({ children }: { children: ReactNode }) {
         removeComment,
         fetchComments,
         fetchMyComments,
+        commentCounts,
         likedIds,
         savedIds,
       }}

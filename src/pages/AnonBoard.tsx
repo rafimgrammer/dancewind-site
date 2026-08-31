@@ -20,7 +20,7 @@ function AnonAvatarIcon() {
 }
 
 export default function AnonBoard() {
-  const { name } = useAuth();
+  const { name, role } = useAuth();
   const { posts, addPost, getRemainingCooldown, loading, commentCounts } = useAnonBoard();
 
   const [titleDraft, setTitleDraft] = useState("");
@@ -150,13 +150,15 @@ export default function AnonBoard() {
                           </div>
 
                           <div className="min-w-0 flex-1">
-                            <p className="truncate text-[15px] font-bold text-backstage">{p.title}</p>
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <p className="min-w-0 truncate text-[15px] font-bold text-backstage">{p.title}</p>
+                              {isToday && (
+                                <span className="shrink-0 rounded-full bg-wind-gold px-1.5 py-0.5 font-mono text-[9px] font-bold text-stage">
+                                  NEW
+                                </span>
+                              )}
+                            </div>
                             <p className="mt-0.5 truncate text-sm text-backstage/65">{p.body}</p>
-                            {isToday && (
-                              <span className="mt-1 inline-block rounded-full bg-wind-gold px-1.5 py-0.5 font-mono text-[9px] font-bold text-stage">
-                                NEW
-                              </span>
-                            )}
 
                             <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[11px] text-mute">
                               <span>{p.displayName}</span>
@@ -180,13 +182,15 @@ export default function AnonBoard() {
                                   {p.likes}
                                 </span>
                               )}
-                              <span className="flex items-center gap-1">
+                              <span className="flex items-center gap-1 text-sky-300">
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                   <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
                                 </svg>
                                 {commentCounts[p.id] ?? 0}
                               </span>
-                              {p.reports > 0 && <span className="text-red-300/80">신고 {p.reports}</span>}
+                              {role === "president" && p.reports > 0 && (
+                                <span className="text-red-300/80">신고 {p.reports}</span>
+                              )}
                             </div>
                           </div>
                         </div>

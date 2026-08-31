@@ -230,7 +230,7 @@ export default function AnonBoardDetail() {
                 <span>조회 {post.views}</span>
                 <span>좋아요 {post.likes}</span>
                 <span>댓글 {post.comments.length}</span>
-                {post.reports > 0 && <span className="text-red-300/80">신고 {post.reports}</span>}
+                {isPresident && post.reports > 0 && <span className="text-red-300/80">신고 {post.reports}</span>}
               </div>
 
               <div className="mt-5 flex flex-wrap items-center justify-between gap-2 border-t border-line pt-4">

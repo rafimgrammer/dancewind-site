@@ -5,6 +5,7 @@ import { NotificationProvider } from "./context/NotificationContext";
 import {
   NoticesLayout,
   BoardLayout,
+  BestBoardLayout,
   AnonBoardLayout,
   TeachingLayout,
   ReelsLayout,
@@ -38,6 +39,7 @@ import Notices from "./pages/Notices";
 import NoticeDetail from "./pages/NoticeDetail";
 import NoticeForm from "./pages/NoticeForm";
 import Board from "./pages/Board";
+import BestBoard from "./pages/BestBoard";
 import BoardForm from "./pages/BoardForm";
 import BoardDetail from "./pages/BoardDetail";
 import AnonBoard from "./pages/AnonBoard";
@@ -155,6 +157,11 @@ export default function App() {
                   <Route path="/board/new" element={<BoardForm />} />
                   <Route path="/board/:id" element={<BoardDetail />} />
                   <Route path="/board/:id/edit" element={<BoardForm />} />
+                </Route>
+
+                {/* BEST 게시판 (자유+익명 통합) */}
+                <Route element={<BestBoardLayout />}>
+                  <Route path="/best-board" element={<BestBoard />} />
                 </Route>
 
                 {/* 익명게시판 */}

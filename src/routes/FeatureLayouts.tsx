@@ -50,6 +50,17 @@ export function AnonBoardLayout() {
   );
 }
 
+// BEST 게시판은 자유게시판+익명게시판 데이터를 같이 봐야 해서 둘 다 감싸요.
+export function BestBoardLayout() {
+  return (
+    <BoardProvider>
+      <AnonBoardProvider>
+        <Outlet />
+      </AnonBoardProvider>
+    </BoardProvider>
+  );
+}
+
 export function TeachingLayout() {
   return (
     <TeachingProvider>
