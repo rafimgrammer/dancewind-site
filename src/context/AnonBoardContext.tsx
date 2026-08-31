@@ -2,6 +2,7 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "./AuthContext";
+import { stripHtml } from "../utils/text";
 
 export interface AnonComment {
   id: string;
@@ -16,6 +17,7 @@ export interface AnonPost {
   id: string;
   authorId: string;
   displayName: string;
+  title: string;
   body: string;
   createdAt: string;
   edited: boolean;
@@ -39,8 +41,8 @@ interface AnonBoardContextType {
   posts: AnonPost[];
   loading: boolean;
   getById: (id: string) => AnonPost | undefined;
-  addPost: (displayName: string, body: string) => Promise<{ ok: boolean; message?: string }>;
-  editPost: (id: string, body: string) => Promise<void>;
+  addPost: (displayName: string, title: string, body: string) => Promise<{ ok: boolean; message?: string }>;
+  editPost: (id: string, title: string, body: string) => Promise<void>;
   removePost: (id: string) => Promise<void>;
   addComment: (postId: string, displayName: string, content: string, parentId: string | null) => Promise<void>;
   removeComment: (postId: string, commentId: string) => Promise<void>;
@@ -62,10 +64,6 @@ interface AnonBoardContextType {
 }
 
 const AnonBoardContext = createContext<AnonBoardContextType | null>(null);
-
-function stripHtml(html: string) {
-  return html.replace(/<[^>]*>/g, "");
-}
 
 export function AnonBoardProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
@@ -121,6 +119,7 @@ export function AnonBoardProvider({ children }: { children: ReactNode }) {
         id: p.id,
         authorId: p.author_id,
         displayName: p.display_name,
+        title: p.title ?? "",
         body: p.body,
         createdAt: p.created_at,
         edited: p.edited,
@@ -186,7 +185,7 @@ export function AnonBoardProvider({ children }: { children: ReactNode }) {
     const postIds = [...new Set(myComments.map((c) => c.post_id))];
     const { data: relatedPosts } = await supabase
       .from("anon_posts")
-      .select("id, body, blinded")
+      .select("id, title, body, blinded")
       .in("id", postIds);
     const postMap = new Map((relatedPosts ?? []).map((p) => [p.id, p]));
 
@@ -196,7 +195,7 @@ export function AnonBoardProvider({ children }: { children: ReactNode }) {
         ? "삭제된 글"
         : relatedPost.blinded
           ? "블라인드 처리된 글"
-          : stripHtml(relatedPost.body).slice(0, 50);
+          : relatedPost.title || stripHtml(relatedPost.body).slice(0, 50);
       return {
         postId: c.post_id,
         postPreview: preview,
@@ -206,8 +205,10 @@ export function AnonBoardProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  const addPost = async (displayName: string, body: string) => {
-    if (!body.trim() || !user) return { ok: false, message: "내용을 입력해주세요." };
+  const addPost = async (displayName: string, title: string, body: string) => {
+    if (!title.trim() || !body.trim() || !user) {
+      return { ok: false, message: "제목과 내용을 모두 입력해주세요." };
+    }
 
     const remaining = getRemainingCooldown();
     if (remaining > 0) {
@@ -218,15 +219,16 @@ export function AnonBoardProvider({ children }: { children: ReactNode }) {
     await supabase.from("anon_posts").insert({
       author_id: user.id,
       display_name: displayName,
+      title: title.trim(),
       body: body.trim(),
     });
     await fetchAll();
     return { ok: true };
   };
 
-  const editPost = async (id: string, body: string) => {
-    if (!body.trim()) return;
-    await supabase.from("anon_posts").update({ body: body.trim(), edited: true }).eq("id", id);
+  const editPost = async (id: string, title: string, body: string) => {
+    if (!title.trim() || !body.trim()) return;
+    await supabase.from("anon_posts").update({ title: title.trim(), body: body.trim(), edited: true }).eq("id", id);
     await fetchAll();
   };
 

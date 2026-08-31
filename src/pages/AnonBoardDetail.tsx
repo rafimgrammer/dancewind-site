@@ -219,7 +219,8 @@ export default function AnonBoardDetail() {
             </div>
           ) : (
             <>
-              <p className="font-mono text-xs text-mute">
+              <p className="font-display text-xl text-backstage">{post.title}</p>
+              <p className="mt-2 font-mono text-xs text-mute">
                 {post.displayName} · {formatTimeAgo(new Date(post.createdAt).getTime())}
                 {post.edited && " (수정됨)"}
               </p>

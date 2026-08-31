@@ -4,12 +4,22 @@ import { Link } from "react-router-dom";
 import { PageHeader, Card, EmptyState, RequireRole } from "../components/Ui";
 import { useBoard } from "../context/BoardContext";
 import { CardSkeletonGrid } from "../components/Skeleton";
+import { stripHtml } from "../utils/text";
 
 const PAGE_SIZE = 6;
 type SearchType = "title" | "titleBody" | "author";
 
-function stripHtml(html: string) {
-  return html.replace(/<[^>]*>/g, "");
+const ACCENTS = ["bg-wind-gold", "bg-dawn-teal"];
+
+function todayStr() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+// "28기 문승현", "26.5기 정우성" 같은 이름에서 기수 표기를 떼고 성만 가져와요.
+function getAvatarInitial(fullName: string): string {
+  const trimmed = fullName.trim();
+  const withoutCohort = trimmed.replace(/^\d+(\.\d+)?\s*기\s*/, "");
+  return withoutCohort.charAt(0) || trimmed.charAt(0) || "?";
 }
 
 export default function Board() {
@@ -39,6 +49,7 @@ export default function Board() {
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const today = todayStr();
 
   const handleSearch = (value: string) => {
     setQuery(value);
@@ -90,27 +101,57 @@ export default function Board() {
         ) : (
           <>
             <div className="space-y-3">
-              {paged.map((p) => (
-                <Link key={p.id} to={`/board/${p.id}`}>
-                  <Card className="cursor-pointer transition-colors hover:border-dawn-teal/40">
-                    <div className="flex items-center gap-2">
-                      <p className="font-medium text-backstage">{p.title}</p>
-                      {p.edited && <span className="font-mono text-[11px] text-mute">(수정됨)</span>}
-                    </div>
-                    <p className="mt-1.5 font-mono text-xs text-mute">
-                      {p.author} · {p.date} · 조회 {p.views}
-                    </p>
-                    {p.likes > 0 && (
-                      <div className="mt-2 flex items-center gap-1 text-xs text-red-400/80">
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
-                          <path d="M12 21s-7-6.2-9.5-10.2C1 8 1.8 4.5 5 3.5c2-.6 3.8.2 5 2 1.2-1.8 3-2.6 5-2 3.2 1 4 4.5 2.5 7.3C19 14.8 12 21 12 21z" />
-                        </svg>
-                        <span>{p.likes}</span>
+              {paged.map((p, i) => {
+                const accent = ACCENTS[i % ACCENTS.length];
+                const isToday = p.date === today;
+
+                return (
+                  <Link key={p.id} to={`/board/${p.id}`}>
+                    <Card className="relative cursor-pointer overflow-hidden pl-5 transition-colors hover:border-dawn-teal/40">
+                      <span className={`absolute left-0 top-0 h-full w-1 ${accent}`} />
+
+                      <div className="flex items-start gap-3">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-afterglow-2 font-display text-sm text-backstage/80">
+                          {getAvatarInitial(p.author)}
+                        </div>
+
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <p className="font-medium text-backstage">{p.title}</p>
+                            {isToday && (
+                              <span className="rounded-full bg-wind-gold px-1.5 py-0.5 font-mono text-[9px] font-bold text-stage">
+                                NEW
+                              </span>
+                            )}
+                            {p.edited && <span className="font-mono text-[11px] text-mute">(수정됨)</span>}
+                          </div>
+
+                          <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[11px] text-mute">
+                            <span>{p.author}</span>
+                            <span>·</span>
+                            <span>{p.date}</span>
+                            <span className="flex items-center gap-1">
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" />
+                                <circle cx="12" cy="12" r="3" />
+                              </svg>
+                              {p.views}
+                            </span>
+                            {p.likes > 0 && (
+                              <span className="flex items-center gap-1 text-red-400/80">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                                  <path d="M12 21s-7-6.2-9.5-10.2C1 8 1.8 4.5 5 3.5c2-.6 3.8.2 5 2 1.2-1.8 3-2.6 5-2 3.2 1 4 4.5 2.5 7.3C19 14.8 12 21 12 21z" />
+                                </svg>
+                                {p.likes}
+                              </span>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                    )}
-                  </Card>
-                </Link>
-              ))}
+                    </Card>
+                  </Link>
+                );
+              })}
             </div>
 
             <div className="mt-6 flex items-center justify-center gap-1">
@@ -126,9 +167,7 @@ export default function Board() {
                   key={p}
                   onClick={() => setPage(p)}
                   className={`h-8 w-8 rounded-lg text-sm ${
-                    p === page
-                      ? "bg-wind-gold font-semibold text-stage"
-                      : "text-mute hover:text-backstage"
+                    p === page ? "bg-wind-gold font-semibold text-stage" : "text-mute hover:text-backstage"
                   }`}
                 >
                   {p}

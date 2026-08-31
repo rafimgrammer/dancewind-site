@@ -9,6 +9,7 @@ export default function AnonBoardForm() {
   const { getById, editPost } = useAnonBoard();
   const navigate = useNavigate();
 
+  const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [loaded, setLoaded] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -17,6 +18,7 @@ export default function AnonBoardForm() {
     if (id) {
       const existing = getById(id);
       if (existing) {
+        setTitle(existing.title);
         setBody(existing.body);
         setLoaded(true);
       }
@@ -25,8 +27,8 @@ export default function AnonBoardForm() {
   }, [id]);
 
   const trySubmit = () => {
-    if (!body.trim()) {
-      alert("내용을 입력해주세요.");
+    if (!title.trim() || !body.trim()) {
+      alert("제목과 내용을 모두 입력해주세요.");
       return;
     }
     setShowConfirm(true);
@@ -34,7 +36,7 @@ export default function AnonBoardForm() {
 
   const doSubmit = async () => {
     if (!id) return;
-    await editPost(id, body);
+    await editPost(id, title, body);
     navigate(`/anonymous/${id}`);
   };
 
@@ -51,8 +53,14 @@ export default function AnonBoardForm() {
   return (
     <RequireRole allow={["member", "president"]} what="익명 건의·게시판">
       <div>
-        <PageHeader eyebrow="Anonymous" title="글 수정" desc="내용을 고쳐서 다시 등록해요." />
+        <PageHeader eyebrow="Anonymous" title="글 수정" desc="제목과 내용을 고쳐서 다시 등록해요." />
         <Card>
+          <input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="제목을 입력해주세요"
+            className="mb-3 w-full rounded-lg border border-line bg-stage px-3 py-2 text-sm font-medium text-backstage placeholder:text-mute outline-none focus:border-dawn-teal"
+          />
           <textarea
             value={body}
             onChange={(e) => setBody(e.target.value)}

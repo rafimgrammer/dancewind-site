@@ -9,6 +9,7 @@ import { useAnonBoard, type MyAnonComment } from "../context/AnonBoardContext";
 import { useTeaching, type MyTeachingComment } from "../context/TeachingContext";
 import { useReels, type MyReelsComment } from "../context/ReelsContext";
 import { formatTimeAgo } from "../utils/timeAgo";
+import { stripHtml } from "../utils/text";
 
 type Tab = "activity" | "applications" | "saved" | "account";
 type BoardKey = "notices" | "board" | "anonymous" | "classes" | "reels";
@@ -34,10 +35,6 @@ const SAVE_CONFIGS: { key: SaveBoardKey; label: string }[] = [
   { key: "classes", label: "티칭 클래스" },
   { key: "reels", label: "같이 릴스찍자!" },
 ];
-
-function stripHtml(html: string) {
-  return html.replace(/<[^>]*>/g, "");
-}
 
 interface ListItem {
   id: string;
@@ -192,7 +189,7 @@ export default function MyPage() {
           .filter((p) => anonLikedIds.has(p.id))
           .map((p) => ({
             id: p.id,
-            title: p.blinded ? "블라인드 처리된 글" : stripHtml(p.body).slice(0, 50),
+            title: p.blinded ? "블라인드 처리된 글" : (p.title || stripHtml(p.body).slice(0, 50)),
             meta: `${p.displayName} · 좋아요 ${p.likes}`,
             href: `/anonymous/${p.id}`,
           }));
@@ -202,7 +199,7 @@ export default function MyPage() {
           .filter((p) => p.authorId === user?.id)
           .map((p) => ({
             id: p.id,
-            title: p.blinded ? "블라인드 처리된 글" : stripHtml(p.body).slice(0, 50),
+            title: p.blinded ? "블라인드 처리된 글" : (p.title || stripHtml(p.body).slice(0, 50)),
             meta: `조회 ${p.views} · 좋아요 ${p.likes}`,
             href: `/anonymous/${p.id}`,
           }));
@@ -540,7 +537,7 @@ export default function MyPage() {
                     <Link key={p.id} to={`/anonymous/${p.id}`}>
                       <Card className="transition-colors hover:border-dawn-teal/40">
                         <p className="text-sm font-medium text-backstage">
-                          {p.blinded ? "블라인드 처리된 글" : stripHtml(p.body).slice(0, 50)}
+                          {p.blinded ? "블라인드 처리된 글" : (p.title || stripHtml(p.body).slice(0, 50))}
                         </p>
                         <p className="mt-1.5 font-mono text-xs text-mute">
                           {p.displayName} · 좋아요 {p.likes}
