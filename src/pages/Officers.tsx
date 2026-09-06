@@ -11,12 +11,13 @@ const EMPTY_FORM: OfficerInput = { role: "", name: "", part: "", note: "" };
 export default function Officers() {
   const { role } = useAuth();
   const isPresident = role === "president";
-  const { officers, loading, addOfficer, editOfficer, removeOfficer, uploadPhoto } = useOfficers();
+  const { officers, loading, addOfficer, editOfficer, removeOfficer, moveOfficer, uploadPhoto } = useOfficers();
 
   const [editMode, setEditMode] = useState(false);
   const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadingId, setUploadingId] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<OfficerInput>(EMPTY_FORM);
@@ -43,19 +44,33 @@ export default function Officers() {
       desc: "",
       actionLabel: "수정할게요",
       onConfirm: async () => {
-        await editOfficer(editingId, draft);
+        setFormError(null);
+        const result = await editOfficer(editingId, draft);
+        if (!result.ok) {
+          setFormError(result.message ?? "수정에 실패했어요.");
+          return;
+        }
         setEditingId(null);
       },
     });
   };
 
   const saveNew = () => {
+    if (!newOfficer.name.trim() || !newOfficer.role.trim()) {
+      setFormError("이름과 직책은 꼭 입력해주세요.");
+      return;
+    }
     setPendingConfirm({
       title: "새 프로필을 추가하시겠습니까?",
       desc: "",
       actionLabel: "추가할게요",
       onConfirm: async () => {
-        await addOfficer(newOfficer);
+        setFormError(null);
+        const result = await addOfficer(newOfficer);
+        if (!result.ok) {
+          setFormError(result.message ?? "추가에 실패했어요.");
+          return;
+        }
         setNewOfficer(EMPTY_FORM);
         setAdding(false);
       },
@@ -68,7 +83,8 @@ export default function Officers() {
       desc: "삭제하면 되돌릴 수 없어요.",
       actionLabel: "삭제할게요",
       onConfirm: async () => {
-        await removeOfficer(id);
+        const result = await removeOfficer(id);
+        if (!result.ok) setFormError(result.message ?? "삭제에 실패했어요.");
       },
     });
   };
@@ -96,6 +112,12 @@ export default function Officers() {
         </p>
       )}
 
+      {formError && (
+        <p className="mb-4 rounded-lg border border-red-400/40 bg-red-400/10 px-3 py-2 text-xs text-red-300">
+          {formError}
+        </p>
+      )}
+
       <div className="grid gap-4 sm:grid-cols-2">
         {loading ? (
           <>
@@ -103,7 +125,7 @@ export default function Officers() {
             <Skeleton className="h-32 w-full" />
           </>
         ) : (
-          officers.map((o) => {
+          officers.map((o, index) => {
             const displayInitial = o.name.replace(/^\d+(\.\d+)?기\s*/, "")[0] ?? o.name[0];
             const isEditing = editingId === o.id;
             const isUploading = uploadingId === o.id;
@@ -179,6 +201,10 @@ export default function Officers() {
                         <Pill tone="gold">{o.role}</Pill>
                         {editMode && isPresident && (
                           <div className="flex gap-1.5">
+                            {index > 0 && <IconButton onClick={() => moveOfficer(o.id, "up")} label="↑" />}
+                            {index < officers.length - 1 && (
+                              <IconButton onClick={() => moveOfficer(o.id, "down")} label="↓" />
+                            )}
                             <IconButton
                               onClick={() => startEdit(o.id, { role: o.role, name: o.name, part: o.part, note: o.note })}
                               label="수정"

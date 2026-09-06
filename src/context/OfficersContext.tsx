@@ -22,9 +22,10 @@ export interface OfficerInput {
 interface OfficersContextType {
   officers: Officer[];
   loading: boolean;
-  addOfficer: (data: OfficerInput) => Promise<void>;
-  editOfficer: (id: string, data: OfficerInput) => Promise<void>;
-  removeOfficer: (id: string) => Promise<void>;
+  addOfficer: (data: OfficerInput) => Promise<{ ok: boolean; message?: string }>;
+  editOfficer: (id: string, data: OfficerInput) => Promise<{ ok: boolean; message?: string }>;
+  removeOfficer: (id: string) => Promise<{ ok: boolean; message?: string }>;
+  moveOfficer: (id: string, direction: "up" | "down") => Promise<void>;
   // 사진 파일을 올리고, 성공하면 officers.photo_url까지 갱신해줘요.
   uploadPhoto: (id: string, file: File) => Promise<{ ok: boolean; message?: string }>;
 }
@@ -56,30 +57,46 @@ export function OfficersProvider({ children }: { children: ReactNode }) {
     fetchAll();
   }, [fetchAll]);
 
-  const addOfficer = async (data: OfficerInput) => {
-    if (!data.name.trim() || !data.role.trim()) return;
-    await supabase.from("officers").insert({
+  const addOfficer = async (data: OfficerInput): Promise<{ ok: boolean; message?: string }> => {
+    if (!data.name.trim() || !data.role.trim()) {
+      return { ok: false, message: "이름과 직책은 꼭 입력해주세요." };
+    }
+    const { error } = await supabase.from("officers").insert({
       role: data.role.trim(),
       name: data.name.trim(),
       part: data.part.trim(),
       note: data.note.trim(),
       sort_order: officers.length,
     });
+    if (error) {
+      return { ok: false, message: "추가에 실패했어요: " + error.message };
+    }
     await fetchAll();
+    return { ok: true };
   };
 
-  const editOfficer = async (id: string, data: OfficerInput) => {
-    if (!data.name.trim() || !data.role.trim()) return;
-    await supabase
+  const editOfficer = async (id: string, data: OfficerInput): Promise<{ ok: boolean; message?: string }> => {
+    if (!data.name.trim() || !data.role.trim()) {
+      return { ok: false, message: "이름과 직책은 꼭 입력해주세요." };
+    }
+    const { error } = await supabase
       .from("officers")
       .update({ role: data.role.trim(), name: data.name.trim(), part: data.part.trim(), note: data.note.trim() })
       .eq("id", id);
+    if (error) {
+      return { ok: false, message: "수정에 실패했어요: " + error.message };
+    }
     await fetchAll();
+    return { ok: true };
   };
 
-  const removeOfficer = async (id: string) => {
-    await supabase.from("officers").delete().eq("id", id);
+  const removeOfficer = async (id: string): Promise<{ ok: boolean; message?: string }> => {
+    const { error } = await supabase.from("officers").delete().eq("id", id);
+    if (error) {
+      return { ok: false, message: "삭제에 실패했어요: " + error.message };
+    }
     await fetchAll();
+    return { ok: true };
   };
 
   const uploadPhoto = async (id: string, file: File): Promise<{ ok: boolean; message?: string }> => {
@@ -108,8 +125,26 @@ export function OfficersProvider({ children }: { children: ReactNode }) {
     return { ok: true };
   };
 
+  const moveOfficer = async (id: string, direction: "up" | "down") => {
+    const index = officers.findIndex((o) => o.id === id);
+    if (index === -1) return;
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= officers.length) return;
+
+    const current = officers[index];
+    const target = officers[targetIndex];
+
+    await Promise.all([
+      supabase.from("officers").update({ sort_order: target.sortOrder }).eq("id", current.id),
+      supabase.from("officers").update({ sort_order: current.sortOrder }).eq("id", target.id),
+    ]);
+    await fetchAll();
+  };
+
   return (
-    <OfficersContext.Provider value={{ officers, loading, addOfficer, editOfficer, removeOfficer, uploadPhoto }}>
+    <OfficersContext.Provider
+      value={{ officers, loading, addOfficer, editOfficer, removeOfficer, moveOfficer, uploadPhoto }}
+    >
       {children}
     </OfficersContext.Provider>
   );
