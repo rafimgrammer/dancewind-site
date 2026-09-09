@@ -3,6 +3,7 @@ import { useRef, useState } from "react";
 import { PageHeader, Card, Pill } from "../components/Ui";
 import { Skeleton } from "../components/Skeleton";
 import { EditModeBanner, IconButton, ConfirmModal, type PendingConfirm } from "../components/InlineAdmin";
+import ImageCropModal from "../components/ImageCropModal";
 import { useAuth } from "../context/AuthContext";
 import { useOfficers, type OfficerInput } from "../context/OfficersContext";
 
@@ -89,13 +90,23 @@ export default function Officers() {
     });
   };
 
-  const handlePhotoSelect = async (id: string, e: React.ChangeEvent<HTMLInputElement>) => {
+  const [cropTarget, setCropTarget] = useState<{ officerId: string; file: File } | null>(null);
+
+  const handlePhotoSelect = (id: string, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
     setUploadError(null);
-    setUploadingId(id);
-    const result = await uploadPhoto(id, file);
+    setCropTarget({ officerId: id, file });
+  };
+
+  const handleCropConfirm = async (blob: Blob) => {
+    if (!cropTarget) return;
+    const { officerId } = cropTarget;
+    const croppedFile = new File([blob], "profile.jpg", { type: "image/jpeg" });
+    setCropTarget(null);
+    setUploadingId(officerId);
+    const result = await uploadPhoto(officerId, croppedFile);
     setUploadingId(null);
     if (!result.ok) setUploadError(result.message ?? "업로드에 실패했어요.");
   };
@@ -272,6 +283,14 @@ export default function Officers() {
       )}
 
       <ConfirmModal pending={pendingConfirm} onCancel={() => setPendingConfirm(null)} onConfirm={runConfirm} />
+
+      {cropTarget && (
+        <ImageCropModal
+          file={cropTarget.file}
+          onCancel={() => setCropTarget(null)}
+          onConfirm={handleCropConfirm}
+        />
+      )}
     </div>
   );
 }
