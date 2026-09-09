@@ -17,12 +17,6 @@ export default function About() {
   const [editingIntro, setEditingIntro] = useState(false);
   const [introDraft, setIntroDraft] = useState("");
 
-  const [editingPrinciples, setEditingPrinciples] = useState(false);
-  const [principlesDraft, setPrinciplesDraft] = useState("");
-
-  const [editingRhythm, setEditingRhythm] = useState(false);
-  const [rhythmDraft, setRhythmDraft] = useState("");
-
   const [partEditingId, setPartEditingId] = useState<string | null>(null);
   const [partDraft, setPartDraft] = useState({ name: "", description: "" });
   const [addingPart, setAddingPart] = useState(false);
@@ -43,34 +37,6 @@ export default function About() {
       onConfirm: async () => {
         await editContent({ ...content, introDesc: introDraft });
         setEditingIntro(false);
-      },
-    });
-  };
-
-  const savePrinciples = () => {
-    if (!content) return;
-    setPendingConfirm({
-      title: "'우리가 지키는 것'을 저장하시겠습니까?",
-      desc: "",
-      actionLabel: "저장할게요",
-      onConfirm: async () => {
-        const lines = principlesDraft.split("\n").map((l) => l.trim()).filter(Boolean);
-        await editContent({ ...content, principles: lines });
-        setEditingPrinciples(false);
-      },
-    });
-  };
-
-  const saveRhythm = () => {
-    if (!content) return;
-    setPendingConfirm({
-      title: "'활동 리듬'을 저장하시겠습니까?",
-      desc: "",
-      actionLabel: "저장할게요",
-      onConfirm: async () => {
-        const lines = rhythmDraft.split("\n").map((l) => l.trim()).filter(Boolean);
-        await editContent({ ...content, rhythm: lines });
-        setEditingRhythm(false);
       },
     });
   };
@@ -142,86 +108,6 @@ export default function About() {
           )}
         </div>
       )}
-
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card>
-          <div className="flex items-center justify-between">
-            <p className="font-display text-lg text-backstage">우리가 지키는 것</p>
-            {editMode && isPresident && !editingPrinciples && content && (
-              <IconButton
-                onClick={() => { setPrinciplesDraft(content.principles.join("\n")); setEditingPrinciples(true); }}
-                label="✎ 수정"
-              />
-            )}
-          </div>
-          {loading || !content ? (
-            <div className="mt-4 space-y-2">
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-2/3" />
-            </div>
-          ) : editingPrinciples ? (
-            <div className="mt-3 space-y-2">
-              <p className="text-[11px] text-mute">한 줄에 하나씩 적어주세요.</p>
-              <textarea
-                value={principlesDraft}
-                onChange={(e) => setPrinciplesDraft(e.target.value)}
-                rows={4}
-                className="w-full resize-none rounded-lg border border-dawn-teal/50 bg-stage px-3 py-2 text-sm text-backstage outline-none"
-              />
-              <div className="flex gap-2">
-                <button onClick={savePrinciples} className="rounded-lg bg-wind-gold px-3 py-1.5 text-xs font-semibold text-stage">저장</button>
-                <button onClick={() => setEditingPrinciples(false)} className="rounded-lg border border-line px-3 py-1.5 text-xs text-mute">취소</button>
-              </div>
-            </div>
-          ) : (
-            <ul className="mt-4 space-y-3 text-sm leading-relaxed text-backstage/80">
-              {content.principles.map((p, i) => (
-                <li key={i}>· {p}</li>
-              ))}
-            </ul>
-          )}
-        </Card>
-
-        <Card>
-          <div className="flex items-center justify-between">
-            <p className="font-display text-lg text-backstage">활동 리듬</p>
-            {editMode && isPresident && !editingRhythm && content && (
-              <IconButton
-                onClick={() => { setRhythmDraft(content.rhythm.join("\n")); setEditingRhythm(true); }}
-                label="✎ 수정"
-              />
-            )}
-          </div>
-          {loading || !content ? (
-            <div className="mt-4 space-y-2">
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-2/3" />
-            </div>
-          ) : editingRhythm ? (
-            <div className="mt-3 space-y-2">
-              <p className="text-[11px] text-mute">한 줄에 하나씩 적어주세요.</p>
-              <textarea
-                value={rhythmDraft}
-                onChange={(e) => setRhythmDraft(e.target.value)}
-                rows={4}
-                className="w-full resize-none rounded-lg border border-dawn-teal/50 bg-stage px-3 py-2 text-sm text-backstage outline-none"
-              />
-              <div className="flex gap-2">
-                <button onClick={saveRhythm} className="rounded-lg bg-wind-gold px-3 py-1.5 text-xs font-semibold text-stage">저장</button>
-                <button onClick={() => setEditingRhythm(false)} className="rounded-lg border border-line px-3 py-1.5 text-xs text-mute">취소</button>
-              </div>
-            </div>
-          ) : (
-            <ul className="mt-4 space-y-3 text-sm leading-relaxed text-backstage/80">
-              {content.rhythm.map((r, i) => (
-                <li key={i}>· {r}</li>
-              ))}
-            </ul>
-          )}
-        </Card>
-      </div>
 
       <div className="mt-8">
         <p className="font-mono text-xs tracking-[0.2em] text-dawn-teal uppercase">Parts</p>

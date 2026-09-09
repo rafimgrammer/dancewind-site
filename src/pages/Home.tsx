@@ -118,7 +118,7 @@ export default function Home() {
   const saveHistoryEdit = () => {
     if (!historyEditingId) return;
     setPendingConfirm({
-      title: "이 연혁을 수정하시겠습니까?",
+      title: "이 수상 내역을 수정하시겠습니까?",
       desc: "",
       actionLabel: "수정할게요",
       onConfirm: async () => {
@@ -130,7 +130,7 @@ export default function Home() {
 
   const saveNewHistory = () => {
     setPendingConfirm({
-      title: "이 연혁을 추가하시겠습니까?",
+      title: "이 수상 내역을 추가하시겠습니까?",
       desc: "",
       actionLabel: "추가할게요",
       onConfirm: async () => {
@@ -143,7 +143,7 @@ export default function Home() {
 
   const confirmDeleteHistory = (id: string) => {
     setPendingConfirm({
-      title: "이 연혁을 삭제하시겠습니까?",
+      title: "이 수상 내역을 삭제하시겠습니까?",
       desc: "삭제하면 되돌릴 수 없어요.",
       actionLabel: "삭제할게요",
       onConfirm: async () => {
@@ -417,12 +417,12 @@ export default function Home() {
         </section>
       </Reveal>
 
-      {/* 춤바람의 역사 — 실제 타임라인이므로 순서 장치 사용 */}
+      {/* 수상내역 — 세로 타임라인, 동그라미가 줄 위에 자연스럽게 얹히도록 설계 */}
       <Reveal delay={100}>
         <section>
-          <p className="font-mono text-xs tracking-[0.2em] text-dawn-teal uppercase">History</p>
-          <h2 className="mt-2 font-display text-2xl text-backstage md:text-3xl">춤바람의 역사</h2>
-          <div className="mt-8 space-y-0">
+          <p className="font-mono text-xs tracking-[0.2em] text-dawn-teal uppercase">Awards</p>
+          <h2 className="mt-2 font-display text-2xl text-backstage md:text-3xl">수상내역</h2>
+          <div className="mt-8">
             {loading ? (
               <div className="space-y-4">
                 <Skeleton className="h-14 w-full" />
@@ -430,11 +430,16 @@ export default function Home() {
               </div>
             ) : (
               history.map((h, i) => (
-                <div key={h.id} className="group flex gap-5 border-l border-line pl-6 pb-8 last:pb-0">
-                  <div className="relative -ml-[29px] flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-line bg-stage font-mono text-[10px] text-wind-gold">
-                    {i + 1}
+                <div key={h.id} className="group relative flex gap-5 pb-8 last:pb-0">
+                  <div className="relative flex w-6 shrink-0 flex-col items-center">
+                    <div className="z-10 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-wind-gold font-mono text-[10px] font-bold text-stage ring-4 ring-stage">
+                      {i + 1}
+                    </div>
+                    {i < history.length - 1 && (
+                      <div className="absolute top-6 bottom-0 w-0.5 bg-line" />
+                    )}
                   </div>
-                  <div className="min-w-0 flex-1">
+                  <div className="min-w-0 flex-1 pt-0.5">
                     {historyEditingId === h.id ? (
                       <div className="space-y-2">
                         <input
@@ -483,13 +488,13 @@ export default function Home() {
             )}
 
             {editMode && isPresident && (
-              <div className="pl-6">
+              <div className="pl-11">
                 {!addingHistory ? (
                   <button
                     onClick={() => setAddingHistory(true)}
                     className="rounded-lg border border-dashed border-line px-4 py-2 text-xs text-mute hover:border-wind-gold/50 hover:text-wind-gold"
                   >
-                    + 연혁 추가
+                    + 수상 내역 추가
                   </button>
                 ) : (
                   <div className="max-w-md space-y-2 rounded-lg border border-line bg-afterglow p-4">
@@ -694,25 +699,6 @@ export default function Home() {
       {/* 오늘 방문자수 */}
       <Reveal delay={100}>
         <VisitorCounter />
-      </Reveal>
-
-      {/* 모집 CTA 배너 */}
-      <Reveal delay={100}>
-        <section className="relative overflow-hidden rounded-3xl border border-wind-gold/30 bg-gradient-to-br from-afterglow to-stage p-8 text-center md:p-12">
-          <p className="font-mono text-xs tracking-[0.2em] text-dawn-teal uppercase">Recruiting</p>
-          <h2 className="mt-3 font-display text-3xl text-backstage md:text-4xl">
-            이번 바람은, <span className="text-wind-gold">당신 차례.</span>
-          </h2>
-          <p className="mx-auto mt-3 max-w-md text-sm text-backstage/70">
-            경험이 없어도 괜찮아요. 리듬을 즐기려는 마음이면 충분합니다.
-          </p>
-          <Link
-            to="/recruit"
-            className="mt-6 inline-flex rounded-full bg-wind-gold px-7 py-3 text-sm font-semibold text-stage transition-transform hover:-translate-y-0.5"
-          >
-            지원 방법 확인하기
-          </Link>
-        </section>
       </Reveal>
 
       {pendingConfirm && <ConfirmModal pending={pendingConfirm} onCancel={() => setPendingConfirm(null)} onConfirm={runConfirm} />}

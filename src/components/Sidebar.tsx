@@ -35,7 +35,6 @@ const MEMBER_GROUPS: NavGroup[] = [
       { to: "/board", label: "자유게시판" },
       { to: "/best-board", label: "BEST 게시판", sub: true },
       { to: "/anonymous", label: "익명 건의·게시판" },
-      { to: "/members", label: "부원 목록" },
       { to: "/classes", label: "티칭 클래스" },
       { to: "/reels", label: "같이 릴스찍자!" },
     ],

@@ -69,7 +69,6 @@ import FormationList from "./pages/FormationList";
 import FormationEditor from "./pages/FormationEditor";
 import CircleGame from "./pages/CircleGame";
 import ReactionGame from "./pages/ReactionGame";
-import MemberDirectory from "./pages/MemberDirectory";
 
 
 export default function App() {
@@ -111,7 +110,6 @@ export default function App() {
                 <Route element={<ReactionGameLayout />}>
                   <Route path="/reaction-game" element={<ReactionGame />} />
                 </Route>
-                <Route path="/members" element={<MemberDirectory />} />
 
                 {/* 인증 / 온보딩 */}
                 <Route path="/login" element={<Login />} />
