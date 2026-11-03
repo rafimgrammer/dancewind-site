@@ -13,6 +13,9 @@ import { useScrollReveal } from "../hooks/useScrollReveal";
 import { shareToKakao } from "../lib/kakaoShare";
 import { CONCERT_2026 as C, type ConcertTeam } from "../data/concert2026";
 import { BRUSH_END, BRUSH_SPRITE, BRUSH_STROKES, BRUSH_VIEWBOX } from "../data/concert2026Strokes";
+
+/** 서예를 다 쓴 시각 기준으로 뒤따르는 문구들의 등장 시각 */
+const afterBrush = (dt: number) => `${(BRUSH_END + dt).toFixed(2)}s`;
 import "./concert2026.css";
 
 const SITE_URL = "https://hallymdancewind.com";
@@ -418,21 +421,21 @@ function Intro() {
           {/* PC: 포스터처럼 세로쓰기 "Performance Title" */}
           <p
             className="c26-rise c26-serif absolute -left-16 top-0 hidden text-sm tracking-[0.2em] text-white/50 [writing-mode:vertical-rl] md:block"
-            style={{ animationDelay: "4.2s" }}
+            style={{ animationDelay: afterBrush(-0.1) }}
           >
             Performance Title
           </p>
 
           {/* 모바일: 서예 바로 아래 부제 (위치용 div 와 애니메이션 p 를 나눠야 transform 이 안 겹쳐요) */}
           <div className="absolute inset-x-[-20vw] top-full mt-12 text-center md:hidden [@media(max-height:760px)]:mt-7">
-            <p className="c26-rise c26-serif text-[15px] text-white/75" style={{ animationDelay: "4.1s" }}>
+            <p className="c26-rise c26-serif text-[15px] text-white/75" style={{ animationDelay: afterBrush(-0.2) }}>
               : {C.subtitle}
             </p>
             {/* 스크롤 안내 — 부제와 카운트다운 사이, 작고 옅게 */}
             <a
               href="#info"
               className="c26-rise mt-5 inline-flex flex-col items-center gap-1.5 text-white/40 [@media(max-height:760px)]:mt-3"
-              style={{ animationDelay: "4.5s" }}
+              style={{ animationDelay: afterBrush(0.2) }}
               aria-label="아래로 스크롤해서 더 보기"
             >
               <span className="font-mono text-[9px] tracking-[0.35em]">SCROLL</span>
@@ -440,7 +443,7 @@ function Intro() {
                 <span className="c26-scroll-line absolute inset-0 bg-white/70" />
               </span>
             </a>
-            <div className="c26-rise mt-4" style={{ animationDelay: "4.4s" }}>
+            <div className="c26-rise mt-4" style={{ animationDelay: afterBrush(0.1) }}>
               <Countdown />
             </div>
           </div>
@@ -449,10 +452,10 @@ function Intro() {
 
       {/* 문구 */}
       <div id="info" className="relative z-10 scroll-mt-8 px-6 pb-6 text-center md:absolute md:right-[7vw] md:top-1/2 md:max-w-sm md:-translate-y-1/2 md:p-0 md:text-left">
-        <p className="c26-rise c26-serif mb-4 hidden text-lg text-white/75 md:block" style={{ animationDelay: "4.1s" }}>
+        <p className="c26-rise c26-serif mb-4 hidden text-lg text-white/75 md:block" style={{ animationDelay: afterBrush(-0.2) }}>
           : {C.subtitle}
         </p>
-        <div className="c26-rise space-y-1" style={{ animationDelay: "4.3s" }}>
+        <div className="c26-rise space-y-1" style={{ animationDelay: afterBrush(0) }}>
           <p className="c26-serif text-xl font-bold text-white md:text-2xl">{C.dateText}</p>
           <p className="break-keep text-sm leading-relaxed text-white/65">
             {C.timeText}
@@ -463,12 +466,12 @@ function Intro() {
           </p>
         </div>
         {/* 모바일은 서예 바로 아래에 카운트다운이 있어서 PC 에서만 */}
-        <div className="c26-rise mt-4 hidden md:block" style={{ animationDelay: "4.45s" }}>
+        <div className="c26-rise mt-4 hidden md:block" style={{ animationDelay: afterBrush(0.15) }}>
           <Countdown />
         </div>
         <div
           className="c26-rise mt-5 flex justify-center gap-2.5 md:justify-start"
-          style={{ animationDelay: "4.6s" }}
+          style={{ animationDelay: afterBrush(0.3) }}
         >
           <a
             href={C.applyUrl}

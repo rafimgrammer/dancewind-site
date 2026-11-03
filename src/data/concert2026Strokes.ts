@@ -20,7 +20,7 @@ export interface BrushStroke {
 export const BRUSH_VIEWBOX = { width: 900, height: 1118 };
 export const BRUSH_SPRITE = { src: "/concert2026/brush-strokes.png", width: 1400, height: 1226 };
 /** 마지막 획이 끝나는 시각(초) */
-export const BRUSH_END = 4.3;
+export const BRUSH_END = 2.9;
 
 export const BRUSH_STROKES: BrushStroke[] = [
   {
@@ -30,8 +30,8 @@ export const BRUSH_STROKES: BrushStroke[] = [
     "y": 63,
     "bw": 97,
     "bh": 97,
-    "delay": 1.0,
-    "dur": 0.045,
+    "delay": 0.8,
+    "dur": 0.03,
     "sx": 489,
     "sy": 1022
   },
@@ -42,8 +42,8 @@ export const BRUSH_STROKES: BrushStroke[] = [
     "y": 141,
     "bw": 244,
     "bh": 92,
-    "delay": 1.08,
-    "dur": 0.069,
+    "delay": 0.85,
+    "dur": 0.046,
     "sx": 736,
     "sy": 1022
   },
@@ -54,8 +54,8 @@ export const BRUSH_STROKES: BrushStroke[] = [
     "y": 253,
     "bw": 75,
     "bh": 209,
-    "delay": 1.184,
-    "dur": 0.058,
+    "delay": 0.916,
+    "dur": 0.038,
     "sx": 314,
     "sy": 648
   },
@@ -66,8 +66,8 @@ export const BRUSH_STROKES: BrushStroke[] = [
     "y": 210,
     "bw": 165,
     "bh": 123,
-    "delay": 1.276,
-    "dur": 0.067,
+    "delay": 0.974,
+    "dur": 0.045,
     "sx": 950,
     "sy": 876
   },
@@ -78,8 +78,8 @@ export const BRUSH_STROKES: BrushStroke[] = [
     "y": 311,
     "bw": 149,
     "bh": 74,
-    "delay": 1.379,
-    "dur": 0.053,
+    "delay": 1.039,
+    "dur": 0.035,
     "sx": 641,
     "sy": 1136
   },
@@ -90,8 +90,8 @@ export const BRUSH_STROKES: BrushStroke[] = [
     "y": 366,
     "bw": 144,
     "bh": 81,
-    "delay": 1.466,
-    "dur": 0.049,
+    "delay": 1.094,
+    "dur": 0.033,
     "sx": 495,
     "sy": 1136
   },
@@ -102,8 +102,8 @@ export const BRUSH_STROKES: BrushStroke[] = [
     "y": 388,
     "bw": 283,
     "bh": 179,
-    "delay": 1.551,
-    "dur": 0.08,
+    "delay": 1.147,
+    "dur": 0.053,
     "sx": 833,
     "sy": 648
   },
@@ -114,8 +114,8 @@ export const BRUSH_STROKES: BrushStroke[] = [
     "y": 19,
     "bw": 90,
     "bh": 646,
-    "delay": 1.665,
-    "dur": 0.117,
+    "delay": 1.219,
+    "dur": 0.078,
     "sx": 0,
     "sy": 0
   },
@@ -126,8 +126,8 @@ export const BRUSH_STROKES: BrushStroke[] = [
     "y": 0,
     "bw": 175,
     "bh": 278,
-    "delay": 1.817,
-    "dur": 0.075,
+    "delay": 1.317,
+    "dur": 0.05,
     "sx": 725,
     "sy": 0
   },
@@ -138,8 +138,8 @@ export const BRUSH_STROKES: BrushStroke[] = [
     "y": 22,
     "bw": 224,
     "bh": 226,
-    "delay": 1.927,
-    "dur": 0.079,
+    "delay": 1.387,
+    "dur": 0.053,
     "sx": 0,
     "sy": 648
   },
@@ -150,8 +150,8 @@ export const BRUSH_STROKES: BrushStroke[] = [
     "y": 191,
     "bw": 227,
     "bh": 103,
-    "delay": 2.041,
-    "dur": 0.057,
+    "delay": 1.46,
+    "dur": 0.038,
     "sx": 260,
     "sy": 1022
   },
@@ -162,8 +162,8 @@ export const BRUSH_STROKES: BrushStroke[] = [
     "y": 341,
     "bw": 86,
     "bh": 221,
-    "delay": 2.133,
-    "dur": 0.064,
+    "delay": 1.517,
+    "dur": 0.042,
     "sx": 226,
     "sy": 648
   },
@@ -174,8 +174,8 @@ export const BRUSH_STROKES: BrushStroke[] = [
     "y": 276,
     "bw": 269,
     "bh": 265,
-    "delay": 2.231,
-    "dur": 0.096,
+    "delay": 1.58,
+    "dur": 0.064,
     "sx": 998,
     "sy": 0
   },
@@ -186,8 +186,8 @@ export const BRUSH_STROKES: BrushStroke[] = [
     "y": 358,
     "bw": 58,
     "bh": 193,
-    "delay": 2.363,
-    "dur": 0.057,
+    "delay": 1.664,
+    "dur": 0.038,
     "sx": 391,
     "sy": 648
   },
@@ -198,8 +198,8 @@ export const BRUSH_STROKES: BrushStroke[] = [
     "y": 340,
     "bw": 94,
     "bh": 272,
-    "delay": 2.455,
-    "dur": 0.072,
+    "delay": 1.722,
+    "dur": 0.048,
     "sx": 902,
     "sy": 0
   },
@@ -210,8 +210,8 @@ export const BRUSH_STROKES: BrushStroke[] = [
     "y": 366,
     "bw": 258,
     "bh": 112,
-    "delay": 2.562,
-    "dur": 0.071,
+    "delay": 1.79,
+    "dur": 0.047,
     "sx": 0,
     "sy": 1022
   },
@@ -222,8 +222,8 @@ export const BRUSH_STROKES: BrushStroke[] = [
     "y": 332,
     "bw": 125,
     "bh": 183,
-    "delay": 2.813,
-    "dur": 0.057,
+    "delay": 1.957,
+    "dur": 0.038,
     "sx": 706,
     "sy": 648
   },
@@ -234,8 +234,8 @@ export const BRUSH_STROKES: BrushStroke[] = [
     "y": 354,
     "bw": 270,
     "bh": 118,
-    "delay": 2.905,
-    "dur": 0.075,
+    "delay": 2.015,
+    "dur": 0.05,
     "sx": 1117,
     "sy": 876
   },
@@ -246,8 +246,8 @@ export const BRUSH_STROKES: BrushStroke[] = [
     "y": 450,
     "bw": 80,
     "bh": 156,
-    "delay": 3.015,
-    "dur": 0.049,
+    "delay": 2.085,
+    "dur": 0.033,
     "sx": 1185,
     "sy": 648
   },
@@ -258,8 +258,8 @@ export const BRUSH_STROKES: BrushStroke[] = [
     "y": 436,
     "bw": 60,
     "bh": 190,
-    "delay": 3.099,
-    "dur": 0.053,
+    "delay": 2.137,
+    "dur": 0.035,
     "sx": 451,
     "sy": 648
   },
@@ -270,8 +270,8 @@ export const BRUSH_STROKES: BrushStroke[] = [
     "y": 426,
     "bw": 65,
     "bh": 179,
-    "delay": 3.187,
-    "dur": 0.049,
+    "delay": 2.193,
+    "dur": 0.032,
     "sx": 1118,
     "sy": 648
   },
@@ -282,8 +282,8 @@ export const BRUSH_STROKES: BrushStroke[] = [
     "y": 408,
     "bw": 88,
     "bh": 131,
-    "delay": 3.271,
-    "dur": 0.049,
+    "delay": 2.245,
+    "dur": 0.032,
     "sx": 631,
     "sy": 876
   },
@@ -294,8 +294,8 @@ export const BRUSH_STROKES: BrushStroke[] = [
     "y": 515,
     "bw": 493,
     "bh": 90,
-    "delay": 3.355,
-    "dur": 0.099,
+    "delay": 2.297,
+    "dur": 0.066,
     "sx": 0,
     "sy": 1136
   },
@@ -306,8 +306,8 @@ export const BRUSH_STROKES: BrushStroke[] = [
     "y": 599,
     "bw": 375,
     "bh": 144,
-    "delay": 3.489,
-    "dur": 0.085,
+    "delay": 2.383,
+    "dur": 0.056,
     "sx": 0,
     "sy": 876
   },
@@ -318,8 +318,8 @@ export const BRUSH_STROKES: BrushStroke[] = [
     "y": 660,
     "bw": 191,
     "bh": 186,
-    "delay": 3.609,
-    "dur": 0.058,
+    "delay": 2.46,
+    "dur": 0.038,
     "sx": 513,
     "sy": 648
   },
@@ -330,8 +330,8 @@ export const BRUSH_STROKES: BrushStroke[] = [
     "y": 670,
     "bw": 440,
     "bh": 399,
-    "delay": 3.702,
-    "dur": 0.118,
+    "delay": 2.518,
+    "dur": 0.079,
     "sx": 283,
     "sy": 0
   },
@@ -342,8 +342,8 @@ export const BRUSH_STROKES: BrushStroke[] = [
     "y": 762,
     "bw": 59,
     "bh": 45,
-    "delay": 3.855,
-    "dur": 0.035,
+    "delay": 2.617,
+    "dur": 0.023,
     "sx": 792,
     "sy": 1136
   },
@@ -354,8 +354,8 @@ export const BRUSH_STROKES: BrushStroke[] = [
     "y": 614,
     "bw": 227,
     "bh": 128,
-    "delay": 3.925,
-    "dur": 0.051,
+    "delay": 2.66,
+    "dur": 0.034,
     "sx": 721,
     "sy": 876
   },
@@ -366,8 +366,8 @@ export const BRUSH_STROKES: BrushStroke[] = [
     "y": 751,
     "bw": 146,
     "bh": 94,
-    "delay": 4.011,
-    "dur": 0.043,
+    "delay": 2.714,
+    "dur": 0.029,
     "sx": 588,
     "sy": 1022
   },
@@ -378,8 +378,8 @@ export const BRUSH_STROKES: BrushStroke[] = [
     "y": 634,
     "bw": 252,
     "bh": 139,
-    "delay": 4.089,
-    "dur": 0.069,
+    "delay": 2.763,
+    "dur": 0.046,
     "sx": 377,
     "sy": 876
   },
@@ -390,8 +390,8 @@ export const BRUSH_STROKES: BrushStroke[] = [
     "y": 579,
     "bw": 189,
     "bh": 539,
-    "delay": 4.193,
-    "dur": 0.107,
+    "delay": 2.829,
+    "dur": 0.071,
     "sx": 92,
     "sy": 0
   }
