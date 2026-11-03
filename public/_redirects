@@ -1,1 +1,6 @@
+# 정기공연 페이지는 카톡 미리보기용 전용 HTML(빌드 때 만들어짐)을 먼저 내줘요
+/2026concert   /2026concert.html   200
+/2026concert/  /2026concert.html   200
+
+# 나머지는 전부 React 앱(SPA)으로
 /*    /index.html   200
