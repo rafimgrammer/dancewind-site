@@ -249,8 +249,10 @@ function Countdown() {
  * ========================================================================= */
 
 function Intro() {
+  // 모바일: 첫 화면(100svh) 정중앙에 서예, 날짜·카운트다운·버튼은 그 바로 아래로 이어짐
+  // PC: 한 화면 안에 왼쪽 서예 + 오른쪽 문구
   return (
-    <section className="relative flex h-[100svh] min-h-[620px] flex-col overflow-hidden">
+    <section className="relative overflow-hidden md:h-[100svh] md:min-h-[620px]">
       {/* 배경 연기 (포스터 오른쪽 부분) */}
       <img
         src="/concert2026/smoke.jpg"
@@ -267,7 +269,7 @@ function Intro() {
       <div className="c26-wisp bottom-[5%] right-[-25%] h-[45%] w-[85%]" style={{ animationDelay: "-12s" }} />
 
       {/* 서예 + 먹물 + 원 */}
-      <div className="relative z-10 flex flex-1 items-center justify-center px-6 pt-10 md:justify-start md:px-[8vw]">
+      <div className="relative z-10 flex h-[100svh] min-h-[560px] items-center justify-center px-6 md:h-full md:justify-start md:px-[8vw]">
         <div className="relative w-[min(66vw,360px)] md:w-[min(34vw,460px)]">
           {/* 먹물 번짐 */}
           <InkBlot
@@ -342,21 +344,37 @@ function Intro() {
           >
             Performance Title
           </p>
+
+          {/* 모바일: 서예 바로 아래 부제 (위치용 div 와 애니메이션 p 를 나눠야 transform 이 안 겹쳐요) */}
+          <div className="absolute inset-x-[-20vw] top-full mt-12 text-center md:hidden [@media(max-height:760px)]:mt-7">
+            <p className="c26-rise c26-serif text-[15px] text-white/75" style={{ animationDelay: "2.9s" }}>
+              : {C.subtitle}
+            </p>
+            {/* 스크롤 안내 — 부제와 카운트다운 사이, 작고 옅게 */}
+            <a
+              href="#info"
+              className="c26-rise mt-5 inline-flex flex-col items-center gap-1.5 text-white/40 [@media(max-height:760px)]:mt-3"
+              style={{ animationDelay: "3.3s" }}
+              aria-label="아래로 스크롤해서 더 보기"
+            >
+              <span className="font-mono text-[9px] tracking-[0.35em]">SCROLL</span>
+              <span className="relative block h-6 w-px overflow-hidden bg-white/10">
+                <span className="c26-scroll-line absolute inset-0 bg-white/70" />
+              </span>
+            </a>
+            <div className="c26-rise mt-4" style={{ animationDelay: "3.5s" }}>
+              <Countdown />
+            </div>
+          </div>
         </div>
       </div>
 
       {/* 문구 */}
-      <div className="relative z-10 px-6 pb-[calc(env(safe-area-inset-bottom)+84px)] text-center md:absolute md:bottom-auto md:right-[7vw] md:top-1/2 md:max-w-sm md:-translate-y-1/2 md:p-0 md:text-left">
-        <p className="c26-rise c26-serif text-[15px] text-white/75 md:text-lg" style={{ animationDelay: "2.9s" }}>
+      <div id="info" className="relative z-10 scroll-mt-8 px-6 pb-6 text-center md:absolute md:right-[7vw] md:top-1/2 md:max-w-sm md:-translate-y-1/2 md:p-0 md:text-left">
+        <p className="c26-rise c26-serif mb-4 hidden text-lg text-white/75 md:block" style={{ animationDelay: "2.9s" }}>
           : {C.subtitle}
         </p>
-        <p
-          className="c26-rise mt-3 font-mono text-[11px] tracking-[0.35em] text-[#7cc4ee]"
-          style={{ animationDelay: "3.2s" }}
-        >
-          {C.edition.toUpperCase()}
-        </p>
-        <div className="c26-rise mt-4 space-y-1" style={{ animationDelay: "3.45s" }}>
+        <div className="c26-rise space-y-1" style={{ animationDelay: "3.45s" }}>
           <p className="c26-serif text-xl font-bold text-white md:text-2xl">{C.dateText}</p>
           <p className="break-keep text-sm leading-relaxed text-white/65">
             {C.timeText}
@@ -366,7 +384,8 @@ function Intro() {
             {C.location.venueName}
           </p>
         </div>
-        <div className="c26-rise mt-4" style={{ animationDelay: "3.6s" }}>
+        {/* 모바일은 서예 바로 아래에 카운트다운이 있어서 PC 에서만 */}
+        <div className="c26-rise mt-4 hidden md:block" style={{ animationDelay: "3.6s" }}>
           <Countdown />
         </div>
         <div
@@ -389,19 +408,6 @@ function Intro() {
           </a>
         </div>
       </div>
-
-      {/* 스크롤 안내 */}
-      <a
-        href="#greeting"
-        className="c26-rise absolute bottom-[calc(env(safe-area-inset-bottom)+18px)] left-1/2 z-10 flex -translate-x-1/2 flex-col items-center gap-2 text-white/45"
-        style={{ animationDelay: "4.2s" }}
-        aria-label="아래로 스크롤"
-      >
-        <span className="font-mono text-[10px] tracking-[0.3em]">SCROLL</span>
-        <span className="relative block h-10 w-px overflow-hidden bg-white/10">
-          <span className="c26-scroll-line absolute inset-0 bg-white/70" />
-        </span>
-      </a>
 
       {/* ── 맨 위에 덮여 있다가 걷히는 안개 ── */}
       <div className="pointer-events-none absolute inset-0 z-20 overflow-hidden" aria-hidden="true">
@@ -489,11 +495,24 @@ function TeamSheet({ team, index, onClose }: { team: ConcertTeam; index: number;
               MEMBERS <span className="ml-1 text-white/30">{team.members.length}</span>
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
-              {team.members.map((m) => (
-                <span key={m} className="rounded-full bg-white/[0.07] px-3.5 py-1.5 text-sm text-white/90">
-                  {m}
-                </span>
-              ))}
+              {/* 팀장은 맨 앞 + 파란 포인트 */}
+              {[...team.members]
+                .sort((a, b) => Number(b === team.leader) - Number(a === team.leader))
+                .map((m) =>
+                  m === team.leader ? (
+                    <span
+                      key={m}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-[#7cc4ee]/60 bg-[#7cc4ee]/15 py-1.5 pl-2 pr-3.5 text-sm font-semibold text-[#cfeafb] shadow-[0_0_16px_rgba(124,196,238,0.25)]"
+                    >
+                      <span className="rounded-full bg-[#7cc4ee] px-1.5 py-px text-[10px] font-bold text-black">팀장</span>
+                      {m}
+                    </span>
+                  ) : (
+                    <span key={m} className="rounded-full bg-white/[0.07] px-3.5 py-1.5 text-sm text-white/90">
+                      {m}
+                    </span>
+                  )
+                )}
             </div>
           </div>
 
@@ -695,17 +714,13 @@ export default function Concert() {
       </div>
 
       {/* 상단 바 */}
-      <header className="absolute inset-x-0 top-0 z-30 flex items-center justify-between px-5 pt-[calc(env(safe-area-inset-top)+16px)] md:px-10">
-        <Link to="/" className="flex items-center gap-2 opacity-80 transition-opacity hover:opacity-100">
-          <img src="/dancewindlogo.png" alt="" className="h-7 w-auto" />
-          <span className="c26-serif text-sm font-bold text-white">춤바람</span>
-        </Link>
+      <header className="pointer-events-none absolute inset-x-0 top-0 z-30 flex justify-center px-5 pt-[calc(env(safe-area-inset-top)+18px)]">
         <span className="font-mono text-[10px] tracking-[0.3em] text-white/50">2026 ANNUAL CONCERT</span>
       </header>
 
       <Intro />
 
-      <main className="relative z-10 mx-auto max-w-5xl px-6 pt-20 md:px-10 md:pt-32">
+      <main className="relative z-10 mx-auto max-w-5xl px-6 pt-16 md:px-10 md:pt-32">
         {/* ① 인사말 */}
         <Section id="greeting" head={{ num: "壹", hanja: "序", eyebrow: "GREETING", title: "인사말" }}>
           <Rise>

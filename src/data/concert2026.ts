@@ -10,6 +10,8 @@ export interface ConcertTeam {
   genre: string;
   songs: { artist: string; title: string }[];
   members: string[];
+  /** 팀장 이름 — members 안에 있는 이름과 똑같이 적어주세요. (없으면 생략) */
+  leader?: string;
 }
 
 export interface ConcertPrize {
@@ -34,7 +36,7 @@ export const CONCERT_2026 = {
   slug: "2026concert",
   titleHanja: "輪舞",
   titleKorean: "윤무",
-  subtitle: "원을 그리며 회전하는 춤의 궤적",
+  subtitle: "원을 그리며 하나되는 우리의 궤적",
   edition: "2026 춤바람 정기공연",
 
   dateText: "2026. 12. 01 (화)",
@@ -104,6 +106,7 @@ export const CONCERT_2026 = {
         { artist: "Travis Scott", title: "SICKO MODE" },
       ],
       members: ["김하람", "이도윤", "박서진", "최유찬", "정우현"],
+      leader: "김하람",
     },
     {
       id: "girlshiphop",
@@ -114,6 +117,7 @@ export const CONCERT_2026 = {
         { artist: "Megan Thee Stallion", title: "Savage" },
       ],
       members: ["한지수", "오채원", "윤서아", "강민지"],
+      leader: "한지수",
     },
     {
       id: "choreo",
@@ -121,6 +125,7 @@ export const CONCERT_2026 = {
       genre: "CHOREOGRAPHY",
       songs: [{ artist: "Billie Eilish", title: "lovely" }],
       members: ["서다은", "임하윤", "조예린", "권태오", "신지호", "문가온"],
+      leader: "서다은",
     },
     {
       id: "waacking",
@@ -128,6 +133,7 @@ export const CONCERT_2026 = {
       genre: "WAACKING",
       songs: [{ artist: "Donna Summer", title: "I Feel Love" }],
       members: ["배수아", "황나연", "전소율"],
+      leader: "배수아",
     },
     {
       id: "kpop1",
@@ -138,6 +144,7 @@ export const CONCERT_2026 = {
         { artist: "NewJeans", title: "Super Shy" },
       ],
       members: ["유하린", "장서윤", "송예나", "남지우", "백채은"],
+      leader: "유하린",
     },
     {
       id: "kpop2",
@@ -148,6 +155,7 @@ export const CONCERT_2026 = {
         { artist: "ATEEZ", title: "BOUNCY" },
       ],
       members: ["노준혁", "류시온", "안태양", "홍건우", "고은찬", "표민재"],
+      leader: "노준혁",
     },
     {
       id: "finale",

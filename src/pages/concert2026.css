@@ -159,17 +159,6 @@
   from { opacity: 0; }
 }
 
-/* 스크롤 안내 선 */
-.c26-scroll-line {
-  animation: c26-scroll 2.2s ease-in-out infinite;
-  transform-origin: top;
-}
-@keyframes c26-scroll {
-  0% { transform: scaleY(0); opacity: 0; }
-  40% { transform: scaleY(1); opacity: 1; }
-  100% { transform: scaleY(1) translateY(100%); opacity: 0; }
-}
-
 /* ---------- 섹션 ---------- */
 
 /* 섹션 구분용 작은 원 — 화면에 들어오면 그려짐 */
@@ -241,4 +230,15 @@
 @keyframes c26-live {
   0%, 100% { opacity: 1; transform: scale(1); }
   50% { opacity: 0.35; transform: scale(0.75); }
+}
+
+/* 스크롤 안내 — 짧은 선 안을 빛이 위에서 아래로 흘러내림 */
+.c26-scroll-line {
+  animation: c26-scroll 2.2s ease-in-out infinite;
+  transform-origin: top;
+}
+@keyframes c26-scroll {
+  0% { transform: scaleY(0); opacity: 0; }
+  40% { transform: scaleY(1); opacity: 1; }
+  100% { transform: scaleY(1) translateY(100%); opacity: 0; }
 }
