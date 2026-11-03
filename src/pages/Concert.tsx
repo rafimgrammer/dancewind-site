@@ -799,7 +799,7 @@ export default function Concert() {
         templateArgs: {
           title: `${C.titleHanja} ${C.titleKorean} — ${C.edition}`,
           description: `${C.dateText} ${C.timeText} · ${C.location.venueName}`,
-          image_url: `${SITE_URL}/share/concert2026-share.jpg`,
+          image_url: `${SITE_URL}/share/concert2026-share.jpg?v=3`,
           button_title: "공연 보러 가기",
           link_url: PAGE_URL,
         },
@@ -812,7 +812,8 @@ export default function Concert() {
   const handleNativeShare = async () => {
     if (navigator.share) {
       try {
-        await navigator.share({ title: `${C.titleHanja} ${C.titleKorean}`, text: C.edition, url: PAGE_URL });
+        // 링크만 보내요. (text 를 넣으면 카톡 등에서 링크 앞에 문구가 같이 붙어서 가요)
+        await navigator.share({ url: PAGE_URL });
       } catch {
         /* 사용자가 공유 창을 닫은 경우 — 따로 알릴 필요 없음 */
       }
