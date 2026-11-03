@@ -262,10 +262,10 @@ function Countdown() {
  * ========================================================================= */
 
 const SPILLS = [
-  { x: 9, y: 7, size: 48, img: 3, rot: 120, t: 1.0, o: 0.26 },
-  { x: 80, y: 14, size: 92, img: 1, rot: 0, t: 1.3, o: 0.3 },
-  { x: 12, y: 66, size: 86, img: 2, rot: 200, t: 1.95, o: 0.28 },
-  { x: 88, y: 84, size: 78, img: 3, rot: 40, t: 2.6, o: 0.3 },
+  { x: 9, y: 7, size: 48, img: 3, rot: 120, t: 1.0, o: 0.32 },
+  { x: 80, y: 14, size: 92, img: 1, rot: 0, t: 1.3, o: 0.36 },
+  { x: 12, y: 66, size: 86, img: 2, rot: 200, t: 1.95, o: 0.34 },
+  { x: 88, y: 84, size: 78, img: 3, rot: 40, t: 2.6, o: 0.36 },
 ];
 
 function InkSpills() {
@@ -327,13 +327,13 @@ function BrushWriting() {
         alt=""
         aria-hidden="true"
         draggable={false}
-        className="c26-brush-final relative z-10 w-full"
+        className="c26-brush-final relative z-20 w-full"
         style={{ animationDelay: `${BRUSH_END}s` }}
       />
       {/* 쓰는 중인 획들 */}
       <svg
         viewBox={`0 0 ${BRUSH_VIEWBOX.width} ${BRUSH_VIEWBOX.height}`}
-        className="absolute inset-0 h-full w-full"
+        className="absolute inset-0 z-10 h-full w-full"
         aria-hidden="true"
       >
         <defs>
@@ -399,7 +399,8 @@ function Intro() {
       <div className="c26-wisp bottom-[5%] right-[-25%] h-[45%] w-[85%]" style={{ animationDelay: "-12s" }} />
 
       {/* 서예 + 먹물 + 원 */}
-      <div className="relative z-10 flex h-[100svh] min-h-[560px] items-center justify-center px-6 md:h-full md:justify-start md:px-[8vw]">
+      {/* PC: 가운데 1100px 폭 안에서 왼쪽 서예 · 오른쪽 문구 (큰 모니터에서도 양끝으로 벌어지지 않게) */}
+      <div className="relative z-10 mx-auto flex h-[100svh] min-h-[560px] w-full items-center justify-center px-6 md:h-full md:max-w-[1100px] md:justify-start md:px-10">
         <div className="relative w-[min(66vw,360px)] md:w-[min(34vw,460px)]">
           {/* 먹물 번짐 */}
           <InkBlot
@@ -444,31 +445,21 @@ function Intro() {
             />
           </svg>
 
-          {/* 뒤에 깔리는 회색 한글 「윤 무」 */}
-          <span
+          {/* 한글 읽기 「윤무」 — 서예 오른쪽에 작게 세로로 (서예·잉크 그림을 방해하지 않게) */}
+          <div
             aria-hidden="true"
-            className="c26-ghost pointer-events-none absolute -left-[12%] top-[6%] select-none text-[min(24vw,190px)] font-black leading-none text-white/[0.13]"
+            className="c26-rise pointer-events-none absolute -right-[4%] top-[5%] z-30 flex flex-col items-center gap-2 md:-right-[6%] md:top-[7%]"
+            style={{ animationDelay: afterBrush(-0.3) }}
           >
-            윤
-          </span>
-          <span
-            aria-hidden="true"
-            className="c26-ghost pointer-events-none absolute -right-[8%] bottom-[6%] select-none text-[min(24vw,190px)] font-black leading-none text-white/[0.13]"
-            style={{ animationDelay: "1.9s" }}
-          >
-            무
-          </span>
+            <span className="h-6 w-px bg-white/40 md:h-8" />
+            <span className="c26-serif text-[clamp(15px,4.2vw,24px)] font-bold tracking-[0.45em] text-white/80 [writing-mode:vertical-rl] [text-shadow:0_0_12px_rgba(0,0,0,0.8)]">
+              윤무
+            </span>
+          </div>
 
           {/* 輪舞 서예 — 한 획씩 써지는 애니메이션 */}
           <BrushWriting />
 
-          {/* PC: 포스터처럼 세로쓰기 "Performance Title" */}
-          <p
-            className="c26-rise c26-serif absolute -left-16 top-0 hidden text-sm tracking-[0.2em] text-white/50 [writing-mode:vertical-rl] md:block"
-            style={{ animationDelay: afterBrush(-0.1) }}
-          >
-            Performance Title
-          </p>
 
           {/* 모바일: 서예 바로 아래 부제 (위치용 div 와 애니메이션 p 를 나눠야 transform 이 안 겹쳐요) */}
           <div className="absolute inset-x-[-20vw] top-full mt-12 text-center md:hidden [@media(max-height:760px)]:mt-7">
@@ -495,7 +486,7 @@ function Intro() {
       </div>
 
       {/* 문구 */}
-      <div id="info" className="relative z-10 scroll-mt-8 px-6 pb-6 text-center md:absolute md:right-[7vw] md:top-1/2 md:max-w-sm md:-translate-y-1/2 md:p-0 md:text-left">
+      <div id="info" className="relative z-10 scroll-mt-8 px-6 pb-6 text-center md:absolute md:right-[max(40px,calc(50%-510px))] md:top-1/2 md:max-w-sm md:-translate-y-1/2 md:p-0 md:text-left">
         <p className="c26-rise c26-serif mb-4 hidden text-lg text-white/75 md:block" style={{ animationDelay: afterBrush(-0.2) }}>
           : {C.subtitle}
         </p>
