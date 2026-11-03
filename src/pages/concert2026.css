@@ -90,35 +90,43 @@
   to { opacity: 1; transform: scale(1); filter: blur(0); }
 }
 
-/* 붓으로 위에서 아래로 써 내려가는 듯한 등장 (mask 를 위→아래로 밀어냄) */
-.c26-brush {
-  -webkit-mask-image: linear-gradient(to bottom, #000 45%, transparent 55%);
-  mask-image: linear-gradient(to bottom, #000 45%, transparent 55%);
-  -webkit-mask-size: 100% 260%;
-  mask-size: 100% 260%;
-  -webkit-mask-repeat: no-repeat;
-  mask-repeat: no-repeat;
-  -webkit-mask-position: 0 100%;
-  mask-position: 0 100%;
-  animation: c26-brush-write 2.3s cubic-bezier(0.55, 0.1, 0.25, 1) 1.1s forwards;
+/* 붓으로 한 획씩 써 내려가는 등장
+ * 각 획 조각을 "중심선을 따라 그려지는 굵은 선"으로 가려뒀다가(mask), 선을 순서대로 그려서 드러내요.
+ * (획별 시작 시각/길이는 src/data/concert2026Strokes.ts 에서 style 로 넣어줘요) */
+.c26-stroke {
+  stroke-dasharray: 1 2;
+  stroke-dashoffset: 1;
+  animation-name: c26-stroke;
+  /* 붓을 누를 땐 천천히, 가운데는 빠르게, 끝은 살짝 빼듯이 */
+  animation-timing-function: cubic-bezier(0.5, 0.05, 0.35, 1);
+  animation-fill-mode: both;
+}
+@keyframes c26-stroke {
+  0% { stroke-dashoffset: 1; opacity: 0; }
+  0.5% { opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 1; }
+}
+/* 이미지가 아직 안 받아졌으면 쓰기를 잠깐 멈춰둠 (빈 화면에서 써지는 걸 방지) */
+.c26-wait .c26-stroke,
+.c26-wait .c26-brush-final,
+.c26-wait .c26-brush-live {
+  animation-play-state: paused;
+}
+
+/* 다 쓰고 나면 원본 이미지로 자연스럽게 교체 + 은은한 빛 */
+.c26-brush-final {
+  opacity: 0;
+  animation: c26-fade-to 0.7s ease-out both;
   filter: drop-shadow(0 0 18px rgba(120, 190, 235, 0.25));
 }
-@keyframes c26-brush-write {
-  0% {
-    -webkit-mask-position: 0 100%;
-    mask-position: 0 100%;
-    opacity: 0.2;
-    transform: scale(1.06);
-  }
-  60% {
-    opacity: 1;
-  }
-  100% {
-    -webkit-mask-position: 0 0;
-    mask-position: 0 0;
-    opacity: 1;
-    transform: scale(1);
-  }
+.c26-brush-live {
+  animation: c26-fade-out 0.7s ease-out both;
+}
+@keyframes c26-fade-to {
+  to { opacity: 1; }
+}
+@keyframes c26-fade-out {
+  to { opacity: 0; }
 }
 
 /* 서예 뒤의 큰 회색 한글 「윤 무」 */

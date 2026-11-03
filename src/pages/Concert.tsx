@@ -12,6 +12,7 @@ import { Link } from "react-router-dom";
 import { useScrollReveal } from "../hooks/useScrollReveal";
 import { shareToKakao } from "../lib/kakaoShare";
 import { CONCERT_2026 as C, type ConcertTeam } from "../data/concert2026";
+import { BRUSH_END, BRUSH_SPRITE, BRUSH_STROKES, BRUSH_VIEWBOX } from "../data/concert2026Strokes";
 import "./concert2026.css";
 
 const SITE_URL = "https://hallymdancewind.com";
@@ -245,6 +246,88 @@ function Countdown() {
 }
 
 /* =========================================================================
+ * 輪舞 서예 — 한 획씩 써지는 애니메이션
+ *   - 서예 이미지를 획 31개로 나눈 조각(스프라이트 한 장)을 깔아두고
+ *   - 각 조각을 "붓 중심선을 따라 그려지는 굵은 선" 마스크로 가렸다가 순서대로 드러내요.
+ *   - 다 쓰면 원본 이미지(brush.png)로 살짝 교체해서 가장자리까지 깔끔하게 마무리.
+ * ========================================================================= */
+
+function BrushWriting() {
+  const uid = useId().replace(/:/g, "");
+  const [ready, setReady] = useState(false);
+
+  // 스프라이트 이미지를 다 받은 뒤에 쓰기 시작 (느린 데이터에서도 빈 획이 그려지지 않게)
+  useEffect(() => {
+    const img = new Image();
+    const go = () => setReady(true);
+    img.onload = go;
+    img.onerror = go;
+    img.src = BRUSH_SPRITE.src;
+    const fallback = window.setTimeout(go, 3000);
+    return () => window.clearTimeout(fallback);
+  }, []);
+
+  return (
+    <div
+      className={`relative w-full ${ready ? "" : "c26-wait"}`}
+      role="img"
+      aria-label={`${C.titleHanja} ${C.titleKorean}`}
+    >
+      {/* 완성본 — 자리(크기)를 잡아주고, 다 쓴 뒤 나타남 */}
+      <img
+        src="/concert2026/brush.png"
+        alt=""
+        aria-hidden="true"
+        draggable={false}
+        className="c26-brush-final relative w-full"
+        style={{ animationDelay: `${BRUSH_END}s` }}
+      />
+      {/* 쓰는 중인 획들 */}
+      <svg
+        viewBox={`0 0 ${BRUSH_VIEWBOX.width} ${BRUSH_VIEWBOX.height}`}
+        className="c26-brush-live absolute inset-0 h-full w-full"
+        style={{ animationDelay: `${BRUSH_END}s` }}
+        aria-hidden="true"
+      >
+        <defs>
+          {BRUSH_STROKES.map((st, i) => (
+            <mask
+              key={i}
+              id={`${uid}m${i}`}
+              maskUnits="userSpaceOnUse"
+              x="0"
+              y="0"
+              width={BRUSH_VIEWBOX.width}
+              height={BRUSH_VIEWBOX.height}
+            >
+              <path
+                d={st.d}
+                fill="none"
+                stroke="#fff"
+                strokeWidth={st.w}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                pathLength={1}
+                className="c26-stroke"
+                style={{ animationDelay: `${st.delay}s`, animationDuration: `${st.dur}s` }}
+              />
+            </mask>
+          ))}
+        </defs>
+        {BRUSH_STROKES.map((st, i) => (
+          <g key={i} mask={`url(#${uid}m${i})`}>
+            {/* 스프라이트에서 이 획 조각만 잘라서 제자리에 */}
+            <svg x={st.x} y={st.y} width={st.bw} height={st.bh} viewBox={`${st.sx} ${st.sy} ${st.bw} ${st.bh}`}>
+              <image href={BRUSH_SPRITE.src} width={BRUSH_SPRITE.width} height={BRUSH_SPRITE.height} />
+            </svg>
+          </g>
+        ))}
+      </svg>
+    </div>
+  );
+}
+
+/* =========================================================================
  * 인트로 (안개 → 서예 등장)
  * ========================================================================= */
 
@@ -329,32 +412,27 @@ function Intro() {
             무
           </span>
 
-          {/* 輪舞 서예 */}
-          <img
-            src="/concert2026/brush.png"
-            alt={`${C.titleHanja} ${C.titleKorean}`}
-            className="c26-brush relative w-full"
-            draggable={false}
-          />
+          {/* 輪舞 서예 — 한 획씩 써지는 애니메이션 */}
+          <BrushWriting />
 
           {/* PC: 포스터처럼 세로쓰기 "Performance Title" */}
           <p
             className="c26-rise c26-serif absolute -left-16 top-0 hidden text-sm tracking-[0.2em] text-white/50 [writing-mode:vertical-rl] md:block"
-            style={{ animationDelay: "3s" }}
+            style={{ animationDelay: "4.2s" }}
           >
             Performance Title
           </p>
 
           {/* 모바일: 서예 바로 아래 부제 (위치용 div 와 애니메이션 p 를 나눠야 transform 이 안 겹쳐요) */}
           <div className="absolute inset-x-[-20vw] top-full mt-12 text-center md:hidden [@media(max-height:760px)]:mt-7">
-            <p className="c26-rise c26-serif text-[15px] text-white/75" style={{ animationDelay: "2.9s" }}>
+            <p className="c26-rise c26-serif text-[15px] text-white/75" style={{ animationDelay: "4.1s" }}>
               : {C.subtitle}
             </p>
             {/* 스크롤 안내 — 부제와 카운트다운 사이, 작고 옅게 */}
             <a
               href="#info"
               className="c26-rise mt-5 inline-flex flex-col items-center gap-1.5 text-white/40 [@media(max-height:760px)]:mt-3"
-              style={{ animationDelay: "3.3s" }}
+              style={{ animationDelay: "4.5s" }}
               aria-label="아래로 스크롤해서 더 보기"
             >
               <span className="font-mono text-[9px] tracking-[0.35em]">SCROLL</span>
@@ -362,7 +440,7 @@ function Intro() {
                 <span className="c26-scroll-line absolute inset-0 bg-white/70" />
               </span>
             </a>
-            <div className="c26-rise mt-4" style={{ animationDelay: "3.5s" }}>
+            <div className="c26-rise mt-4" style={{ animationDelay: "4.4s" }}>
               <Countdown />
             </div>
           </div>
@@ -371,10 +449,10 @@ function Intro() {
 
       {/* 문구 */}
       <div id="info" className="relative z-10 scroll-mt-8 px-6 pb-6 text-center md:absolute md:right-[7vw] md:top-1/2 md:max-w-sm md:-translate-y-1/2 md:p-0 md:text-left">
-        <p className="c26-rise c26-serif mb-4 hidden text-lg text-white/75 md:block" style={{ animationDelay: "2.9s" }}>
+        <p className="c26-rise c26-serif mb-4 hidden text-lg text-white/75 md:block" style={{ animationDelay: "4.1s" }}>
           : {C.subtitle}
         </p>
-        <div className="c26-rise space-y-1" style={{ animationDelay: "3.45s" }}>
+        <div className="c26-rise space-y-1" style={{ animationDelay: "4.3s" }}>
           <p className="c26-serif text-xl font-bold text-white md:text-2xl">{C.dateText}</p>
           <p className="break-keep text-sm leading-relaxed text-white/65">
             {C.timeText}
@@ -385,12 +463,12 @@ function Intro() {
           </p>
         </div>
         {/* 모바일은 서예 바로 아래에 카운트다운이 있어서 PC 에서만 */}
-        <div className="c26-rise mt-4 hidden md:block" style={{ animationDelay: "3.6s" }}>
+        <div className="c26-rise mt-4 hidden md:block" style={{ animationDelay: "4.45s" }}>
           <Countdown />
         </div>
         <div
           className="c26-rise mt-5 flex justify-center gap-2.5 md:justify-start"
-          style={{ animationDelay: "3.8s" }}
+          style={{ animationDelay: "4.6s" }}
         >
           <a
             href={C.applyUrl}
