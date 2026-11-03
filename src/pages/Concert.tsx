@@ -255,6 +255,49 @@ function Countdown() {
  *   - 다 쓰면 원본 이미지(brush.png)로 살짝 교체해서 가장자리까지 깔끔하게 마무리.
  * ========================================================================= */
 
+/* =========================================================================
+ * 흰 잉크 번짐 (ink spill) — 서예를 쓰는 사이사이, 흰 잉크 방울이 떨어져 종이에 확 퍼져요.
+ *   x, y = 서예 영역 기준 위치(%), size = 크기(서예 폭 대비 %), t = 떨어지는 시각(초),
+ *   o = 다 퍼진 뒤 남는 진하기 (글씨를 가리지 않게 반투명), rot = 회전
+ * ========================================================================= */
+
+const SPILLS = [
+  { x: 9, y: 7, size: 48, img: 3, rot: 120, t: 1.0, o: 0.26 },
+  { x: 80, y: 14, size: 92, img: 1, rot: 0, t: 1.3, o: 0.3 },
+  { x: 12, y: 66, size: 86, img: 2, rot: 200, t: 1.95, o: 0.28 },
+  { x: 88, y: 84, size: 78, img: 3, rot: 40, t: 2.6, o: 0.3 },
+];
+
+function InkSpills() {
+  return (
+    <div className="pointer-events-none absolute inset-0" aria-hidden="true">
+      {SPILLS.map((sp, i) => (
+        <div
+          key={i}
+          className="absolute aspect-square -translate-x-1/2 -translate-y-1/2"
+          style={{ left: `${sp.x}%`, top: `${sp.y}%`, width: `${sp.size}%` }}
+        >
+          {/* 떨어지는 잉크 방울 */}
+          <span
+            className="c26-drop absolute left-1/2 top-1/2 block h-[6%] w-[3.2%] rounded-full bg-[#f7f7f7] shadow-[0_0_6px_rgba(255,255,255,0.6)]"
+            style={{ animationDelay: `${sp.t - 0.34}s` }}
+          />
+          {/* 닿는 순간 가운데에서 바깥으로 퍼지는 잉크 자국 */}
+          <div className="absolute inset-0" style={{ transform: `rotate(${sp.rot}deg)` }}>
+            <img
+              src={`/concert2026/spill${sp.img}.png`}
+              alt=""
+              draggable={false}
+              className="c26-spill h-full w-full"
+              style={{ animationDelay: `${sp.t}s`, ["--c26-o" as string]: sp.o } as CSSProperties}
+            />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function BrushWriting() {
   const uid = useId().replace(/:/g, "");
   const [ready, setReady] = useState(false);
@@ -276,20 +319,21 @@ function BrushWriting() {
       role="img"
       aria-label={`${C.titleHanja} ${C.titleKorean}`}
     >
-      {/* 완성본 — 자리(크기)를 잡아주고, 다 쓴 뒤 나타남 */}
+      {/* 흰 잉크 번짐 — 글씨 뒤에 깔려서 글씨를 가리지 않아요 */}
+      <InkSpills />
+      {/* 완성본 — 자리(크기)를 잡아주고, 다 쓴 뒤 쓰던 획들 위로 살짝 덮이며 마무리 */}
       <img
         src="/concert2026/brush.png"
         alt=""
         aria-hidden="true"
         draggable={false}
-        className="c26-brush-final relative w-full"
+        className="c26-brush-final relative z-10 w-full"
         style={{ animationDelay: `${BRUSH_END}s` }}
       />
       {/* 쓰는 중인 획들 */}
       <svg
         viewBox={`0 0 ${BRUSH_VIEWBOX.width} ${BRUSH_VIEWBOX.height}`}
-        className="c26-brush-live absolute inset-0 h-full w-full"
-        style={{ animationDelay: `${BRUSH_END}s` }}
+        className="absolute inset-0 h-full w-full"
         aria-hidden="true"
       >
         <defs>

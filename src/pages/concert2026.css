@@ -108,8 +108,7 @@
 }
 /* 이미지가 아직 안 받아졌으면 쓰기를 잠깐 멈춰둠 (빈 화면에서 써지는 걸 방지) */
 .c26-wait .c26-stroke,
-.c26-wait .c26-brush-final,
-.c26-wait .c26-brush-live {
+.c26-wait .c26-brush-final {
   animation-play-state: paused;
 }
 
@@ -119,14 +118,8 @@
   animation: c26-fade-to 0.7s ease-out both;
   filter: drop-shadow(0 0 18px rgba(120, 190, 235, 0.25));
 }
-.c26-brush-live {
-  animation: c26-fade-out 0.7s ease-out both;
-}
 @keyframes c26-fade-to {
   to { opacity: 1; }
-}
-@keyframes c26-fade-out {
-  to { opacity: 0; }
 }
 
 /* 서예 뒤의 큰 회색 한글 「윤 무」 */
@@ -249,4 +242,38 @@
   0% { transform: scaleY(0); opacity: 0; }
   40% { transform: scaleY(1); opacity: 1; }
   100% { transform: scaleY(1) translateY(100%); opacity: 0; }
+}
+
+/* ---------- 흰 잉크 번짐 (ink spill) ---------- */
+/* 1) 위에서 방울이 떨어지고 → 2) 닿는 순간 가운데에서 바깥으로 잉크가 확 퍼지며 → 3) 반투명하게 남음 */
+.c26-drop {
+  opacity: 0;
+  animation: c26-drop 0.34s cubic-bezier(0.55, 0, 1, 0.45) both;
+}
+@keyframes c26-drop {
+  0% { transform: translate(-50%, -900%) scaleY(1.8); opacity: 0; }
+  20% { opacity: 0.9; }
+  92% { transform: translate(-50%, -50%) scaleY(1.25); opacity: 0.9; }
+  100% { transform: translate(-50%, -50%) scale(1.6, 0.5); opacity: 0; }
+}
+.c26-spill {
+  opacity: 0;
+  animation: c26-spill 1.2s cubic-bezier(0.1, 0.85, 0.25, 1) both;
+}
+@keyframes c26-spill {
+  0% {
+    clip-path: circle(0% at 50% 50%);
+    transform: scale(0.82);
+    opacity: 0;
+  }
+  12% { opacity: 0.85; }
+  100% {
+    clip-path: circle(72% at 50% 50%);
+    transform: scale(1);
+    opacity: var(--c26-o, 0.3);
+  }
+}
+.c26-wait .c26-drop,
+.c26-wait .c26-spill {
+  animation-play-state: paused;
 }
