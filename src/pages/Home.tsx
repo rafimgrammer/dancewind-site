@@ -1,5 +1,5 @@
 // src/pages/Home.tsx
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import WindLine from "../components/WindLine";
 import { Card, Pill } from "../components/Ui";
@@ -27,6 +27,55 @@ const CHANNELS = [
 ];
 
 const SCHEDULE_TYPES: ScheduleType[] = ["공연", "모집", "행사"];
+
+// 검색창처럼 생긴 타이핑 애니메이션 — 다 치고 나면 커서가 깜빡여요.
+function TypewriterEyebrow({ text }: { text: string }) {
+  const [length, setLength] = useState(0);
+  const [done, setDone] = useState(false);
+
+  useEffect(() => {
+    setLength(0);
+    setDone(false);
+    if (!text) return;
+
+    let i = 0;
+    const interval = window.setInterval(() => {
+      i += 1;
+      setLength(i);
+      if (i >= text.length) {
+        window.clearInterval(interval);
+        setDone(true);
+      }
+    }, 200);
+
+    return () => window.clearInterval(interval);
+  }, [text]);
+
+  return (
+    <div className="inline-flex max-w-full items-center gap-3 rounded-full border border-line bg-stage/60 py-2.5 pl-5 pr-4">
+      <span className="truncate font-mono text-xs tracking-[0.15em] text-wind-gold">
+        {text.slice(0, length)}
+        <span
+          className={`ml-0.5 inline-block h-3 w-[2px] translate-y-[1px] bg-wind-gold align-middle ${
+            done ? "animate-blink-cursor" : ""
+          }`}
+        />
+      </span>
+      <svg
+        width="14"
+        height="14"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        className="ml-auto shrink-0 text-mute"
+      >
+        <circle cx="11" cy="11" r="7" />
+        <path d="M20 20l-4.3-4.3" strokeLinecap="round" />
+      </svg>
+    </div>
+  );
+}
 
 export default function Home() {
   const { role } = useAuth();
@@ -277,7 +326,7 @@ export default function Home() {
                     <IconButton onClick={startEditHero} label="✎ 히어로 수정" />
                   </div>
                 )}
-                <Pill tone="teal">{intro.heroEyebrow}</Pill>
+                <TypewriterEyebrow text={intro.heroEyebrow} />
                 <h1 className="mt-4 font-display text-4xl leading-tight text-backstage md:text-5xl">
                   {intro.heroTitleLine1}
                   <br />

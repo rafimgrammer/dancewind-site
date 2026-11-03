@@ -1,15 +1,31 @@
 // src/components/Layout.tsx
 import { useState, type ReactNode } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import PageTransition from "./PageTransition";
 import { useNearBottom } from "../hooks/useNearBottom";
 import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
 import InstallPrompt from "./InstallPrompt";
 
+// 사이드바/상단바 없이 화면 전체를 쓰는 "랜딩 페이지" 경로들.
+// 공연 홍보처럼 외부 관객에게 공유하는 페이지는 동아리 내부 메뉴가 안 보이는 게 더 깔끔해요.
+const FULLSCREEN_PATHS = ["/2026concert"];
+
 export default function Layout({ children }: { children: ReactNode }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const nearBottom = useNearBottom();
+  const { pathname } = useLocation();
+
+  if (FULLSCREEN_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"))) {
+    // PageTransition은 transform을 걸어서, 그 안의 position: fixed(확인 모달·토스트)가
+    // 화면이 아니라 긴 페이지 기준으로 위치가 잡혀요. 그래서 전체 화면 페이지는 감싸지 않아요.
+    return (
+      <>
+        {children}
+        <InstallPrompt />
+      </>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-stage">

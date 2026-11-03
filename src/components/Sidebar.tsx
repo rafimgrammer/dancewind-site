@@ -16,6 +16,7 @@ interface NavGroup {
 
 const COMMON: NavItem[] = [
   { to: "/", label: "HOME" },
+  { to: "/2026concert", label: "2026 정기공연", emphasize: true },
   { to: "/about", label: "춤바람 소개" },
   { to: "/videos", label: "춤바람 활동 영상" },
   { to: "/calendar", label: "춤바람 캘린더" },

@@ -24,6 +24,7 @@
   --animate-rise: rise 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
   --animate-lightbox-in: lightboxIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
   --animate-lightbox-backdrop: lightboxBackdrop 0.35s ease-out both;
+  --animate-blink-cursor: blinkCursor 1s step-end infinite;
 }
 
 @keyframes windline {
@@ -44,6 +45,11 @@
 @keyframes lightboxBackdrop {
   from { opacity: 0; }
   to { opacity: 1; }
+}
+
+@keyframes blinkCursor {
+  0%, 50% { opacity: 1; }
+  50.01%, 100% { opacity: 0; }
 }
 
 /* 앱처럼 설치했을 때(standalone) 아이폰 상태표시줄/홈 인디케이터에

@@ -73,14 +73,14 @@ export default function PrivacyPolicy() {
           <p className="mt-2 text-backstage/75">
             개인정보 관련 문의사항은 아래로 연락해주세요.
             <br />
-            담당: 춤바람 회장단
+            담당 : 춤바람 회장단
             <br />
-            이메일: (여기에 실제 연락처를 입력해주세요)
+            연락처 : 010-4972-3088
           </p>
         </section>
 
         <p className="border-t border-line pt-4 font-mono text-xs text-mute">
-          공고일자: 2026년 8월 2일 · 시행일자: 2026년 8월 2일
+          공고일자: 2026년 9월 14일 · 시행일자: 2026년 9월 14일
         </p>
       </Card>
     </div>

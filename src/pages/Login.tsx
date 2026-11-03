@@ -1,5 +1,5 @@
 // src/pages/Login.tsx
-import { Navigate } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
 
@@ -21,12 +21,12 @@ export default function Login() {
   return (
     <div className="flex min-h-[70vh] items-center justify-center px-4">
       <div className="w-full max-w-sm text-center">
-        <p className="font-mono text-xs uppercase tracking-widest text-dawn-teal">Chumbaram</p>
+        <p className="font-mono text-xs uppercase tracking-widest text-dawn-teal">Dancewind</p>
         <h1 className="mt-3 font-display text-3xl text-backstage">춤바람에 오신 걸 환영해요</h1>
         <p className="mt-3 text-sm leading-relaxed text-backstage/70">
           구글 계정으로 간편하게 시작하고,
           <br />
-          90명의 무대 위 이야기에 함께해요.
+          우리들의 무대 위 이야기에 함께해요
         </p>
 
         <button
@@ -43,7 +43,15 @@ export default function Login() {
         </button>
 
         <p className="mt-6 text-xs text-mute">
-          로그인 시 개인정보처리방침 및 이용약관에 동의하는 것으로 간주돼요.
+          로그인 시{" "}
+          <Link to="/privacy" className="underline hover:text-dawn-teal">
+            개인정보처리방침
+          </Link>{" "}
+          및{" "}
+          <Link to="/terms" className="underline hover:text-dawn-teal">
+            이용약관
+          </Link>
+          에 동의하는 것으로 간주돼요.
         </p>
       </div>
     </div>

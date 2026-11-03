@@ -1,0 +1,244 @@
+/* src/pages/concert2026.css
+ * 2026 정기공연 「輪舞」 페이지 전용 애니메이션.
+ * 클래스 이름은 전부 c26- 로 시작해서 다른 페이지 스타일과 섞이지 않아요.
+ * (index.css의 prefers-reduced-motion 규칙이 그대로 적용돼서, 모션 줄이기 설정한 사람에겐 바로 완성 화면이 보여요)
+ */
+
+.c26-serif {
+  font-family: "Noto Serif KR", "Nanum Myeongjo", serif;
+}
+
+/* ---------- 인트로: 안개가 걷힘 ---------- */
+
+/* 화면 전체를 덮은 짙은 안개 막 → 서서히 사라짐 */
+.c26-veil {
+  background:
+    radial-gradient(ellipse 80% 60% at 50% 45%, rgba(150, 160, 170, 0.55), transparent 75%),
+    radial-gradient(ellipse 120% 90% at 50% 50%, rgba(70, 78, 86, 0.9), rgba(10, 12, 14, 0.95));
+  animation: c26-veil-out 2.6s cubic-bezier(0.4, 0, 0.2, 1) 0.15s forwards;
+}
+@keyframes c26-veil-out {
+  to {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+
+/* 안개 덩어리들 — 좌우로 흩어지며 옅어짐 */
+.c26-fog {
+  position: absolute;
+  border-radius: 9999px;
+  background: radial-gradient(closest-side, rgba(205, 214, 222, 0.6), rgba(205, 214, 222, 0.18) 55%, transparent);
+  filter: blur(28px);
+  pointer-events: none;
+}
+.c26-fog-l {
+  animation: c26-fog-left 3.4s cubic-bezier(0.25, 0.1, 0.25, 1) forwards;
+}
+.c26-fog-r {
+  animation: c26-fog-right 3.4s cubic-bezier(0.25, 0.1, 0.25, 1) forwards;
+}
+.c26-fog-u {
+  animation: c26-fog-up 3.6s cubic-bezier(0.25, 0.1, 0.25, 1) forwards;
+}
+@keyframes c26-fog-left {
+  from { transform: translate(0, 0) scale(1.1); opacity: 1; }
+  to { transform: translate(-65%, 5%) scale(1.7); opacity: 0; }
+}
+@keyframes c26-fog-right {
+  from { transform: translate(0, 0) scale(1.1); opacity: 1; }
+  to { transform: translate(65%, -5%) scale(1.7); opacity: 0; }
+}
+@keyframes c26-fog-up {
+  from { transform: translate(0, 0) scale(1); opacity: 0.9; }
+  to { transform: translate(0, -45%) scale(1.5); opacity: 0; }
+}
+
+/* 안개가 걷힌 뒤에도 은은하게 계속 흐르는 연기 */
+.c26-wisp {
+  position: absolute;
+  border-radius: 9999px;
+  background: radial-gradient(closest-side, rgba(200, 210, 220, 0.13), transparent);
+  filter: blur(40px);
+  pointer-events: none;
+  animation: c26-wisp-drift 26s ease-in-out infinite alternate;
+}
+@keyframes c26-wisp-drift {
+  from { transform: translate(-6%, 0) scale(1); }
+  to { transform: translate(8%, -4%) scale(1.15); }
+}
+
+/* 배경 연기 이미지 — 아주 천천히 숨 쉬듯 움직임 */
+.c26-smoke {
+  animation:
+    c26-fade-in 3s ease-out 0.4s both,
+    c26-smoke-drift 40s ease-in-out 0.4s infinite alternate;
+}
+@keyframes c26-smoke-drift {
+  from { transform: scale(1.06) translate(0, 0); }
+  to { transform: scale(1.16) translate(-3%, 2%); }
+}
+
+/* ---------- 인트로: 먹물 번짐 + 서예 등장 ---------- */
+
+.c26-ink {
+  opacity: 0;
+  animation: c26-ink-bloom 2.2s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes c26-ink-bloom {
+  from { opacity: 0; transform: scale(0.35); filter: blur(10px); }
+  to { opacity: 1; transform: scale(1); filter: blur(0); }
+}
+
+/* 붓으로 위에서 아래로 써 내려가는 듯한 등장 (mask 를 위→아래로 밀어냄) */
+.c26-brush {
+  -webkit-mask-image: linear-gradient(to bottom, #000 45%, transparent 55%);
+  mask-image: linear-gradient(to bottom, #000 45%, transparent 55%);
+  -webkit-mask-size: 100% 260%;
+  mask-size: 100% 260%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: 0 100%;
+  mask-position: 0 100%;
+  animation: c26-brush-write 2.3s cubic-bezier(0.55, 0.1, 0.25, 1) 1.1s forwards;
+  filter: drop-shadow(0 0 18px rgba(120, 190, 235, 0.25));
+}
+@keyframes c26-brush-write {
+  0% {
+    -webkit-mask-position: 0 100%;
+    mask-position: 0 100%;
+    opacity: 0.2;
+    transform: scale(1.06);
+  }
+  60% {
+    opacity: 1;
+  }
+  100% {
+    -webkit-mask-position: 0 0;
+    mask-position: 0 0;
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* 서예 뒤의 큰 회색 한글 「윤 무」 */
+.c26-ghost {
+  animation: c26-ghost-in 2.4s ease-out 1.6s both;
+}
+@keyframes c26-ghost-in {
+  from { opacity: 0; transform: translateY(12px); letter-spacing: 0.3em; }
+  to { opacity: 1; transform: translateY(0); letter-spacing: 0; }
+}
+
+/* 輪 = 원. 서예 뒤로 얇은 원(엔소)이 그려지고 천천히 회전 */
+.c26-enso-draw {
+  stroke-dasharray: 1000;
+  stroke-dashoffset: 1000;
+  animation: c26-draw 2.6s cubic-bezier(0.65, 0, 0.35, 1) 2.2s forwards;
+}
+.c26-enso-spin {
+  transform-origin: 50% 50%;
+  animation: c26-spin 60s linear infinite;
+}
+@keyframes c26-draw {
+  to { stroke-dashoffset: 0; }
+}
+@keyframes c26-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* 문구들이 순서대로 떠오름 */
+.c26-rise {
+  animation: c26-rise 1.1s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes c26-rise {
+  from { opacity: 0; transform: translateY(16px); filter: blur(6px); }
+  to { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
+@keyframes c26-fade-in {
+  from { opacity: 0; }
+}
+
+/* 스크롤 안내 선 */
+.c26-scroll-line {
+  animation: c26-scroll 2.2s ease-in-out infinite;
+  transform-origin: top;
+}
+@keyframes c26-scroll {
+  0% { transform: scaleY(0); opacity: 0; }
+  40% { transform: scaleY(1); opacity: 1; }
+  100% { transform: scaleY(1) translateY(100%); opacity: 0; }
+}
+
+/* ---------- 섹션 ---------- */
+
+/* 섹션 구분용 작은 원 — 화면에 들어오면 그려짐 */
+.c26-ring circle {
+  stroke-dasharray: 160;
+  stroke-dashoffset: 160;
+  transition: stroke-dashoffset 1.6s cubic-bezier(0.65, 0, 0.35, 1);
+}
+.c26-ring.is-visible circle {
+  stroke-dashoffset: 0;
+}
+
+/* 버튼 위로 빛이 한 번씩 스쳐 지나감 */
+.c26-shine {
+  position: relative;
+  overflow: hidden;
+}
+.c26-shine::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, transparent 30%, rgba(255, 255, 255, 0.35) 50%, transparent 70%);
+  transform: translateX(-120%);
+  animation: c26-shine 3.6s ease-in-out 1s infinite;
+}
+@keyframes c26-shine {
+  0%, 55% { transform: translateX(-120%); }
+  100% { transform: translateX(120%); }
+}
+
+/* 팀 상세 시트 */
+.c26-sheet-backdrop {
+  animation: c26-fade-in 0.25s ease-out both;
+}
+.c26-sheet {
+  animation: c26-sheet-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes c26-sheet-up {
+  from { transform: translateY(40px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/* 하단 고정 신청 버튼 */
+.c26-dock {
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+}
+
+/* ---------- 카운트다운 ---------- */
+
+/* 숫자가 바뀔 때 위에서 굴러 내려오듯 교체 */
+.c26-roll {
+  display: inline-block;
+  animation: c26-roll 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes c26-roll {
+  from { transform: translateY(-70%); opacity: 0; filter: blur(3px); }
+  to { transform: translateY(0); opacity: 1; filter: blur(0); }
+}
+
+/* D-28 글자에 은은한 빛 */
+.c26-dday-glow {
+  text-shadow: 0 0 18px rgba(124, 196, 238, 0.55), 0 0 2px rgba(255, 255, 255, 0.6);
+}
+
+/* 공연 중 표시 점 */
+.c26-live-dot {
+  animation: c26-live 1.4s ease-in-out infinite;
+}
+@keyframes c26-live {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.35; transform: scale(0.75); }
+}

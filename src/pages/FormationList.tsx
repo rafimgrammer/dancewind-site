@@ -68,7 +68,7 @@ export default function FormationList() {
               <input
                 value={songTitle}
                 onChange={(e) => setSongTitle(e.target.value)}
-                placeholder="곡 이름 (예: 바람이 분다)"
+                placeholder="곡 이름 (예: 에스파 whiplash)"
                 className="w-full rounded-lg border border-line bg-stage px-3 py-2 text-sm text-backstage placeholder:text-mute outline-none focus:border-dawn-teal"
               />
               <div className="flex items-center gap-3">

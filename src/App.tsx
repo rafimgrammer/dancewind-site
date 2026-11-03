@@ -69,6 +69,7 @@ import FormationList from "./pages/FormationList";
 import FormationEditor from "./pages/FormationEditor";
 import CircleGame from "./pages/CircleGame";
 import ReactionGame from "./pages/ReactionGame";
+import Concert from "./pages/Concert";
 
 
 export default function App() {
@@ -110,6 +111,9 @@ export default function App() {
                 <Route element={<ReactionGameLayout />}>
                   <Route path="/reaction-game" element={<ReactionGame />} />
                 </Route>
+
+                {/* 2026 정기공연 「輪舞」 홍보 페이지 — Layout.tsx에서 사이드바 없이 전체 화면으로 렌더링 */}
+                <Route path="/2026concert" element={<Concert />} />
 
                 {/* 인증 / 온보딩 */}
                 <Route path="/login" element={<Login />} />

@@ -92,7 +92,7 @@ export default function Location() {
     <div>
       {isPresident && <EditModeBanner editMode={editMode} onToggle={() => setEditMode((v) => !v)} />}
 
-      <PageHeader eyebrow="Location" title="동방 찾아오시는 길" desc="학생회관 지하, 거울과 스피커가 있는 그 방입니다." />
+      <PageHeader eyebrow="Location" title="동방 찾아오시는 길" desc="CLC 지하 1층, 화장실 맞은편 연습실 왼쪽에 있는 동방입니다." />
       <div className="grid min-w-0 gap-6 md:grid-cols-[1.2fr_0.8fr]">
         <Card className="aspect-[16/10] min-w-0 overflow-hidden p-0">
           <KakaoMap />
