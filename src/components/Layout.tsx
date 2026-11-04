@@ -19,12 +19,8 @@ export default function Layout({ children }: { children: ReactNode }) {
   if (FULLSCREEN_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"))) {
     // PageTransition은 transform을 걸어서, 그 안의 position: fixed(확인 모달·토스트)가
     // 화면이 아니라 긴 페이지 기준으로 위치가 잡혀요. 그래서 전체 화면 페이지는 감싸지 않아요.
-    return (
-      <>
-        {children}
-        <InstallPrompt />
-      </>
-    );
+    // "홈 화면에 추가" 안내(InstallPrompt)도 공연 인트로를 가리지 않게 여기선 띄우지 않아요.
+    return <>{children}</>;
   }
 
   return (
