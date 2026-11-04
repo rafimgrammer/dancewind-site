@@ -743,35 +743,6 @@ function ConcertMap() {
 }
 
 /* =========================================================================
- * 터치하면 먹물 파문 — 화면 어디를 누르든 그 자리에 옅은 먹물 원이 번졌다 사라져요.
- *   (버튼 동작은 그대로, 장식만 위에 얹혀요 · 모션 줄이기 설정이면 꺼짐)
- * ========================================================================= */
-
-function InkTouch() {
-  const layerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const onDown = (e: PointerEvent) => {
-      const layer = layerRef.current;
-      if (!layer) return;
-      // 너무 많이 쌓이지 않게 최대 6개까지만
-      if (layer.childElementCount > 6) layer.firstElementChild?.remove();
-      const r = document.createElement("span");
-      r.className = "c26-ripple";
-      r.style.left = `${e.clientX}px`;
-      r.style.top = `${e.clientY}px`;
-      layer.appendChild(r);
-      window.setTimeout(() => r.remove(), 1500);
-    };
-    window.addEventListener("pointerdown", onDown, { passive: true });
-    return () => window.removeEventListener("pointerdown", onDown);
-  }, []);
-
-  return <div ref={layerRef} className="pointer-events-none fixed inset-0 z-[80] overflow-hidden" aria-hidden="true" />;
-}
-
-/* =========================================================================
  * 페이지
  * ========================================================================= */
 
@@ -888,7 +859,6 @@ export default function Concert() {
       </header>
 
       <Intro />
-      <InkTouch />
 
       <main className="relative z-10 mx-auto max-w-5xl px-6 pt-16 md:px-10 md:pt-32">
         {/* ① 인사말 */}
