@@ -93,23 +93,48 @@ function RingDivider() {
   );
 }
 
-/** 섹션 머리말 — 한자 숫자 + 큰 한자 워터마크 + 한글 제목 */
+/** 섹션 머리말 — 큰 한자 번호 + 한자·영문 눈썹 + 한 글자씩 먹처럼 떠오르는 제목 */
 function SectionHead({ num, hanja, eyebrow, title }: { num: string; hanja: string; eyebrow: string; title: string }) {
+  const { ref, visible } = useScrollReveal<HTMLDivElement>(0.35);
+  const chars = Array.from(title);
   return (
-    <Rise className="relative mb-8 md:mb-0">
+    <div ref={ref} className="relative mb-10 md:mb-0">
+      {/* 잡지처럼 크게 깔리는 한자 번호 */}
       <span
         aria-hidden="true"
-        className="c26-serif pointer-events-none absolute -top-6 right-0 select-none text-[88px] leading-none text-white/[0.05] md:static md:block md:text-[120px] md:text-white/[0.07]"
+        className={`c26-serif pointer-events-none absolute -top-10 right-0 select-none text-[124px] font-black leading-none text-white/[0.07] transition-all duration-[1400ms] ease-out md:static md:mb-2 md:block md:text-[160px] ${
+          visible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
+        }`}
       >
-        {hanja}
+        {num}
       </span>
-      <p className="c26-serif flex items-center gap-3 text-[13px] tracking-[0.3em] text-[#7cc4ee]">
-        <span>{num}</span>
+      <p
+        className={`c26-serif flex items-center gap-3 text-[13px] tracking-[0.3em] text-[#7cc4ee] transition-opacity duration-700 ${
+          visible ? "opacity-100" : "opacity-0"
+        }`}
+      >
+        <span>{hanja}</span>
         <span className="h-px w-6 bg-[#7cc4ee]/50" />
         <span className="font-mono text-[11px] tracking-[0.25em]">{eyebrow}</span>
       </p>
-      <h2 className="c26-serif mt-3 text-[26px] font-bold leading-snug text-[#f2f4f6] md:text-3xl">{title}</h2>
-    </Rise>
+      {/* 제목: 한 글자씩 흐릿한 먹이 번지듯 떠오름 */}
+      <h2
+        aria-label={title}
+        className="c26-serif mt-3 flex flex-wrap text-[32px] font-black leading-tight text-white md:text-[40px]"
+      >
+        {chars.map((ch, i) => (
+          <span
+            key={i}
+            aria-hidden="true"
+            className="c26-char"
+            data-on={visible}
+            style={{ transitionDelay: visible ? `${150 + i * 90}ms` : "0ms" }}
+          >
+            {ch === " " ? "\u00A0" : ch}
+          </span>
+        ))}
+      </h2>
+    </div>
   );
 }
 
@@ -132,8 +157,6 @@ function Section({
     </section>
   );
 }
-
-const panel = "rounded-2xl border border-white/10 bg-white/[0.035] backdrop-blur-[2px]";
 
 /* =========================================================================
  * 카운트다운 (D-day + 남은 시간)
@@ -720,6 +743,35 @@ function ConcertMap() {
 }
 
 /* =========================================================================
+ * 터치하면 먹물 파문 — 화면 어디를 누르든 그 자리에 옅은 먹물 원이 번졌다 사라져요.
+ *   (버튼 동작은 그대로, 장식만 위에 얹혀요 · 모션 줄이기 설정이면 꺼짐)
+ * ========================================================================= */
+
+function InkTouch() {
+  const layerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const onDown = (e: PointerEvent) => {
+      const layer = layerRef.current;
+      if (!layer) return;
+      // 너무 많이 쌓이지 않게 최대 6개까지만
+      if (layer.childElementCount > 6) layer.firstElementChild?.remove();
+      const r = document.createElement("span");
+      r.className = "c26-ripple";
+      r.style.left = `${e.clientX}px`;
+      r.style.top = `${e.clientY}px`;
+      layer.appendChild(r);
+      window.setTimeout(() => r.remove(), 1500);
+    };
+    window.addEventListener("pointerdown", onDown, { passive: true });
+    return () => window.removeEventListener("pointerdown", onDown);
+  }, []);
+
+  return <div ref={layerRef} className="pointer-events-none fixed inset-0 z-[80] overflow-hidden" aria-hidden="true" />;
+}
+
+/* =========================================================================
  * 페이지
  * ========================================================================= */
 
@@ -836,6 +888,7 @@ export default function Concert() {
       </header>
 
       <Intro />
+      <InkTouch />
 
       <main className="relative z-10 mx-auto max-w-5xl px-6 pt-16 md:px-10 md:pt-32">
         {/* ① 인사말 */}
@@ -879,11 +932,11 @@ export default function Concert() {
             ))}
           </div>
           <Rise delay={150}>
-            <dl className="mt-8 grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-white/10 bg-white/10">
+            <dl className="mt-10 border-t border-white/20">
               {C.description.facts.map((f) => (
-                <div key={f.label} className="bg-black px-4 py-4">
-                  <dt className="text-[11px] tracking-[0.2em] text-[#7cc4ee]">{f.label}</dt>
-                  <dd className="mt-1.5 break-keep text-[14px] text-white">{f.value}</dd>
+                <div key={f.label} className="flex items-baseline justify-between gap-4 border-b border-white/10 py-4">
+                  <dt className="shrink-0 text-[11px] tracking-[0.3em] text-[#7cc4ee]">{f.label}</dt>
+                  <dd className="c26-serif break-keep text-right text-[15px] font-bold text-white">{f.value}</dd>
                 </div>
               ))}
             </dl>
@@ -894,15 +947,15 @@ export default function Concert() {
 
         {/* ③ Q&A */}
         <Section id="qna" head={{ num: "參", hanja: "問答", eyebrow: "Q & A", title: "자주 묻는 질문" }}>
-          <div className="space-y-2.5">
+          <div className="border-t border-white/20">
             {C.qna.map((item, i) => {
               const open = openQna === i;
               return (
                 <Rise key={item.q} delay={i * 60}>
-                  <div className={`${panel} overflow-hidden transition-colors ${open ? "border-[#7cc4ee]/40" : ""}`}>
+                  <div className="border-b border-white/10">
                     <button
                       onClick={() => setOpenQna(open ? null : i)}
-                      className="flex w-full items-center gap-3 px-5 py-4 text-left"
+                      className="flex w-full items-center gap-4 py-5 text-left"
                       aria-expanded={open}
                     >
                       <span className="c26-serif text-lg font-bold text-[#7cc4ee]">問</span>
@@ -920,7 +973,7 @@ export default function Concert() {
                       }`}
                     >
                       <div className="overflow-hidden">
-                        <div className="flex gap-3 px-5 pb-5">
+                        <div className="flex gap-4 pb-6">
                           <span className="c26-serif text-lg font-bold text-white/35">答</span>
                           <p className="break-keep pt-0.5 text-[14px] leading-relaxed text-white/70">{item.a}</p>
                         </div>
@@ -938,9 +991,9 @@ export default function Concert() {
         {/* ④ 사전 신청 */}
         <Section id="apply" head={{ num: "肆", hanja: "申請", eyebrow: "RESERVATION", title: "사전 신청" }}>
           <Rise>
-            <div ref={applyRef} className={`${panel} relative overflow-hidden px-6 py-10 text-center md:py-14`}>
-              <InkBlot seed={21} className="pointer-events-none absolute -left-20 -top-24 w-72 opacity-50" />
-              <InkBlot seed={8} className="pointer-events-none absolute -bottom-28 -right-16 w-72 opacity-40" />
+            <div ref={applyRef} className="relative overflow-hidden border-y border-white/20 px-2 py-12 text-center md:py-16">
+              <InkBlot seed={21} className="pointer-events-none absolute -left-24 -top-24 w-72 opacity-35" />
+              <InkBlot seed={8} className="pointer-events-none absolute -bottom-28 -right-20 w-72 opacity-30" />
               <div className="relative">
                 <p className="break-keep text-[15px] leading-relaxed text-white/75">
                   사전 신청하시면 <b className="text-white">우선 입장</b>과
@@ -969,25 +1022,22 @@ export default function Concert() {
           <Rise>
             <p className="mb-5 text-sm text-white/50">팀을 누르면 곡과 출연진을 볼 수 있어요.</p>
           </Rise>
-          <ol className="grid grid-cols-2 gap-3 md:grid-cols-2 lg:grid-cols-3">
+          <ol className="border-t border-white/20">
             {C.teams.map((team, i) => (
               <li key={team.id}>
-                <Rise delay={(i % 4) * 70}>
+                <Rise delay={(i % 4) * 60}>
                   <button
                     onClick={() => setOpenTeam(i)}
-                    className={`${panel} group relative flex h-full min-h-[132px] w-full flex-col overflow-hidden p-4 text-left transition-all duration-300 active:scale-[0.97] md:hover:-translate-y-1 md:hover:border-[#7cc4ee]/50`}
+                    className="group flex w-full items-center gap-4 border-b border-white/10 py-5 text-left transition-colors active:bg-white/[0.04] md:gap-6 md:py-6"
                   >
-                    <span className="c26-serif absolute -right-1 -top-3 text-[64px] font-black leading-none text-white/[0.05] transition-colors group-hover:text-[#7cc4ee]/10">
-                      {String(i + 1).padStart(2, "0")}
+                    <span className="c26-serif w-11 shrink-0 text-[13px] text-[#7cc4ee] md:w-14">第{i + 1}幕</span>
+                    <span className="min-w-0 flex-1 transition-transform duration-300 md:group-hover:translate-x-1.5">
+                      <span className="c26-serif block break-keep text-[21px] font-black leading-tight text-white md:text-2xl">
+                        {team.name}
+                      </span>
+                      <span className="mt-1.5 block font-mono text-[10px] tracking-[0.2em] text-white/45">{team.genre}</span>
                     </span>
-                    <span className="c26-serif text-xs text-[#7cc4ee]">第{i + 1}幕</span>
-                    <span className="c26-serif mt-2 break-keep text-lg font-bold leading-tight text-white">
-                      {team.name}
-                    </span>
-                    <span className="mt-auto pt-3 font-mono text-[10px] tracking-[0.15em] text-white/45">
-                      {team.genre}
-                    </span>
-                    <span className="absolute bottom-4 right-4 text-xs text-white/30 transition-colors group-hover:text-white/70">
+                    <span className="text-lg text-white/35 transition-colors group-hover:text-white/80" aria-hidden="true">
                       ＋
                     </span>
                   </button>
@@ -1004,23 +1054,17 @@ export default function Concert() {
           <Rise>
             <p className="mb-5 break-keep text-sm leading-relaxed text-white/60">{C.prizeHowTo}</p>
           </Rise>
-          <ul className="space-y-2.5">
+          <ul className="border-t border-white/20">
             {C.prizes.map((p, i) => (
               <li key={p.rank}>
                 <Rise delay={i * 80}>
-                  <div className={`${panel} flex items-center gap-4 px-4 py-4`}>
+                  <div className="flex items-baseline gap-4 border-b border-white/10 py-5">
                     <span
-                      className={`c26-serif flex h-12 w-12 shrink-0 items-center justify-center rounded-full border text-sm font-bold ${
-                        i === 0
-                          ? "border-[#7cc4ee] bg-[#7cc4ee]/15 text-[#bfe5fb]"
-                          : "border-white/20 text-white/80"
-                      }`}
+                      className={`c26-serif w-16 shrink-0 text-[20px] font-black ${i === 0 ? "text-[#9fd3f3]" : "text-white/80"}`}
                     >
                       {p.rank}
                     </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="break-keep text-[15px] font-medium text-white">{p.item}</p>
-                    </div>
+                    <p className="min-w-0 flex-1 break-keep text-[15px] font-medium text-white">{p.item}</p>
                     <span className="shrink-0 text-xs text-white/50">{p.count}</span>
                   </div>
                 </Rise>
@@ -1070,11 +1114,11 @@ export default function Concert() {
               공연 당일 사전 신청 화면을 보여주시면 아래 혜택을 받을 수 있어요.
             </p>
           </Rise>
-          <ul className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+          <ul className="grid grid-cols-2 gap-x-6 lg:grid-cols-3">
             {C.sponsors.map((s, i) => (
               <li key={s.name}>
                 <Rise delay={(i % 3) * 70}>
-                  <div className={`${panel} flex h-full flex-col p-4`}>
+                  <div className="flex h-full flex-col border-t border-white/20 pb-7 pt-4">
                     <span className="font-mono text-[10px] tracking-[0.2em] text-[#7cc4ee]">{s.category}</span>
                     <span className="c26-serif mt-2 break-keep text-[17px] font-bold text-white">{s.name}</span>
                     <span className="mt-2 break-keep text-[13px] leading-snug text-white/60">{s.benefit}</span>

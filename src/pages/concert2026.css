@@ -277,3 +277,48 @@
 .c26-wait .c26-spill {
   animation-play-state: paused;
 }
+
+/* ---------- 섹션 제목: 한 글자씩 먹이 번지듯 ---------- */
+.c26-char {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(14px);
+  filter: blur(8px);
+  transition:
+    opacity 0.8s ease-out,
+    transform 0.9s cubic-bezier(0.16, 1, 0.3, 1),
+    filter 0.9s ease-out;
+}
+.c26-char[data-on="true"] {
+  opacity: 1;
+  transform: none;
+  filter: blur(0);
+}
+
+/* ---------- 터치 먹물 파문 ---------- */
+.c26-ripple {
+  position: absolute;
+  width: 180px;
+  height: 180px;
+  margin: -90px 0 0 -90px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(150, 210, 245, 0.42), rgba(124, 196, 238, 0.16) 55%, transparent);
+  animation: c26-rip 1.4s cubic-bezier(0.15, 0.8, 0.25, 1) forwards;
+}
+.c26-ripple::after {
+  content: "";
+  position: absolute;
+  inset: 22%;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  animation: c26-ring 1.4s ease-out forwards;
+}
+@keyframes c26-rip {
+  0% { transform: scale(0.1); opacity: 1; }
+  40% { opacity: 0.85; }
+  100% { transform: scale(1); opacity: 0; }
+}
+@keyframes c26-ring {
+  from { transform: scale(0.3); opacity: 0.9; }
+  to { transform: scale(1.5); opacity: 0; }
+}
