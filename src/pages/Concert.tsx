@@ -419,22 +419,13 @@ function InkSpills() {
   );
 }
 
-/* ---------- 느린 폰 판별 (가벼운 모드) ----------
- * 두 단계로 판단해요.
- *  ① 처음 열 때: CPU 코어 4개 이하 · 메모리 4GB 이하 · 데이터 절약 모드 · "동작 줄이기" 설정이면 바로 가벼운 모드
- *  ② 그 외 폰도: 서예를 쓰기 시작하고 1초 동안 화면이 1초에 30장도 못 그리면(끊기면) 그 자리에서 가벼운 모드로 전환
- * 가벼운 모드가 되면 <html> 에 c26-lite 클래스가 붙고, CSS 와 스크롤 효과가 그걸 보고 무거운 효과를 빼요.
+/* ---------- 느린 폰 대비 (가벼운 모드) ----------
+ * 기본은 모든 폰에서 서예를 한 획씩 써요.
+ * 처음엔 CPU 코어 수 · 메모리로 "느린 폰"을 미리 골라냈는데, 멀쩡한 폰(특히 아이폰)까지 걸려서 뺐어요.
+ * 대신 실제로 쓰는 동안 화면이 심하게 끊길 때(1초에 20장도 못 그릴 때)만 그 자리에서 가볍게 바꿔요.
+ *   → 남은 획은 건너뛰고 완성본을 바로 보여주고, <html> 에 c26-lite 를 붙여 무거운 효과를 빼요.
  */
-function detectLowPower(): boolean {
-  if (typeof window === "undefined") return false;
-  const nav = navigator as Navigator & { deviceMemory?: number; connection?: { saveData?: boolean } };
-  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return true;
-  if (nav.connection?.saveData) return true;
-  if (typeof nav.deviceMemory === "number" && nav.deviceMemory <= 4) return true;
-  if (typeof nav.hardwareConcurrency === "number" && nav.hardwareConcurrency > 0 && nav.hardwareConcurrency <= 4) return true;
-  return false;
-}
-let liteMode = detectLowPower();
+let liteMode = false;
 function enableLite() {
   liteMode = true;
   document.documentElement.classList.add("c26-lite");
@@ -443,11 +434,10 @@ function enableLite() {
 function BrushWriting() {
   const uid = useId().replace(/:/g, "");
   const [ready, setReady] = useState(false);
-  // "start": 처음부터 가벼운 모드 / "skip": 쓰다가 끊겨서 전환 / null: 기본(획 하나씩 쓰기)
-  const [lite, setLite] = useState<"start" | "skip" | null>(() => (liteMode ? "start" : null));
+  // "skip": 쓰다가 심하게 끊겨서 완성본으로 건너뜀 / null: 기본(획 하나씩 쓰기)
+  const [lite, setLite] = useState<"skip" | null>(null);
 
   useEffect(() => {
-    if (liteMode) document.documentElement.classList.add("c26-lite");
     return () => document.documentElement.classList.remove("c26-lite");
   }, []);
 
@@ -457,13 +447,13 @@ function BrushWriting() {
     const go = () => setReady(true);
     img.onload = go;
     img.onerror = go;
-    img.src = lite === "start" ? "/concert2026/brush.png" : BRUSH_SPRITE.src;
+    img.src = BRUSH_SPRITE.src;
     const fallback = window.setTimeout(go, 3000);
     return () => window.clearTimeout(fallback);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // 쓰기 시작 후 1초 동안 프레임 수를 세서, 끊기면 가벼운 모드로 (②)
+  // 쓰기 시작 후 1.5초 동안 프레임 수를 세서, 심하게 끊길 때만 가벼운 모드로
   useEffect(() => {
     if (!ready || lite) return;
     let frames = 0;
@@ -472,12 +462,12 @@ function BrushWriting() {
     const tick = (t: number) => {
       if (!start) start = t;
       frames++;
-      if (t - start < 1000) {
+      if (t - start < 1500) {
         raf = requestAnimationFrame(tick);
         return;
       }
       const fps = (frames * 1000) / (t - start);
-      if (fps < 30) {
+      if (fps < 20) {
         enableLite();
         setLite("skip");
       }
@@ -492,8 +482,7 @@ function BrushWriting() {
     };
   }, [ready, lite]);
 
-  const finalClass =
-    lite === "start" ? "c26-brush-wipe" : lite === "skip" ? "c26-brush-skip" : "c26-brush-final";
+  const finalClass = lite === "skip" ? "c26-brush-skip" : "c26-brush-final";
 
   return (
     <div

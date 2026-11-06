@@ -415,18 +415,10 @@
 .c26-flip-lg .c26-flip-bot { border-radius: 0 0 7px 7px; }
 
 /* ---------- 가벼운 모드 (느린 폰) ----------
- * 처음부터 느린 폰으로 판단되거나, 서예를 쓰는 도중 화면이 끊기면 <html> 에 c26-lite 가 붙어요.
- *   · 획 31개를 하나씩 그리는 대신 완성본을 왼쪽→오른쪽으로 한 번에 드러내요 (아래 c26-brush-wipe)
+ * 서예를 쓰는 도중 화면이 심하게 끊기면 <html> 에 c26-lite 가 붙어요.
+ *   · 남은 획은 건너뛰고 완성본을 바로 보여줘요 (아래 c26-brush-skip)
  *   · 끝없이 움직이는 배경 연기 · 옅은 연기는 멈춰요
  *   · 섹션 제목 글자의 흐림 효과를 빼요 */
-.c26-brush-wipe {
-  animation: c26-wipe 1.6s cubic-bezier(0.65, 0, 0.35, 1) 0.9s both;
-  filter: drop-shadow(0 0 18px rgba(120, 190, 235, 0.25));
-}
-@keyframes c26-wipe {
-  from { clip-path: inset(0 100% 0 0); opacity: 0.4; }
-  to { clip-path: inset(0 0 0 0); opacity: 1; }
-}
 /* 쓰는 도중에 가벼운 모드로 바뀌면: 남은 획은 건너뛰고 완성본을 바로 보여줘요 */
 .c26-brush-skip {
   animation: c26-skip-in 0.45s ease-out both;
@@ -439,4 +431,3 @@
 .c26-lite .c26-wisp { animation: none; }
 .c26-lite .c26-smoke { animation: c26-fade-in 2s ease-out 0.2s both; transform: scale(1.06); }
 .c26-lite .c26-char { filter: none; transition: opacity 0.6s ease-out, transform 0.7s cubic-bezier(0.16, 1, 0.3, 1); }
-.c26-wait .c26-brush-wipe { animation-play-state: paused; }
