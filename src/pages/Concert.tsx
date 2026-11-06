@@ -8,7 +8,6 @@
 
 import { useCallback, useEffect, useId, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { Link } from "react-router-dom";
 import { useScrollReveal } from "../hooks/useScrollReveal";
 import { shareToKakao } from "../lib/kakaoShare";
 import { CONCERT_2026 as C, type ConcertTeam } from "../data/concert2026";
@@ -356,7 +355,8 @@ function BrushWriting() {
       {/* 쓰는 중인 획들 */}
       <svg
         viewBox={`0 0 ${BRUSH_VIEWBOX.width} ${BRUSH_VIEWBOX.height}`}
-        className="absolute inset-0 z-10 h-full w-full"
+        className="c26-brush-live absolute inset-0 z-10 h-full w-full"
+        style={{ animationDelay: `${BRUSH_END + 0.8}s` }}
         aria-hidden="true"
       >
         <defs>
@@ -401,7 +401,36 @@ function BrushWriting() {
  * 인트로 (안개 → 서예 등장)
  * ========================================================================= */
 
+/** 스크롤하면 서예가 작아지고 흐려지며 뒤로 물러나는 깊이감 (손가락 움직임에 맞춰서만 움직임) */
+function useHeroDepth() {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    let raf = 0;
+    const apply = () => {
+      raf = 0;
+      // 첫 화면 높이의 70% 만큼 내려갈 동안 0 → 1
+      const p = Math.min(1, Math.max(0, window.scrollY / (window.innerHeight * 0.7)));
+      el.style.transform = `translate3d(0, ${-p * 14}%, 0) scale(${1 - p * 0.26})`;
+      el.style.filter = p > 0.01 ? `blur(${(p * 5).toFixed(2)}px)` : "";
+      el.style.opacity = String(1 - p * 0.72);
+    };
+    const onScroll = () => {
+      if (!raf) raf = requestAnimationFrame(apply);
+    };
+    apply();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, []);
+  return ref;
+}
+
 function Intro() {
+  const depthRef = useHeroDepth();
   // 모바일: 첫 화면(100svh) 정중앙에 서예, 날짜·카운트다운·버튼은 그 바로 아래로 이어짐
   // PC: 한 화면 안에 왼쪽 서예 + 오른쪽 문구
   return (
@@ -425,6 +454,8 @@ function Intro() {
       {/* PC: 가운데 1100px 폭 안에서 왼쪽 서예 · 오른쪽 문구 (큰 모니터에서도 양끝으로 벌어지지 않게) */}
       <div className="relative z-10 mx-auto flex h-[100svh] min-h-[560px] w-full items-center justify-center px-6 md:h-full md:max-w-[1100px] md:justify-start md:px-10">
         <div className="relative w-[min(66vw,360px)] md:w-[min(34vw,460px)]">
+          {/* 스크롤 깊이감이 걸리는 묶음: 먹물 · 원 · 서예 · 윤무 (아래 부제·카운트다운은 제외) */}
+          <div ref={depthRef} className="relative origin-center will-change-transform">
           {/* 먹물 번짐 */}
           <InkBlot
             seed={3}
@@ -483,6 +514,8 @@ function Intro() {
           {/* 輪舞 서예 — 한 획씩 써지는 애니메이션 */}
           <BrushWriting />
 
+
+          </div>
 
           {/* 모바일: 서예 바로 아래 부제 (위치용 div 와 애니메이션 p 를 나눠야 transform 이 안 겹쳐요) */}
           <div className="absolute inset-x-[-20vw] top-full mt-12 text-center md:hidden [@media(max-height:760px)]:mt-7">
@@ -1158,11 +1191,6 @@ export default function Concert() {
           <br />
           {C.instagram.handle}
         </a>
-        <div className="mt-8">
-          <Link to="/" className="text-xs text-white/45 underline-offset-4 hover:text-white/80 hover:underline">
-            춤바람 동아리 홈페이지 →
-          </Link>
-        </div>
       </footer>
 
       {/* 하단 고정 사전신청 버튼 (주로 모바일용) */}

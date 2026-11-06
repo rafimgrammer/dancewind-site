@@ -108,8 +108,17 @@
 }
 /* 이미지가 아직 안 받아졌으면 쓰기를 잠깐 멈춰둠 (빈 화면에서 써지는 걸 방지) */
 .c26-wait .c26-stroke,
-.c26-wait .c26-brush-final {
+.c26-wait .c26-brush-final,
+.c26-wait .c26-brush-live {
   animation-play-state: paused;
+}
+
+/* 다 쓴 뒤엔 쓰던 획들(마스크 31개)을 숨겨서, 스크롤할 때 흐림 효과가 가볍게 돌아가게 */
+.c26-brush-live {
+  animation: c26-hide 0s linear both;
+}
+@keyframes c26-hide {
+  to { visibility: hidden; }
 }
 
 /* 다 쓰고 나면 원본 이미지로 자연스럽게 교체 + 은은한 빛 */
