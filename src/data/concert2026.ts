@@ -178,13 +178,43 @@ export const CONCERT_2026 = {
     { rank: "참여상", item: "춤바람 한정 스티커 세트", count: "선착순 50명" },
   ] satisfies ConcertPrize[],
 
+  // ⚠️ 임시 데이터 — 전부 지어낸 가상의 가게예요(실제 가게와 상관없음).
+  //    실제 협찬처 명단과 혜택을 받으면 통째로 바꿔 주세요.
+  //    benefit 을 빈 문자열("")로 두면 화면에 "혜택은 곧 안내돼요"로 보여요.
+  //    category: CAFE / FOOD / PUB / BEAUTY / PHOTO / PLAY / FITNESS / ETC
   sponsors: [
     { name: "카페 달무리", category: "CAFE", benefit: "공연 당일 음료 10% 할인" },
+    { name: "모퉁이 커피", category: "CAFE", benefit: "아메리카노 1+1" },
+    { name: "숲속다방", category: "CAFE", benefit: "케이크 주문 시 음료 사이즈 업" },
+    { name: "오늘의 원두", category: "CAFE", benefit: "전 메뉴 500원 할인" },
+    { name: "카페 소란", category: "CAFE", benefit: "쿠키 1개 서비스" },
+    { name: "봄내 베이커리", category: "CAFE", benefit: "빵 2개 구매 시 1개 증정" },
+    { name: "느린 오후", category: "CAFE", benefit: "음료 15% 할인" },
     { name: "바람골 닭갈비", category: "FOOD", benefit: "4인 이상 방문 시 볶음밥 서비스" },
-    { name: "헤어살롱 윤", category: "BEAUTY", benefit: "커트 20% 할인 쿠폰 제공" },
-    { name: "원스텝 PC", category: "PC방", benefit: "신규 회원 2시간 무료" },
     { name: "회오리 분식", category: "FOOD", benefit: "튀김 1인분 서비스" },
+    { name: "한림 국밥", category: "FOOD", benefit: "공깃밥 무료" },
+    { name: "소양강 막국수", category: "FOOD", benefit: "메밀전 1장 서비스" },
+    { name: "골목 떡볶이", category: "FOOD", benefit: "음료 1캔 서비스" },
+    { name: "돈까스 연구소", category: "FOOD", benefit: "치즈 추가 무료" },
+    { name: "춘천 마라탕", category: "FOOD", benefit: "1만원 이상 10% 할인" },
+    { name: "버거 스테이지", category: "FOOD", benefit: "감자튀김 사이즈 업" },
+    { name: "초밥 한 점", category: "FOOD", benefit: "미니 우동 서비스" },
+    { name: "정 김밥", category: "FOOD", benefit: "김밥 2줄 이상 라면 반값" },
+    { name: "피자 앙코르", category: "FOOD", benefit: "콜라 1.25L 서비스" },
+    { name: "밤바람 포차", category: "PUB", benefit: "안주 주문 시 계란말이 서비스" },
+    { name: "리듬 펍", category: "PUB", benefit: "생맥주 첫 잔 50% 할인" },
+    { name: "달빛 이자카야", category: "PUB", benefit: "하이볼 1잔 서비스" },
+    { name: "헤어살롱 윤", category: "BEAUTY", benefit: "커트 20% 할인 쿠폰 제공" },
+    { name: "네일 무드", category: "BEAUTY", benefit: "젤네일 5천원 할인" },
+    { name: "뷰티룸 하루", category: "BEAUTY", benefit: "눈썹 정리 무료" },
+    { name: "사진관 한 컷", category: "PHOTO", benefit: "1회 촬영 1천원 할인" },
+    { name: "원스텝 PC", category: "PLAY", benefit: "신규 회원 2시간 무료" },
+    { name: "코인노래방 비트", category: "PLAY", benefit: "30분 추가 서비스" },
+    { name: "보드게임 카페 판", category: "PLAY", benefit: "1시간 무료 연장" },
     { name: "숨 필라테스", category: "FITNESS", benefit: "1회 무료 체험권" },
+    { name: "스텝업 짐", category: "FITNESS", benefit: "일일권 50% 할인" },
+    { name: "꽃집 윤슬", category: "ETC", benefit: "꽃다발 10% 할인 (공연 꽃다발 예약 가능)" },
+    { name: "복사왕 인쇄소", category: "ETC", benefit: "컬러 출력 20% 할인" },
   ] satisfies ConcertSponsor[],
 
   location: {

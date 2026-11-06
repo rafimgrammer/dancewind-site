@@ -28,9 +28,18 @@
 .c26-fog {
   position: absolute;
   border-radius: 9999px;
-  background: radial-gradient(closest-side, rgba(205, 214, 222, 0.6), rgba(205, 214, 222, 0.18) 55%, transparent);
-  filter: blur(28px);
+  /* 예전엔 filter: blur(28px) 로 뭉갰는데, 화면만 한 덩어리 5개에 흐림을 걸고 움직이면
+   * 느린 폰에서 프레임이 끊겨요. 그라데이션 단계를 촘촘히 해서 흐림 없이도 부드럽게 보이게 했어요. */
+  background: radial-gradient(
+    closest-side,
+    rgba(205, 214, 222, 0.55),
+    rgba(205, 214, 222, 0.38) 25%,
+    rgba(205, 214, 222, 0.18) 50%,
+    rgba(205, 214, 222, 0.06) 75%,
+    transparent
+  );
   pointer-events: none;
+  will-change: transform, opacity;
 }
 .c26-fog-l {
   animation: c26-fog-left 3.4s cubic-bezier(0.25, 0.1, 0.25, 1) forwards;
@@ -43,24 +52,25 @@
 }
 @keyframes c26-fog-left {
   from { transform: translate(0, 0) scale(1.1); opacity: 1; }
-  to { transform: translate(-65%, 5%) scale(1.7); opacity: 0; }
+  to { transform: translate(-65%, 5%) scale(1.7); opacity: 0; visibility: hidden; }
 }
 @keyframes c26-fog-right {
   from { transform: translate(0, 0) scale(1.1); opacity: 1; }
-  to { transform: translate(65%, -5%) scale(1.7); opacity: 0; }
+  to { transform: translate(65%, -5%) scale(1.7); opacity: 0; visibility: hidden; }
 }
 @keyframes c26-fog-up {
   from { transform: translate(0, 0) scale(1); opacity: 0.9; }
-  to { transform: translate(0, -45%) scale(1.5); opacity: 0; }
+  to { transform: translate(0, -45%) scale(1.5); opacity: 0; visibility: hidden; }
 }
 
 /* 안개가 걷힌 뒤에도 은은하게 계속 흐르는 연기 */
 .c26-wisp {
   position: absolute;
   border-radius: 9999px;
-  background: radial-gradient(closest-side, rgba(200, 210, 220, 0.13), transparent);
-  filter: blur(40px);
+  /* 흐림(blur) 없이 그라데이션만으로 — 계속 움직이는 요소라 흐림을 걸면 내내 무거워요 */
+  background: radial-gradient(closest-side, rgba(200, 210, 220, 0.13), rgba(200, 210, 220, 0.05) 60%, transparent);
   pointer-events: none;
+  will-change: transform;
   animation: c26-wisp-drift 26s ease-in-out infinite alternate;
 }
 @keyframes c26-wisp-drift {
@@ -86,8 +96,8 @@
   animation: c26-ink-bloom 2.2s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 @keyframes c26-ink-bloom {
-  from { opacity: 0; transform: scale(0.35); filter: blur(10px); }
-  to { opacity: 1; transform: scale(1); filter: blur(0); }
+  from { opacity: 0; transform: scale(0.35); }
+  to { opacity: 1; transform: scale(1); }
 }
 
 /* 붓으로 한 획씩 써 내려가는 등장
@@ -403,3 +413,30 @@
 
 .c26-flip-lg .c26-flip-top, .c26-flip-lg .c26-flip-fold { border-radius: 7px 7px 0 0; }
 .c26-flip-lg .c26-flip-bot { border-radius: 0 0 7px 7px; }
+
+/* ---------- 가벼운 모드 (느린 폰) ----------
+ * 처음부터 느린 폰으로 판단되거나, 서예를 쓰는 도중 화면이 끊기면 <html> 에 c26-lite 가 붙어요.
+ *   · 획 31개를 하나씩 그리는 대신 완성본을 왼쪽→오른쪽으로 한 번에 드러내요 (아래 c26-brush-wipe)
+ *   · 끝없이 움직이는 배경 연기 · 옅은 연기는 멈춰요
+ *   · 섹션 제목 글자의 흐림 효과를 빼요 */
+.c26-brush-wipe {
+  animation: c26-wipe 1.6s cubic-bezier(0.65, 0, 0.35, 1) 0.9s both;
+  filter: drop-shadow(0 0 18px rgba(120, 190, 235, 0.25));
+}
+@keyframes c26-wipe {
+  from { clip-path: inset(0 100% 0 0); opacity: 0.4; }
+  to { clip-path: inset(0 0 0 0); opacity: 1; }
+}
+/* 쓰는 도중에 가벼운 모드로 바뀌면: 남은 획은 건너뛰고 완성본을 바로 보여줘요 */
+.c26-brush-skip {
+  animation: c26-skip-in 0.45s ease-out both;
+  filter: drop-shadow(0 0 18px rgba(120, 190, 235, 0.25));
+}
+@keyframes c26-skip-in {
+  from { opacity: 0.55; }
+  to { opacity: 1; }
+}
+.c26-lite .c26-wisp { animation: none; }
+.c26-lite .c26-smoke { animation: c26-fade-in 2s ease-out 0.2s both; transform: scale(1.06); }
+.c26-lite .c26-char { filter: none; transition: opacity 0.6s ease-out, transform 0.7s cubic-bezier(0.16, 1, 0.3, 1); }
+.c26-wait .c26-brush-wipe { animation-play-state: paused; }

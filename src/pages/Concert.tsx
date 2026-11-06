@@ -10,7 +10,7 @@ import { useCallback, useEffect, useId, useRef, useState, type CSSProperties, ty
 import { createPortal } from "react-dom";
 import { useScrollReveal } from "../hooks/useScrollReveal";
 import { shareToKakao } from "../lib/kakaoShare";
-import { CONCERT_2026 as C, type ConcertTeam } from "../data/concert2026";
+import { CONCERT_2026 as C, type ConcertSponsor, type ConcertTeam } from "../data/concert2026";
 import { BRUSH_END, BRUSH_SPRITE, BRUSH_STROKES, BRUSH_VIEWBOX } from "../data/concert2026Strokes";
 
 /** 서예를 다 쓴 시각 기준으로 뒤따르는 문구들의 등장 시각 */
@@ -419,9 +419,37 @@ function InkSpills() {
   );
 }
 
+/* ---------- 느린 폰 판별 (가벼운 모드) ----------
+ * 두 단계로 판단해요.
+ *  ① 처음 열 때: CPU 코어 4개 이하 · 메모리 4GB 이하 · 데이터 절약 모드 · "동작 줄이기" 설정이면 바로 가벼운 모드
+ *  ② 그 외 폰도: 서예를 쓰기 시작하고 1초 동안 화면이 1초에 30장도 못 그리면(끊기면) 그 자리에서 가벼운 모드로 전환
+ * 가벼운 모드가 되면 <html> 에 c26-lite 클래스가 붙고, CSS 와 스크롤 효과가 그걸 보고 무거운 효과를 빼요.
+ */
+function detectLowPower(): boolean {
+  if (typeof window === "undefined") return false;
+  const nav = navigator as Navigator & { deviceMemory?: number; connection?: { saveData?: boolean } };
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return true;
+  if (nav.connection?.saveData) return true;
+  if (typeof nav.deviceMemory === "number" && nav.deviceMemory <= 4) return true;
+  if (typeof nav.hardwareConcurrency === "number" && nav.hardwareConcurrency > 0 && nav.hardwareConcurrency <= 4) return true;
+  return false;
+}
+let liteMode = detectLowPower();
+function enableLite() {
+  liteMode = true;
+  document.documentElement.classList.add("c26-lite");
+}
+
 function BrushWriting() {
   const uid = useId().replace(/:/g, "");
   const [ready, setReady] = useState(false);
+  // "start": 처음부터 가벼운 모드 / "skip": 쓰다가 끊겨서 전환 / null: 기본(획 하나씩 쓰기)
+  const [lite, setLite] = useState<"start" | "skip" | null>(() => (liteMode ? "start" : null));
+
+  useEffect(() => {
+    if (liteMode) document.documentElement.classList.add("c26-lite");
+    return () => document.documentElement.classList.remove("c26-lite");
+  }, []);
 
   // 스프라이트 이미지를 다 받은 뒤에 쓰기 시작 (느린 데이터에서도 빈 획이 그려지지 않게)
   useEffect(() => {
@@ -429,10 +457,43 @@ function BrushWriting() {
     const go = () => setReady(true);
     img.onload = go;
     img.onerror = go;
-    img.src = BRUSH_SPRITE.src;
+    img.src = lite === "start" ? "/concert2026/brush.png" : BRUSH_SPRITE.src;
     const fallback = window.setTimeout(go, 3000);
     return () => window.clearTimeout(fallback);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // 쓰기 시작 후 1초 동안 프레임 수를 세서, 끊기면 가벼운 모드로 (②)
+  useEffect(() => {
+    if (!ready || lite) return;
+    let frames = 0;
+    let raf = 0;
+    let start = 0;
+    const tick = (t: number) => {
+      if (!start) start = t;
+      frames++;
+      if (t - start < 1000) {
+        raf = requestAnimationFrame(tick);
+        return;
+      }
+      const fps = (frames * 1000) / (t - start);
+      if (fps < 30) {
+        enableLite();
+        setLite("skip");
+      }
+    };
+    // 서예가 실제로 움직이기 시작하는 시점(첫 획)쯤부터 재요
+    const timer = window.setTimeout(() => {
+      raf = requestAnimationFrame(tick);
+    }, 900);
+    return () => {
+      window.clearTimeout(timer);
+      cancelAnimationFrame(raf);
+    };
+  }, [ready, lite]);
+
+  const finalClass =
+    lite === "start" ? "c26-brush-wipe" : lite === "skip" ? "c26-brush-skip" : "c26-brush-final";
 
   return (
     <div
@@ -448,50 +509,52 @@ function BrushWriting() {
         alt=""
         aria-hidden="true"
         draggable={false}
-        className="c26-brush-final relative z-20 w-full"
-        style={{ animationDelay: `${BRUSH_END}s` }}
+        className={`${finalClass} relative z-20 w-full`}
+        style={lite ? undefined : { animationDelay: `${BRUSH_END}s` }}
       />
-      {/* 쓰는 중인 획들 */}
-      <svg
-        viewBox={`0 0 ${BRUSH_VIEWBOX.width} ${BRUSH_VIEWBOX.height}`}
-        className="c26-brush-live absolute inset-0 z-10 h-full w-full"
-        style={{ animationDelay: `${BRUSH_END + 0.8}s` }}
-        aria-hidden="true"
-      >
-        <defs>
+      {/* 쓰는 중인 획들 — 가벼운 모드에선 아예 그리지 않아요 (마스크 31개가 가장 무거운 부분) */}
+      {!lite && (
+        <svg
+          viewBox={`0 0 ${BRUSH_VIEWBOX.width} ${BRUSH_VIEWBOX.height}`}
+          className="c26-brush-live absolute inset-0 z-10 h-full w-full"
+          style={{ animationDelay: `${BRUSH_END + 0.8}s` }}
+          aria-hidden="true"
+        >
+          <defs>
+            {BRUSH_STROKES.map((st, i) => (
+              <mask
+                key={i}
+                id={`${uid}m${i}`}
+                maskUnits="userSpaceOnUse"
+                x="0"
+                y="0"
+                width={BRUSH_VIEWBOX.width}
+                height={BRUSH_VIEWBOX.height}
+              >
+                <path
+                  d={st.d}
+                  fill="none"
+                  stroke="#fff"
+                  strokeWidth={st.w}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  pathLength={1}
+                  className="c26-stroke"
+                  style={{ animationDelay: `${st.delay}s`, animationDuration: `${st.dur}s` }}
+                />
+              </mask>
+            ))}
+          </defs>
           {BRUSH_STROKES.map((st, i) => (
-            <mask
-              key={i}
-              id={`${uid}m${i}`}
-              maskUnits="userSpaceOnUse"
-              x="0"
-              y="0"
-              width={BRUSH_VIEWBOX.width}
-              height={BRUSH_VIEWBOX.height}
-            >
-              <path
-                d={st.d}
-                fill="none"
-                stroke="#fff"
-                strokeWidth={st.w}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                pathLength={1}
-                className="c26-stroke"
-                style={{ animationDelay: `${st.delay}s`, animationDuration: `${st.dur}s` }}
-              />
-            </mask>
+            <g key={i} mask={`url(#${uid}m${i})`}>
+              {/* 스프라이트에서 이 획 조각만 잘라서 제자리에 */}
+              <svg x={st.x} y={st.y} width={st.bw} height={st.bh} viewBox={`${st.sx} ${st.sy} ${st.bw} ${st.bh}`}>
+                <image href={BRUSH_SPRITE.src} width={BRUSH_SPRITE.width} height={BRUSH_SPRITE.height} />
+              </svg>
+            </g>
           ))}
-        </defs>
-        {BRUSH_STROKES.map((st, i) => (
-          <g key={i} mask={`url(#${uid}m${i})`}>
-            {/* 스프라이트에서 이 획 조각만 잘라서 제자리에 */}
-            <svg x={st.x} y={st.y} width={st.bw} height={st.bh} viewBox={`${st.sx} ${st.sy} ${st.bw} ${st.bh}`}>
-              <image href={BRUSH_SPRITE.src} width={BRUSH_SPRITE.width} height={BRUSH_SPRITE.height} />
-            </svg>
-          </g>
-        ))}
-      </svg>
+        </svg>
+      )}
     </div>
   );
 }
@@ -512,7 +575,8 @@ function useHeroDepth() {
       // 첫 화면 높이의 70% 만큼 내려갈 동안 0 → 1
       const p = Math.min(1, Math.max(0, window.scrollY / (window.innerHeight * 0.7)));
       el.style.transform = `translate3d(0, ${-p * 14}%, 0) scale(${1 - p * 0.26})`;
-      el.style.filter = p > 0.01 ? `blur(${(p * 5).toFixed(2)}px)` : "";
+      // 흐림은 느린 폰에선 빼요 (스크롤마다 첫 화면 전체를 다시 흐리게 계산해야 해서 가장 무거움)
+      el.style.filter = !liteMode && p > 0.01 ? `blur(${(p * 5).toFixed(2)}px)` : "";
       el.style.opacity = String(1 - p * 0.72);
     };
     const onScroll = () => {
@@ -865,6 +929,75 @@ function TeamSheet({ team, index, onClose }: { team: ConcertTeam; index: number;
   );
 }
 
+/** 협찬처 혜택 창 — 팀 상세 창(TeamSheet)과 같은 방식: body 에 포털로 붙이고, 열려 있는 동안 뒤 스크롤을 막아요 */
+const SPONSOR_CATEGORY: Record<string, string> = {
+  CAFE: "카페",
+  FOOD: "식당",
+  PUB: "술집",
+  BEAUTY: "뷰티",
+  PHOTO: "사진",
+  PLAY: "놀거리",
+  FITNESS: "운동",
+  ETC: "기타",
+};
+
+function SponsorSheet({ sponsor, onClose }: { sponsor: ConcertSponsor; onClose: () => void }) {
+  useEffect(() => {
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [onClose]);
+
+  return createPortal(
+    <div
+      className="c26-sheet-backdrop fixed inset-0 z-[60] flex items-end justify-center bg-black/70 backdrop-blur-sm md:items-center"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label={`${sponsor.name} 혜택`}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="c26-sheet relative w-full rounded-t-3xl border border-white/10 bg-[#0b0e11] px-6 pb-[calc(env(safe-area-inset-bottom)+28px)] pt-3 md:max-w-md md:rounded-3xl md:pb-8 md:pt-8"
+      >
+        <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-white/20 md:hidden" />
+        <p className="font-mono text-[10px] tracking-[0.2em] text-[#7cc4ee]">
+          {sponsor.category} · {SPONSOR_CATEGORY[sponsor.category] ?? sponsor.category}
+        </p>
+        <h3 className="c26-serif mt-2 break-keep text-2xl font-bold text-white">{sponsor.name}</h3>
+        <p className="mt-4 break-keep text-[15px] leading-relaxed text-white/80">
+          {sponsor.benefit || "혜택은 곧 안내돼요."}
+        </p>
+        <p className="mt-5 text-xs text-white/40">공연 당일 사전 신청 화면을 보여주세요.</p>
+        {sponsor.url && (
+          <a
+            href={sponsor.url}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-5 inline-block text-sm text-[#9fd3f3] underline underline-offset-4"
+          >
+            매장 정보 보기 →
+          </a>
+        )}
+        <button
+          onClick={onClose}
+          className="mt-7 w-full rounded-full border border-white/20 py-3 text-sm text-white/80 transition-colors hover:border-white/50"
+        >
+          닫기
+        </button>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
 /* =========================================================================
  * 카카오맵
  * ========================================================================= */
@@ -1038,6 +1171,8 @@ export default function Concert() {
   const [openTeam, setOpenTeam] = useState<number | null>(null);
   // useCallback 으로 고정해야 TeamSheet 의 스크롤 잠금 effect 가 매 렌더마다 다시 돌지 않아요.
   const closeTeam = useCallback(() => setOpenTeam(null), []);
+  const [openSponsor, setOpenSponsor] = useState<number | null>(null);
+  const closeSponsor = useCallback(() => setOpenSponsor(null), []);
   const [openQna, setOpenQna] = useState<number | null>(0);
   const [toast, setToast] = useState("");
   const [shareError, setShareError] = useState("");
@@ -1140,16 +1275,26 @@ export default function Concert() {
    * 동시에 링크를 복사해 둬서, 스토리에서 "링크 스티커"에 바로 붙여넣을 수 있게 해요.
    * 이미지는 미리 받아 둬요: 아이폰 사파리는 버튼을 누른 "직후"에만 공유 창을 열 수 있어서,
    * 누른 뒤에 이미지를 내려받기 시작하면 그 사이 권한이 사라져 공유 창이 안 떠요.
+   *
+   * ⚠️ 이미지 파일(public/share/concert2026-story.jpg)이 없으면 서버가 대신 웹페이지(HTML)를 돌려줘요.
+   *    그걸 사진인 척 인스타에 넘기면 "현재 콘텐츠를 볼 수 없습니다"가 떠서,
+   *    받은 게 진짜 이미지일 때만 공유 창에 싣도록 확인해요.
    */
   const storyFileRef = useRef<File | null>(null);
+  const storyMissingRef = useRef(false); // 이미지 파일이 서버에 없다고 확인되면 true
   useEffect(() => {
     let cancelled = false;
     // 첫 화면 로딩을 방해하지 않게 조금 늦게 받아요
     const timer = window.setTimeout(() => {
       fetch(STORY_IMAGE_URL)
-        .then((res) => res.blob())
+        .then((res) => (res.ok ? res.blob() : Promise.reject(new Error(String(res.status)))))
         .then((blob) => {
-          if (!cancelled) storyFileRef.current = new File([blob], "2026concert-story.jpg", { type: "image/jpeg" });
+          if (cancelled) return;
+          if (!blob.type.startsWith("image/")) {
+            storyMissingRef.current = true; // 이미지가 아니면(파일 없음 → HTML) 쓰지 않음
+            return;
+          }
+          storyFileRef.current = new File([blob], "2026concert-story.jpg", { type: blob.type });
         })
         .catch(() => {
           /* 못 받아도 버튼을 누르면 아래 대체 방법(이미지 저장)으로 가요 */
@@ -1172,6 +1317,10 @@ export default function Concert() {
       } catch {
         /* 공유 창을 닫은 경우 */
       }
+      return;
+    }
+    if (storyMissingRef.current) {
+      setToast("스토리 이미지를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.");
       return;
     }
     // 공유 창에 이미지를 못 싣는 환경(PC, 일부 브라우저): 이미지를 저장해 주고 안내
@@ -1455,24 +1604,35 @@ export default function Concert() {
 
         {/* ⑧ 스폰서 */}
         <Section id="sponsors" head={{ num: "捌", hanja: "協贊", eyebrow: "SPONSORS", title: "함께해 주신 곳" }}>
+          {/* 크레딧 문단 — 30곳이 넘어도 한 화면 안팎에 들어가게, 이름만 " · " 로 이어 가운데 정렬해요.
+              이름을 누르면 아래에서 혜택 창이 올라와요. */}
           <Rise>
-            <p className="mb-5 break-keep text-sm text-white/55">
-              공연 당일 사전 신청 화면을 보여주시면 아래 혜택을 받을 수 있어요.
-            </p>
+            <div className="mx-auto max-w-[640px] text-center">
+              <p className="c26-serif break-keep text-sm leading-relaxed text-white/55">
+                이 무대를 함께 만들어 주신 분들
+                <br />
+                공연 당일 사전 신청 화면을 보여주시면 혜택을 받을 수 있어요.
+              </p>
+              <p className="c26-serif mt-6 break-keep text-[15px] font-bold leading-[2.1] text-white md:text-[17px]">
+                {C.sponsors.map((s, i) => (
+                  <span key={s.name}>
+                    {i > 0 && (
+                      <span className="mx-[7px] text-[#7cc4ee]/50" aria-hidden="true">
+                        ·
+                      </span>
+                    )}
+                    <button
+                      onClick={() => setOpenSponsor(i)}
+                      className="whitespace-nowrap underline decoration-white/15 underline-offset-[5px] transition-colors hover:text-[#cfeafb] hover:decoration-[#7cc4ee]/60"
+                    >
+                      {s.name}
+                    </button>
+                  </span>
+                ))}
+              </p>
+              <p className="mt-4 text-[11.5px] text-white/40">이름을 누르면 혜택이 보여요</p>
+            </div>
           </Rise>
-          <ul data-lines className="grid grid-cols-2 gap-x-6 lg:grid-cols-3">
-            {C.sponsors.map((s, i) => (
-              <li key={s.name}>
-                <Rise delay={(i % 3) * 70}>
-                  <div className="c26-rule-t flex h-full flex-col pb-7 pt-4" style={{ "--i": i } as CSSProperties}>
-                    <span className="font-mono text-[10px] tracking-[0.2em] text-[#7cc4ee]">{s.category}</span>
-                    <span className="c26-serif mt-2 break-keep text-[17px] font-bold text-white">{s.name}</span>
-                    <span className="mt-2 break-keep text-[13px] leading-snug text-white/60">{s.benefit}</span>
-                  </div>
-                </Rise>
-              </li>
-            ))}
-          </ul>
         </Section>
 
         <RingDivider />
@@ -1556,6 +1716,9 @@ export default function Concert() {
 
       {openTeam !== null && (
         <TeamSheet team={C.teams[openTeam]} index={openTeam} onClose={closeTeam} />
+      )}
+      {openSponsor !== null && (
+        <SponsorSheet sponsor={C.sponsors[openSponsor]} onClose={closeSponsor} />
       )}
 
       {toast && (
