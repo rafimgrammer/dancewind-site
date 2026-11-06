@@ -8,6 +8,7 @@
 
 import { useCallback, useEffect, useId, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useScrollReveal } from "../hooks/useScrollReveal";
 import { shareToKakao } from "../lib/kakaoShare";
 import { CONCERT_2026 as C, type ConcertSponsor, type ConcertTeam } from "../data/concert2026";
@@ -827,98 +828,7 @@ function DockLabel() {
  * 팀 상세 시트 (모바일: 아래에서 올라오는 시트 / PC: 가운데 모달)
  * ========================================================================= */
 
-function TeamSheet({ team, index, onClose }: { team: ConcertTeam; index: number; onClose: () => void }) {
-  useEffect(() => {
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => {
-      document.body.style.overflow = prevOverflow;
-      window.removeEventListener("keydown", onKey);
-    };
-  }, [onClose]);
-
-  // body 에 바로 붙여야(포털) 부모의 transform 영향 없이 화면 기준으로 뜸
-  return createPortal(
-    <div
-      className="c26-sheet-backdrop fixed inset-0 z-[60] flex items-end justify-center bg-black/70 backdrop-blur-sm md:items-center"
-      onClick={onClose}
-      role="dialog"
-      aria-modal="true"
-      aria-label={`${team.name} 무대 정보`}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className="c26-sheet relative max-h-[85svh] w-full overflow-y-auto rounded-t-3xl border border-white/10 bg-[#0b0e11] px-6 pb-[calc(env(safe-area-inset-bottom)+28px)] pt-3 md:max-w-lg md:rounded-3xl md:pb-8 md:pt-8"
-      >
-        <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-white/20 md:hidden" />
-        <InkBlot seed={index + 5} className="pointer-events-none absolute -right-16 -top-16 w-56 opacity-60" />
-
-        <div className="relative">
-          <p className="c26-serif text-sm text-[#7cc4ee]">
-            第 {String(index + 1).padStart(2, "0")} 舞臺
-          </p>
-          <h3 className="c26-serif mt-1 text-3xl font-bold text-white">{team.name}</h3>
-          <span className="mt-3 inline-block rounded-full border border-[#7cc4ee]/40 px-3 py-1 font-mono text-[11px] tracking-widest text-[#9fd3f3]">
-            {team.genre}
-          </span>
-
-          <div className="mt-7">
-            <p className="text-xs tracking-[0.2em] text-white/45">SONG</p>
-            <ul className="mt-3 space-y-2.5">
-              {team.songs.map((s) => (
-                <li key={s.artist + s.title} className="flex items-baseline gap-3 border-b border-white/[0.07] pb-2.5">
-                  <span className="text-white/30">♪</span>
-                  <span className="text-[15px] text-white">{s.title}</span>
-                  <span className="ml-auto shrink-0 text-xs text-white/50">{s.artist}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div className="mt-7">
-            <p className="text-xs tracking-[0.2em] text-white/45">
-              MEMBERS <span className="ml-1 text-white/30">{team.members.length}</span>
-            </p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {/* 팀장은 맨 앞 + 파란 포인트 */}
-              {[...team.members]
-                .sort((a, b) => Number(b === team.leader) - Number(a === team.leader))
-                .map((m) =>
-                  m === team.leader ? (
-                    <span
-                      key={m}
-                      className="inline-flex items-center gap-1.5 rounded-full border border-[#7cc4ee]/60 bg-[#7cc4ee]/15 py-1.5 pl-2 pr-3.5 text-sm font-semibold text-[#cfeafb] shadow-[0_0_16px_rgba(124,196,238,0.25)]"
-                    >
-                      <span className="rounded-full bg-[#7cc4ee] px-1.5 py-px text-[10px] font-bold text-black">팀장</span>
-                      {m}
-                    </span>
-                  ) : (
-                    <span key={m} className="rounded-full bg-white/[0.07] px-3.5 py-1.5 text-sm text-white/90">
-                      {m}
-                    </span>
-                  )
-                )}
-            </div>
-          </div>
-
-          <button
-            onClick={onClose}
-            className="mt-8 w-full rounded-full border border-white/20 py-3 text-sm text-white/80 transition-colors hover:border-white/50"
-          >
-            닫기
-          </button>
-        </div>
-      </div>
-    </div>,
-    document.body
-  );
-}
-
-/** 협찬처 혜택 창 — 팀 상세 창(TeamSheet)과 같은 방식: body 에 포털로 붙이고, 열려 있는 동안 뒤 스크롤을 막아요 */
+/** 협찬처 혜택 창 — body 에 포털로 붙이고, 열려 있는 동안 뒤 스크롤을 막아요 */
 const SPONSOR_CATEGORY: Record<string, string> = {
   CAFE: "카페",
   FOOD: "식당",
@@ -988,8 +898,292 @@ function SponsorSheet({ sponsor, onClose }: { sponsor: ConcertSponsor; onClose: 
 }
 
 /* =========================================================================
+ * 팀 상세 — 프로그램북 한 장
+ * 주소가 /2026concert/{팀 id} 일 때 공연 페이지 위에 전체 화면으로 덮여요.
+ * 공연 페이지는 밑에 그대로 남아 있어서, 뒤로가기 하면 보던 스크롤 위치(무대 순서)로 돌아가요.
+ * ========================================================================= */
+
+/** 곡 유튜브 주소 — 따로 안 적었으면 "가수 곡제목" 유튜브 검색으로 */
+function songUrl(song: ConcertTeam["songs"][number]) {
+  return song.youtube || `https://www.youtube.com/results?search_query=${encodeURIComponent(`${song.artist} ${song.title}`)}`;
+}
+
+function TeamPage({
+  index,
+  onBack,
+  onGo,
+  onShare,
+}: {
+  index: number;
+  onBack: () => void;
+  onGo: (i: number) => void;
+  onShare: (team: ConcertTeam) => void;
+}) {
+  const team = C.teams[index];
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [scrolled, setScrolled] = useState(false);
+  const prev = C.teams[index - 1];
+  const next = C.teams[index + 1];
+  const members = [...team.members].sort((a, b) => Number(b === team.leader) - Number(a === team.leader));
+
+  // 열려 있는 동안 뒤 페이지 스크롤 잠금 + ESC 로 닫기
+  useEffect(() => {
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onBack();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [onBack]);
+
+  // 이전/다음 무대로 넘어가면 맨 위부터 + 탭 제목도 팀 이름으로
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: 0 });
+    const prevTitle = document.title;
+    document.title = `${team.name} · ${C.titleHanja} ${C.titleKorean}`;
+    return () => {
+      document.title = prevTitle;
+    };
+  }, [index, team.name]);
+
+  return createPortal(
+    <div
+      ref={scrollRef}
+      onScroll={(e) => setScrolled(e.currentTarget.scrollTop > 120)}
+      className="c26-page-in fixed inset-0 z-[60] overflow-y-auto bg-black text-[#d6dbe0]"
+      role="dialog"
+      aria-modal="true"
+      aria-label={`${team.name} 무대 정보`}
+    >
+      {/* 상단 바 — 스크롤하면 가운데에 팀 이름이 나타나요 */}
+      <div className="sticky top-0 z-10 flex h-[calc(env(safe-area-inset-top)+56px)] items-end justify-between bg-gradient-to-b from-black via-black/90 to-transparent px-4 pb-2">
+        <button
+          onClick={onBack}
+          aria-label="무대 순서로 돌아가기"
+          className="grid h-10 w-10 place-items-center rounded-full bg-white/[0.08] text-lg text-white transition-colors hover:bg-white/15"
+        >
+          ←
+        </button>
+        <span
+          className={`c26-serif text-xs tracking-[0.2em] text-white/55 transition-opacity duration-300 ${scrolled ? "opacity-100" : "opacity-0"}`}
+        >
+          第{index + 1}幕 · {team.name}
+        </span>
+        <button
+          onClick={() => onShare(team)}
+          aria-label="이 무대 공유하기"
+          className="grid h-10 w-10 place-items-center rounded-full bg-white/[0.08] text-base text-white transition-colors hover:bg-white/15"
+        >
+          ↗
+        </button>
+      </div>
+
+      <div className="mx-auto max-w-[520px] px-[18px] pb-[calc(env(safe-area-inset-bottom)+36px)] pt-2">
+        {/* 프로그램북 한 장 — 이중 테두리 */}
+        <article key={team.id} className="c26-rise rounded-[3px] border border-white/20 p-1.5">
+          <div className="border border-white/10 px-5 pb-7 pt-8 text-center md:px-8">
+            <p className="font-mono text-[9px] tracking-[0.4em] text-[#7cc4ee]">
+              第{index + 1}幕 · PROGRAMME
+            </p>
+            <h1 className="c26-serif mt-3 break-keep text-[34px] font-black leading-tight text-white md:text-[40px]">
+              {team.name}
+            </h1>
+            <hr className="mx-auto my-6 w-8 border-white/15" />
+
+            {/* 곡 — 줄 전체가 유튜브 링크. 빨간 재생 버튼으로 "누르면 유튜브"가 한눈에 보이게 */}
+            <p className="text-[10px] tracking-[0.3em] text-white/45">SONG</p>
+            <p className="mt-1.5 text-[11px] text-white/40">곡을 누르면 유튜브에서 들을 수 있어요</p>
+            <ul className="mt-3 text-left">
+              {team.songs.map((song) => (
+                <li key={song.artist + song.title}>
+                  <a
+                    href={songUrl(song)}
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label={`${song.artist} - ${song.title} 유튜브에서 듣기`}
+                    className="group flex items-center gap-3 rounded-xl px-2 py-3 transition-colors hover:bg-white/[0.05] active:bg-white/[0.08]"
+                  >
+                    <span className="min-w-0 flex-1">
+                      <span className="flex items-baseline gap-2">
+                        <span className="break-keep text-[15px] font-semibold text-white underline decoration-white/25 underline-offset-4 group-hover:decoration-white/70">
+                          {song.title}
+                        </span>
+                        <span className="h-px flex-1 translate-y-[-3px] border-b border-dotted border-white/25" aria-hidden="true" />
+                      </span>
+                      <span className="mt-1 block text-xs text-white/55">{song.artist}</span>
+                    </span>
+                    {/* 재생 버튼 — 빨간색은 페이지에서 혼자 튀어서, 페이지 톤(흰 테두리 + 하늘색 ▶)으로.
+                        누르거나 마우스를 올리면 흰 바탕으로 채워져요 */}
+                    <span
+                      className="flex shrink-0 items-center gap-1.5 rounded-full border border-white/25 bg-white/[0.06] py-1.5 pl-2 pr-2.5 text-[11px] font-semibold text-white/85 transition-all group-hover:border-[#e9eef2] group-hover:bg-[#e9eef2] group-hover:text-black group-active:scale-95 [&>svg]:text-[#7cc4ee] group-hover:[&>svg]:text-black"
+                      aria-hidden="true"
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M8 5.5v13a1 1 0 0 0 1.52.85l10.4-6.5a1 1 0 0 0 0-1.7L9.52 4.65A1 1 0 0 0 8 5.5Z" />
+                      </svg>
+                      YouTube
+                    </span>
+                  </a>
+                </li>
+              ))}
+            </ul>
+
+            {/* 멤버 — 이름을 " · " 로 이어 적고 팀장은 하늘색 */}
+            <p className="mt-8 text-[10px] tracking-[0.3em] text-white/45">
+              MEMBERS <span className="ml-1 text-white/30">{team.members.length}</span>
+            </p>
+            <p className="c26-serif mt-3 break-keep text-[15px] leading-[2.1] text-white">
+              {members.map((m, mi) => (
+                <span key={m}>
+                  {mi > 0 && <span className="mx-1.5 text-white/30">·</span>}
+                  {m === team.leader ? (
+                    <span className="whitespace-nowrap font-bold text-[#9fd3f3]">
+                      {m}
+                      <span className="ml-1 rounded-full bg-[#7cc4ee] px-1.5 py-px align-middle font-sans text-[9px] font-bold text-black">
+                        팀장
+                      </span>
+                    </span>
+                  ) : (
+                    <span className="whitespace-nowrap">{m}</span>
+                  )}
+                </span>
+              ))}
+            </p>
+          </div>
+        </article>
+
+        {/* 이전 · 다음 무대 */}
+        <div className="mt-6 grid grid-cols-2 gap-2">
+          <button
+            onClick={() => prev && onGo(index - 1)}
+            disabled={!prev}
+            className="rounded-2xl border border-white/12 px-3.5 py-3 text-left transition-colors hover:border-white/35 disabled:opacity-25"
+          >
+            <span className="block text-[10px] tracking-[0.15em] text-white/45">← 이전 무대</span>
+            <span className="c26-serif mt-1 block truncate text-sm font-bold text-white">{prev ? prev.name : "—"}</span>
+          </button>
+          <button
+            onClick={() => next && onGo(index + 1)}
+            disabled={!next}
+            className="rounded-2xl border border-white/12 px-3.5 py-3 text-right transition-colors hover:border-white/35 disabled:opacity-25"
+          >
+            <span className="block text-[10px] tracking-[0.15em] text-white/45">다음 무대 →</span>
+            <span className="c26-serif mt-1 block truncate text-sm font-bold text-white">{next ? next.name : "—"}</span>
+          </button>
+        </div>
+        <button
+          onClick={() => onShare(team)}
+          className="mt-2.5 w-full rounded-full border border-white/20 py-3 text-sm text-white/85 transition-colors hover:border-white/50"
+        >
+          이 무대 공유하기
+        </button>
+        <button onClick={onBack} className="mt-2 w-full py-3 text-xs text-white/45 underline underline-offset-4">
+          무대 순서로 돌아가기
+        </button>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+/* =========================================================================
  * 카카오맵
  * ========================================================================= */
+
+/* ---------- 지도 앱 고르기 ----------
+ * 카카오맵: 웹 주소라 앱이 있으면 앱으로, 없으면 웹 지도로 열려요.
+ * 네이버지도 · 티맵: 앱 전용 주소(nmap:// · tmap://)를 먼저 열어 보고,
+ *   1.5초 안에 앱으로 안 넘어가면(앱이 없으면) 웹 페이지로 보내요.
+ */
+type MapApp = { name: string; letter: string; bg: string; fg: string; app?: string; web: string };
+const { lat: VLAT, lng: VLNG, venueName: VNAME } = C.location;
+const MAP_APPS: MapApp[] = [
+  {
+    name: "카카오맵",
+    letter: "K",
+    bg: "#FEE500",
+    fg: "#191919",
+    web: `https://map.kakao.com/link/to/${encodeURIComponent(VNAME)},${VLAT},${VLNG}`,
+  },
+  {
+    name: "네이버지도",
+    letter: "N",
+    bg: "#03C75A",
+    fg: "#fff",
+    app: `nmap://route/public?dlat=${VLAT}&dlng=${VLNG}&dname=${encodeURIComponent(VNAME)}&appname=hallymdancewind.com`,
+    web: `https://map.naver.com/p/search/${encodeURIComponent(VNAME)}`,
+  },
+  {
+    name: "티맵",
+    letter: "T",
+    bg: "linear-gradient(135deg,#5b2be0,#e8336d)",
+    fg: "#fff",
+    app: `tmap://route?goalname=${encodeURIComponent(VNAME)}&goalx=${VLNG}&goaly=${VLAT}`,
+    web: "https://www.tmap.co.kr/",
+  },
+];
+
+function openMapApp(app: MapApp) {
+  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  if (!app.app || !isMobile) {
+    window.open(app.web, "_blank", "noopener");
+    return;
+  }
+  const fallback = window.setTimeout(() => {
+    if (!document.hidden) window.location.href = app.web;
+  }, 1500);
+  // 앱으로 넘어가면 페이지가 가려지면서(hidden) 대체 이동은 취소돼요
+  const cancel = () => {
+    if (document.hidden) window.clearTimeout(fallback);
+  };
+  document.addEventListener("visibilitychange", cancel, { once: true });
+  window.location.href = app.app;
+}
+
+/** 마지막 마무리 인사 — "12월 1일, 일송아트홀에서 만나요" */
+function ClosingNote() {
+  const { ref, visible } = useScrollReveal<HTMLDivElement>(0.4);
+  return (
+    <div ref={ref} className="mt-14 border-t border-white/10 pt-10 text-center">
+      <svg viewBox="0 0 52 52" className="mx-auto mb-5 h-[52px] w-[52px]" aria-hidden="true">
+        <circle
+          cx="26"
+          cy="26"
+          r="23"
+          pathLength={1}
+          transform="rotate(-90 26 26)"
+          fill="none"
+          stroke="rgba(255,255,255,0.5)"
+          strokeWidth="1.2"
+          strokeDasharray="1"
+          style={{
+            strokeDashoffset: visible ? 0 : 1,
+            transition: "stroke-dashoffset 1.6s cubic-bezier(0.65,0,0.35,1) 0.2s",
+          }}
+        />
+      </svg>
+      <div
+        className="transition-all duration-1000 ease-out"
+        style={{
+          opacity: visible ? 1 : 0,
+          transform: visible ? "none" : "translateY(12px)",
+          transitionDelay: visible ? "0.9s" : "0s",
+        }}
+      >
+        <p className="c26-serif text-2xl font-black leading-snug text-white md:text-3xl">
+          12월 1일,
+          <br />
+          <span className="text-[#7cc4ee]">일송아트홀</span>에서 만나요
+        </p>
+        <p className="mt-3 text-xs text-white/50">18:30 · 전석 무료</p>
+      </div>
+    </div>
+  );
+}
 
 function ConcertMap() {
   const { ref: wrapRef, visible } = useScrollReveal<HTMLDivElement>(0.05);
@@ -1011,7 +1205,11 @@ function ConcertMap() {
         if (!mapRef.current) return;
         const position = new window.kakao.maps.LatLng(lat, lng);
         const map = new window.kakao.maps.Map(mapRef.current, { center: position, level: 3 });
-        new window.kakao.maps.Marker({ position }).setMap(map);
+        // 기본 빨간 핀 대신, 하늘색 점에서 파동이 퍼지는 핀을 HTML 로 직접 얹어요 (CustomOverlay)
+        const pin = document.createElement("div");
+        pin.className = "c26-map-pin";
+        pin.innerHTML = '<span class="c26-map-pulse"></span><span class="c26-map-pulse" style="animation-delay:1s"></span><span class="c26-map-dot"></span>';
+        new window.kakao.maps.CustomOverlay({ position, content: pin, yAnchor: 0.5, xAnchor: 0.5, zIndex: 3 }).setMap(map);
         // 모바일에서 페이지 스크롤하다 지도에 손가락이 걸려 멈추는 걸 막기 위해 드래그는 끄고 줌 버튼만 둬요.
         map.setDraggable(false);
         map.setZoomable(false);
@@ -1157,9 +1355,39 @@ function useScrollDetails() {
 
 export default function Concert() {
   useScrollDetails();
-  const [openTeam, setOpenTeam] = useState<number | null>(null);
-  // useCallback 으로 고정해야 TeamSheet 의 스크롤 잠금 effect 가 매 렌더마다 다시 돌지 않아요.
-  const closeTeam = useCallback(() => setOpenTeam(null), []);
+  // 주소 /2026concert/{팀 id} → 그 팀 프로그램북 화면을 띄움
+  const navigate = useNavigate();
+  const teamId = useParams()["*"] || "";
+  const openTeam = teamId ? C.teams.findIndex((t) => t.id === teamId) : -1;
+  // useCallback 으로 고정해야 팀 화면 · 혜택 창의 스크롤 잠금 effect 가 매 렌더마다 다시 돌지 않아요.
+  // 사이트 안에서 들어왔으면 뒤로가기(스크롤 위치 그대로), 링크로 바로 들어왔으면 공연 페이지로
+  const closeTeam = useCallback(() => {
+    const idx = (window.history.state as { idx?: number } | null)?.idx ?? 0;
+    if (idx > 0) navigate(-1);
+    else navigate("/2026concert", { replace: true });
+  }, [navigate]);
+  // 이전/다음 무대는 기록을 쌓지 않고 바꿔치기 → 뒤로가기 한 번이면 무대 순서로 돌아가요
+  const goTeam = useCallback((i: number) => navigate(`/2026concert/${C.teams[i].id}`, { replace: true }), [navigate]);
+  const shareTeam = useCallback(async (team: ConcertTeam) => {
+    const url = `${PAGE_URL}/${team.id}`;
+    if (navigator.share) {
+      try {
+        await navigator.share({ url });
+      } catch {
+        /* 공유 창을 닫은 경우 */
+      }
+      return;
+    }
+    navigator.clipboard
+      ?.writeText(url)
+      .then(() => setToast("이 무대 링크를 복사했어요."))
+      .catch(() => setToast("복사에 실패했어요."));
+  }, []);
+
+  // 없는 팀 주소면 공연 페이지로
+  useEffect(() => {
+    if (teamId && openTeam < 0) navigate("/2026concert", { replace: true });
+  }, [teamId, openTeam, navigate]);
   const [openSponsor, setOpenSponsor] = useState<number | null>(null);
   const closeSponsor = useCallback(() => setOpenSponsor(null), []);
   const [openQna, setOpenQna] = useState<number | null>(0);
@@ -1497,7 +1725,7 @@ export default function Concert() {
               <li key={team.id}>
                 <Rise delay={(i % 4) * 60}>
                   <button
-                    onClick={() => setOpenTeam(i)}
+                    onClick={() => navigate(`/2026concert/${team.id}`)}
                     className="c26-rule-b group flex w-full items-center gap-4 py-5 text-left transition-colors active:bg-white/[0.04] md:gap-6 md:py-6"
                     style={{ "--i": i } as CSSProperties}
                   >
@@ -1506,10 +1734,9 @@ export default function Concert() {
                       <span className="c26-serif block break-keep text-[21px] font-black leading-tight text-white md:text-2xl">
                         {team.name}
                       </span>
-                      <span className="mt-1.5 block font-mono text-[10px] tracking-[0.2em] text-white/45">{team.genre}</span>
                     </span>
-                    <span className="text-lg text-white/35 transition-colors group-hover:text-white/80" aria-hidden="true">
-                      ＋
+                    <span className="text-lg text-white/35 transition-all group-hover:translate-x-0.5 group-hover:text-white/80" aria-hidden="true">
+                      →
                     </span>
                   </button>
                 </Rise>
@@ -1635,23 +1862,32 @@ export default function Concert() {
             <div className="mt-5">
               <p className="c26-serif text-xl font-bold text-white">{C.location.venueName}</p>
               <p className="mt-1 text-sm text-white/60">{C.location.address}</p>
-              <div className="mt-4 flex gap-2">
-                <button
-                  onClick={() => copyText(C.location.address, "주소를 복사했어요.")}
-                  {...inkHandlers}
-                  className="c26-inkbtn flex-1 rounded-full border border-white/20 py-3 text-sm text-white/85 transition-colors hover:border-white/50"
-                >
-                  주소 복사
-                </button>
-                <a
-                  href={`https://map.kakao.com/link/to/${encodeURIComponent(C.location.venueName)},${C.location.lat},${C.location.lng}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex-1 rounded-full bg-[#e9eef2] py-3 text-center text-sm font-semibold text-black"
-                >
-                  길찾기
-                </a>
+              {/* 평소 쓰는 지도 앱으로 바로 길찾기 */}
+              <div className="mt-4 grid grid-cols-3 gap-2">
+                {MAP_APPS.map((app) => (
+                  <button
+                    key={app.name}
+                    onClick={() => openMapApp(app)}
+                    className="flex flex-col items-center gap-2 rounded-2xl border border-white/15 bg-white/[0.03] px-1 pb-3 pt-3.5 text-xs text-white transition-colors hover:border-white/40 active:scale-95"
+                  >
+                    <span
+                      className="grid h-9 w-9 place-items-center rounded-[10px] text-[13px] font-extrabold"
+                      style={{ background: app.bg, color: app.fg }}
+                      aria-hidden="true"
+                    >
+                      {app.letter}
+                    </span>
+                    {app.name}
+                  </button>
+                ))}
               </div>
+              <button
+                onClick={() => copyText(C.location.address, "주소를 복사했어요.")}
+                {...inkHandlers}
+                className="c26-inkbtn mt-2 w-full rounded-full border border-white/20 py-3 text-sm text-white/85 transition-colors hover:border-white/50"
+              >
+                주소 복사
+              </button>
             </div>
           </Rise>
           <Rise delay={150}>
@@ -1664,6 +1900,8 @@ export default function Concert() {
               ))}
             </dl>
           </Rise>
+          {/* 페이지 마무리 인사 — 원이 한 바퀴 그려진 뒤 한 줄 */}
+          <ClosingNote />
         </Section>
       </main>
 
@@ -1703,9 +1941,7 @@ export default function Concert() {
         </a>
       </div>
 
-      {openTeam !== null && (
-        <TeamSheet team={C.teams[openTeam]} index={openTeam} onClose={closeTeam} />
-      )}
+      {openTeam >= 0 && <TeamPage index={openTeam} onBack={closeTeam} onGo={goTeam} onShare={shareTeam} />}
       {openSponsor !== null && (
         <SponsorSheet sponsor={C.sponsors[openSponsor]} onClose={closeSponsor} />
       )}

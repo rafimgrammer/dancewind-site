@@ -5,10 +5,11 @@
 //    (디자인 코드는 src/pages/Concert.tsx, 애니메이션은 src/pages/concert2026.css)
 
 export interface ConcertTeam {
+  /** 주소에 쓰여요 → hallymdancewind.com/2026concert/{id} (영문 소문자 · 숫자 · - 만) */
   id: string;
   name: string;
-  genre: string;
-  songs: { artist: string; title: string }[];
+  /** youtube: 그 곡 유튜브 주소. 비워두면 "가수 + 곡 제목" 유튜브 검색 결과로 연결돼요. */
+  songs: { artist: string; title: string; youtube?: string }[];
   members: string[];
   /** 팀장 이름 — members 안에 있는 이름과 똑같이 적어주세요. (없으면 생략) */
   leader?: string;
@@ -97,14 +98,12 @@ export const CONCERT_2026 = {
     {
       id: "opening",
       name: "OPENING : 輪",
-      genre: "ALL",
       songs: [{ artist: "춤바람 Remix", title: "輪舞 Intro" }],
       members: ["춤바람 전원"],
     },
     {
       id: "hiphop",
       name: "BREEZE",
-      genre: "HIPHOP",
       songs: [
         { artist: "Kendrick Lamar", title: "HUMBLE." },
         { artist: "Travis Scott", title: "SICKO MODE" },
@@ -115,7 +114,6 @@ export const CONCERT_2026 = {
     {
       id: "girlshiphop",
       name: "LUNA",
-      genre: "GIRLS HIPHOP",
       songs: [
         { artist: "Doja Cat", title: "Paint The Town Red" },
         { artist: "Megan Thee Stallion", title: "Savage" },
@@ -126,7 +124,6 @@ export const CONCERT_2026 = {
     {
       id: "choreo",
       name: "DRAWING",
-      genre: "CHOREOGRAPHY",
       songs: [{ artist: "Billie Eilish", title: "lovely" }],
       members: ["서다은", "임하윤", "조예린", "권태오", "신지호", "문가온"],
       leader: "서다은",
@@ -134,7 +131,6 @@ export const CONCERT_2026 = {
     {
       id: "waacking",
       name: "SWIRL",
-      genre: "WAACKING",
       songs: [{ artist: "Donna Summer", title: "I Feel Love" }],
       members: ["배수아", "황나연", "전소율"],
       leader: "배수아",
@@ -142,7 +138,6 @@ export const CONCERT_2026 = {
     {
       id: "kpop1",
       name: "CIRCLE",
-      genre: "K-POP",
       songs: [
         { artist: "aespa", title: "Supernova" },
         { artist: "NewJeans", title: "Super Shy" },
@@ -153,7 +148,6 @@ export const CONCERT_2026 = {
     {
       id: "kpop2",
       name: "ORBIT",
-      genre: "K-POP",
       songs: [
         { artist: "SEVENTEEN", title: "손오공" },
         { artist: "ATEEZ", title: "BOUNCY" },
@@ -164,7 +158,6 @@ export const CONCERT_2026 = {
     {
       id: "finale",
       name: "FINALE : 舞",
-      genre: "ALL",
       songs: [{ artist: "춤바람 Remix", title: "輪舞 Outro" }],
       members: ["춤바람 전원"],
     },
@@ -220,9 +213,10 @@ export const CONCERT_2026 = {
   location: {
     venueName: "한림대학교 일송아트홀",
     address: "강원특별자치도 춘천시 한림대학길 1",
-    // 카카오맵 좌표 — 장소 확정되면 카카오맵에서 우클릭 > "좌표 복사"로 바꿔주세요.
-    lat: 37.88651,
-    lng: 127.74017,
+    // 일송아트홀 좌표 (지도 검색으로 확인한 건물 위치). 핀이 어긋나 보이면
+    // 카카오맵에서 건물을 우클릭 > "좌표 복사"한 값으로 바꿔주세요.
+    lat: 37.88687,
+    lng: 127.73697,
     directions: [
       { label: "버스", text: "한림대 정문 하차 후 도보 약 5분" },
       { label: "기차", text: "춘천역 · 남춘천역에서 택시 약 10분" },

@@ -113,7 +113,8 @@ export default function App() {
                 </Route>
 
                 {/* 2026 정기공연 「輪舞」 홍보 페이지 — Layout.tsx에서 사이드바 없이 전체 화면으로 렌더링 */}
-                <Route path="/2026concert" element={<Concert />} />
+                {/* /2026concert/팀id 도 같은 페이지가 받아서 그 팀의 프로그램북 화면을 위에 띄워요 (뒤로가기 하면 원래 스크롤 위치 그대로) */}
+                <Route path="/2026concert/*" element={<Concert />} />
 
                 {/* 인증 / 온보딩 */}
                 <Route path="/login" element={<Login />} />

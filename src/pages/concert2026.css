@@ -431,3 +431,42 @@
 .c26-lite .c26-wisp { animation: none; }
 .c26-lite .c26-smoke { animation: c26-fade-in 2s ease-out 0.2s both; transform: scale(1.06); }
 .c26-lite .c26-char { filter: none; transition: opacity 0.6s ease-out, transform 0.7s cubic-bezier(0.16, 1, 0.3, 1); }
+
+/* ---------- 찾아오시는 길: 파동 핀 ----------
+ * 카카오맵 기본 빨간 핀 대신 쓰는 핀. 밝은(컬러) 지도 위에서 잘 보이도록
+ * 페이지 포인트인 하늘색(#7cc4ee)보다 한 단계 진한 파란색을 써요. */
+.c26-map-pin {
+  position: relative;
+  width: 18px;
+  height: 18px;
+}
+.c26-map-dot {
+  position: absolute;
+  inset: 3px;
+  border-radius: 50%;
+  background: #2b8fd6;
+  box-shadow: 0 0 0 2.5px #fff, 0 2px 8px rgba(20, 70, 120, 0.45);
+}
+.c26-map-pulse {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: rgba(43, 143, 214, 0.45);
+  animation: c26-map-pulse 2s ease-out infinite;
+}
+@keyframes c26-map-pulse {
+  from { transform: scale(1); opacity: 0.9; }
+  to { transform: scale(5); opacity: 0; }
+}
+
+/* ---------- 팀 상세 화면: 오른쪽에서 밀려 들어옴 ---------- */
+.c26-page-in {
+  animation: c26-page-in 0.42s cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+@keyframes c26-page-in {
+  from { transform: translateX(100%); }
+  to { transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .c26-page-in { animation: none; }
+}
