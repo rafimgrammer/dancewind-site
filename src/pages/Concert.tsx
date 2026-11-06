@@ -6,7 +6,7 @@
 // - 문구/팀/경품/스폰서 같은 내용은 전부 src/data/concert2026.ts 에 모아뒀어요.
 // - 애니메이션 정의는 ./concert2026.css 에 있어요.
 
-import { useCallback, useEffect, useId, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useScrollReveal } from "../hooks/useScrollReveal";
 import { shareToKakao } from "../lib/kakaoShare";
@@ -19,6 +19,7 @@ import "./concert2026.css";
 
 const SITE_URL = "https://hallymdancewind.com";
 const PAGE_URL = `${SITE_URL}/${C.slug}`;
+const STORY_IMAGE_URL = "/share/concert2026-story.jpg"; // 인스타 스토리용 1080×1920 이미지
 const KAKAO_MAP_KEY = import.meta.env.VITE_KAKAO_MAP_KEY;
 
 /* =========================================================================
@@ -101,7 +102,7 @@ function SectionHead({ num, hanja, eyebrow, title }: { num: string; hanja: strin
       {/* 잡지처럼 크게 깔리는 한자 번호 */}
       <span
         aria-hidden="true"
-        className={`c26-serif pointer-events-none absolute -top-10 right-0 select-none text-[124px] font-black leading-none text-white/[0.07] transition-all duration-[1400ms] ease-out md:static md:mb-2 md:block md:text-[160px] ${
+        className={`c26-plx c26-serif pointer-events-none absolute -top-10 right-0 select-none text-[124px] font-black leading-none text-white/[0.07] transition-[opacity,translate] duration-[1400ms] ease-out will-change-transform md:static md:mb-2 md:block md:text-[160px] ${
           visible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
         }`}
       >
@@ -195,77 +196,175 @@ function useCountdown(): CountdownState {
 }
 
 const dDayLabel = (cd: CountdownState) =>
-  cd.phase === "before" ? (cd.dDay <= 0 ? "D-DAY" : `D-${cd.dDay}`) : cd.phase === "live" ? "LIVE" : "END";
+  cd.phase === "before" ? (cd.dDay <= 0 ? "D-DAY" : `D-${cd.dDay}`) : cd.phase === "live" ? "ON STAGE" : "END";
 
-/** 바뀐 자리의 숫자만 굴러 내려오는 숫자 표시 */
-function RollingNumber({ value, pad = 2 }: { value: number; pad?: number }) {
-  const digits = String(value).padStart(pad, "0").split("");
+/* ---------- 넘어가는 숫자판 (먹 타일) ----------
+ * 판 한 칸 = 위 반쪽 + 아래 반쪽 + 접히는 날개(fold).
+ *   글자가 바뀌면: 위 반쪽에는 "새 글자", 아래 반쪽에는 잠깐 "이전 글자"를 두고,
+ *   이전 글자의 위 반쪽이 그려진 날개를 아래로 접어 넘긴 뒤 아래 반쪽도 새 글자로 바꿔요.
+ *   영문(ON STAGE / THANK YOU)은 공항 출발 안내판처럼 알파벳을 몇 장 촤르륵 거쳐서 도착해요.
+ */
+const FLAP_CHARS = " ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+function FlipCell({ char, word = false, large = false }: { char: string; word?: boolean; large?: boolean }) {
+  // 영문은 빈칸에서부터 넘겨 들어오게, 숫자는 처음엔 바로 보이게
+  const initial = /[A-Z]/.test(char) ? " " : char;
+  const [shown, setShown] = useState(initial);
+  const [flip, setFlip] = useState<{ from: string; to: string; dur: number; id: number } | null>(null);
+  // 타이머 안에서 "지금 판에 적힌 글자"를 읽어야 해서 state 와 별도로 ref 에도 들고 있어요.
+  const shownRef = useRef(initial);
+
+  useEffect(() => {
+    let timer = 0;
+    let cancelled = false;
+    const step = () => {
+      const cur = shownRef.current;
+      if (cancelled || cur === char) return;
+      let next = char;
+      let dur = 420;
+      const i = FLAP_CHARS.indexOf(cur);
+      const j = FLAP_CHARS.indexOf(char);
+      if (i >= 0 && j >= 0) {
+        // 알파벳 사이는 대여섯 장만 빠르게 거쳐 가요 (전부 넘기면 너무 오래 걸려서)
+        const dist = (j - i + FLAP_CHARS.length) % FLAP_CHARS.length;
+        const jump = Math.max(1, Math.ceil(dist / 5));
+        if (dist > jump) next = FLAP_CHARS[(i + jump) % FLAP_CHARS.length];
+        dur = 90;
+      }
+      shownRef.current = next;
+      setFlip({ from: cur, to: next, dur, id: Math.random() });
+      timer = window.setTimeout(() => {
+        setShown(next);
+        setFlip(null);
+        step();
+      }, dur);
+    };
+    step();
+    return () => {
+      // 넘기는 도중에 값이 또 바뀌면, 반쯤 넘어간 상태로 멈추지 않게 지금 글자로 정리해요.
+      cancelled = true;
+      window.clearTimeout(timer);
+      setShown(shownRef.current);
+      setFlip(null);
+    };
+  }, [char]);
+
+  const top = flip ? flip.to : shown;
+  const bottom = flip ? flip.from : shown;
   return (
-    <span className="inline-flex overflow-hidden tabular-nums">
-      {digits.map((d, i) => (
-        // key 에 숫자를 넣어서, 값이 바뀐 자리만 다시 그려지며 애니메이션이 돌아요.
-        <span key={`${digits.length - i}-${d}`} className="c26-roll">
-          {d}
+    <span className={`c26-flip${word ? " c26-flip-word" : ""}${large ? " c26-flip-lg" : ""}`} aria-hidden="true">
+      <span className="c26-flip-half c26-flip-top">
+        <span>{top.trim()}</span>
+      </span>
+      <span className="c26-flip-half c26-flip-bot">
+        <span>{bottom.trim()}</span>
+      </span>
+      {flip && (
+        <span
+          key={flip.id}
+          className="c26-flip-fold"
+          style={{ animationDuration: `${flip.dur}ms` }}
+        >
+          <span>{flip.from.trim()}</span>
         </span>
-      ))}
+      )}
     </span>
   );
 }
 
+/** 두 칸짜리 숫자 묶음 + 아래 작은 단위 글씨 */
+function FlipGroup({ value, label }: { value: number; label: string }) {
+  const digits = String(value).padStart(2, "0").split("");
+  return (
+    <span className="flex flex-col items-center">
+      <span className="flex gap-[3px]">
+        {digits.map((d, i) => (
+          // 자리(i)를 key 로 써야 같은 칸이 유지되면서 글자만 넘어가요.
+          <FlipCell key={digits.length - i} char={d} />
+        ))}
+      </span>
+      <span className="mt-1.5 text-[8px] tracking-[0.25em] text-white/45 md:text-[9px]">{label}</span>
+    </span>
+  );
+}
+
+const FlipColon = () => (
+  <span className="c26-serif pb-[26px] text-base leading-none text-white/35 md:pb-[30px] md:text-lg" aria-hidden="true">
+    :
+  </span>
+);
+
 function Countdown() {
   const cd = useCountdown();
+  const isToday = cd.phase === "before" && cd.dDay <= 0;
+  const minutesIn = Math.max(0, Math.floor((Date.now() - EVENT_MS) / 60_000));
 
-  if (cd.phase === "live") {
-    return (
-      <div className="inline-flex items-center gap-3 rounded-2xl border border-[#ff5a5a]/40 bg-[#ff5a5a]/10 px-5 py-3.5 backdrop-blur-md">
-        <span className="c26-live-dot h-2.5 w-2.5 rounded-full bg-[#ff5a5a]" />
-        <span className="c26-serif text-lg font-bold text-white">지금 공연 중이에요</span>
-      </div>
+  let label: ReactNode;
+  let board: ReactNode;
+  let note: ReactNode = null;
+  let aria: string;
+
+  if (cd.phase === "before") {
+    const hoursLeft = cd.days * 24 + cd.hours; // 당일엔 일 단위가 없으니 시간으로 합쳐서
+    label = isToday ? "TODAY · D-DAY" : `公演까지 ${dDayLabel(cd)}`;
+    board = (
+      <>
+        {!isToday && (
+          <>
+            <FlipGroup value={Math.min(99, cd.days)} label="DAYS" />
+            <FlipColon />
+          </>
+        )}
+        <FlipGroup value={isToday ? hoursLeft : cd.hours} label="HRS" />
+        <FlipColon />
+        <FlipGroup value={cd.minutes} label="MIN" />
+        <FlipColon />
+        <FlipGroup value={cd.seconds} label="SEC" />
+      </>
     );
-  }
-
-  if (cd.phase === "after") {
-    return (
-      <div className="inline-flex rounded-2xl border border-white/15 bg-white/[0.04] px-5 py-3.5 backdrop-blur-md">
-        <span className="c26-serif text-[15px] text-white/85">공연이 막을 내렸어요. 함께해 주셔서 감사합니다.</span>
-      </div>
+    if (isToday) note = `오늘 18:30 · ${C.location.venueName}`;
+    aria = `공연까지 ${cd.days}일 ${cd.hours}시간 ${cd.minutes}분 남음`;
+  } else {
+    // 두 단어 모두 9칸이라 판 크기가 그대로 유지돼요 (" ON STAGE" / "THANK YOU")
+    const word = cd.phase === "live" ? " ON STAGE" : "THANK YOU";
+    label =
+      cd.phase === "live" ? (
+        <>
+          <span className="c26-live-dot h-1.5 w-1.5 rounded-full bg-[#ff5a5a]" />
+          NOW
+        </>
+      ) : (
+        `${C.titleHanja} · 2026`
+      );
+    board = (
+      <span className="flex gap-[3px]">
+        {word.split("").map((ch, i) => (
+          <FlipCell key={i} char={ch} word />
+        ))}
+      </span>
     );
+    note =
+      cd.phase === "live"
+        ? `지금 공연 중 · ${minutesIn < 1 ? "방금 막이 올랐어요" : `${minutesIn}분째`}`
+        : `함께해 주셔서 감사합니다 · ${C.instagram.handle}`;
+    aria = cd.phase === "live" ? "지금 공연 중" : "공연이 끝났습니다. 함께해 주셔서 감사합니다";
   }
-
-  const units = [
-    { value: cd.days, label: "일" },
-    { value: cd.hours, label: "시간" },
-    { value: cd.minutes, label: "분" },
-    { value: cd.seconds, label: "초" },
-  ];
 
   return (
     <div
-      className="inline-flex items-stretch overflow-hidden rounded-2xl border border-white/15 bg-white/[0.05] shadow-[0_8px_40px_rgba(0,0,0,0.5)] backdrop-blur-md"
+      className={`c26-board inline-flex flex-col items-center md:items-start ${cd.phase === "live" ? "is-live" : ""}`}
       role="timer"
-      aria-label={`공연까지 ${cd.days}일 ${cd.hours}시간 ${cd.minutes}분 남음`}
+      aria-label={aria}
     >
-      {/* D-28 */}
-      <div className="flex flex-col items-center justify-center border-r border-white/10 bg-[#7cc4ee]/[0.12] px-4 py-2.5">
-        <span className="text-[9px] tracking-[0.2em] text-[#9fd3f3]">공연까지</span>
-        <span className="c26-serif c26-dday-glow mt-0.5 text-[28px] font-black leading-none text-white md:text-[32px]">
-          {dDayLabel(cd)}
-        </span>
-      </div>
-      {/* 27일 04:12:33 */}
-      <div className="flex items-center gap-2.5 px-3.5 md:gap-3 md:px-4">
-        {units.map((u, i) => (
-          <div key={u.label} className="flex items-center gap-2.5 md:gap-3">
-            {i > 0 && <span className="h-5 w-px bg-white/10" aria-hidden="true" />}
-            <div className="flex flex-col items-center">
-              <span className="text-[19px] font-semibold leading-none text-white md:text-[22px]">
-                <RollingNumber value={u.value} />
-              </span>
-              <span className="mt-1 text-[9px] text-white/45">{u.label}</span>
-            </div>
-          </div>
-        ))}
-      </div>
+      <p
+        className={`c26-serif mb-2.5 flex items-center gap-2 text-[10px] tracking-[0.4em] md:text-[11px] ${
+          cd.phase === "live" ? "text-[#ffb3b3]" : "text-[#7cc4ee]"
+        }`}
+      >
+        {label}
+      </p>
+      <div className="flex items-end gap-[5px]">{board}</div>
+      {note && <p className="mt-3 text-[11px] leading-relaxed text-white/60 md:text-xs">{note}</p>}
     </div>
   );
 }
@@ -431,6 +530,7 @@ function useHeroDepth() {
 
 function Intro() {
   const depthRef = useHeroDepth();
+  const { closed: applyClosed } = useApplyDeadline(); // 마감 후엔 첫 화면의 "사전 신청하기" 버튼도 숨겨요
   // 모바일: 첫 화면(100svh) 정중앙에 서예, 날짜·카운트다운·버튼은 그 바로 아래로 이어짐
   // PC: 한 화면 안에 왼쪽 서예 + 오른쪽 문구
   return (
@@ -564,17 +664,20 @@ function Intro() {
           className="c26-rise mt-5 flex justify-center gap-2.5 md:justify-start"
           style={{ animationDelay: afterBrush(0.3) }}
         >
-          <a
-            href={C.applyUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="c26-shine rounded-full bg-[#e9eef2] px-6 py-3 text-sm font-semibold text-black transition-transform active:scale-95 md:hover:-translate-y-0.5"
-          >
-            사전 신청하기
-          </a>
+          {!applyClosed && (
+            <a
+              href={C.applyUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="c26-shine rounded-full bg-[#e9eef2] px-6 py-3 text-sm font-semibold text-black transition-transform active:scale-95 md:hover:-translate-y-0.5"
+            >
+              사전 신청하기
+            </a>
+          )}
           <a
             href="#teams"
-            className="rounded-full border border-white/25 px-6 py-3 text-sm text-white/85 transition-colors hover:border-white/60"
+            {...inkHandlers}
+            className="c26-inkbtn rounded-full border border-white/25 px-6 py-3 text-sm text-white/85 transition-colors hover:border-white/60"
           >
             라인업 보기
           </a>
@@ -591,6 +694,67 @@ function Intro() {
         <div className="c26-fog c26-fog-u left-[10%] top-[25%] h-[50%] w-[80%]" style={{ animationDelay: "0.4s" }} />
       </div>
     </section>
+  );
+}
+
+/* ---------- 사전 신청 마감까지 남은 날 ----------
+ * 공연 카운트다운과 같은 숫자판(FlipCell)을 크게 써요.
+ *   마감 전날까지: "申請 마감까지 23 일"
+ *   마감 당일:     "TODAY"  (오늘 23:59 마감)
+ *   마감 후:       "CLOSED" + 신청 버튼 대신 "현장 입장은 가능해요" 안내
+ * 날짜 차이는 시간이 아니라 "한국 날짜" 기준으로 세서, 밤 11시에 봐도 내일이 마감이면 1일로 보여요.
+ */
+const APPLY_DEADLINE_MS = new Date(C.applyDeadlineAt).getTime();
+
+function useApplyDeadline() {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    // 날짜 단위라 1초마다 볼 필요는 없어서 30초 간격 (마감 순간도 최대 30초 안에 반영돼요)
+    const timer = window.setInterval(() => setNow(Date.now()), 30_000);
+    return () => window.clearInterval(timer);
+  }, []);
+  const closed = now > APPLY_DEADLINE_MS;
+  const daysLeft = kstDayIndex(APPLY_DEADLINE_MS) - kstDayIndex(now);
+  return { closed, daysLeft };
+}
+
+function ApplyDeadline() {
+  const { closed, daysLeft } = useApplyDeadline();
+  const isToday = !closed && daysLeft <= 0;
+
+  let label: string;
+  let cells: ReactNode;
+  let aria: string;
+  if (closed) {
+    label = "申請";
+    cells = "CLOSED".split("").map((ch, i) => <FlipCell key={i} char={ch} large />);
+    aria = "사전 신청이 마감되었습니다";
+  } else if (isToday) {
+    label = "申請 마감";
+    cells = "TODAY".split("").map((ch, i) => <FlipCell key={i} char={ch} large />);
+    aria = "오늘 사전 신청이 마감됩니다";
+  } else {
+    label = "申請 마감까지";
+    const digits = String(Math.min(99, daysLeft)).padStart(2, "0").split("");
+    cells = (
+      <>
+        {digits.map((d, i) => (
+          <FlipCell key={digits.length - i} char={d} large />
+        ))}
+        <span className="c26-serif mb-2 ml-1.5 text-base text-white/70 md:text-lg">일</span>
+      </>
+    );
+    aria = `사전 신청 마감까지 ${daysLeft}일 남음`;
+  }
+
+  return (
+    <div className="text-center" role="timer" aria-label={aria}>
+      <p className="c26-serif text-[10px] tracking-[0.4em] text-[#7cc4ee] md:text-[11px]">{label}</p>
+      <div className="mt-3 mb-2.5 flex items-end justify-center gap-1">{cells}</div>
+      <p className="text-xs text-white/50">
+        {closed ? "사전 신청이 마감되었어요" : isToday ? "오늘 23:59까지 신청할 수 있어요" : C.applyDeadlineText}
+      </p>
+    </div>
   );
 }
 
@@ -776,10 +940,101 @@ function ConcertMap() {
 }
 
 /* =========================================================================
+ * 먹이 차오르는 버튼 — 누른(PC는 올린) 자리에서부터 흰 먹이 원으로 번지며 채워져요.
+ *   className 에 c26-inkbtn 을 주고 {...inkHandlers} 를 붙이면 돼요.
+ * ========================================================================= */
+
+function setInkOrigin(el: HTMLElement, e: ReactPointerEvent) {
+  const r = el.getBoundingClientRect();
+  el.style.setProperty("--ink-x", `${e.clientX - r.left}px`);
+  el.style.setProperty("--ink-y", `${e.clientY - r.top}px`);
+}
+
+const inkHandlers = {
+  onPointerEnter: (e: ReactPointerEvent<HTMLElement>) => {
+    if (e.pointerType !== "mouse") return;
+    setInkOrigin(e.currentTarget, e);
+    e.currentTarget.classList.add("is-inked");
+  },
+  onPointerLeave: (e: ReactPointerEvent<HTMLElement>) => {
+    if (e.pointerType !== "mouse") return;
+    setInkOrigin(e.currentTarget, e);
+    e.currentTarget.classList.remove("is-inked");
+  },
+  onPointerDown: (e: ReactPointerEvent<HTMLElement>) => {
+    const el = e.currentTarget;
+    setInkOrigin(el, e);
+    el.classList.add("is-inked");
+    // 터치는 손을 떼고 잠깐 뒤에 원래대로
+    if (e.pointerType !== "mouse") window.setTimeout(() => el.classList.remove("is-inked"), 650);
+  },
+};
+
+/* =========================================================================
+ * 스크롤 디테일 두 가지 (페이지 전체에 한 번만 걸어요)
+ *   1) data-lines 가 붙은 목록이 화면에 들어오면 가로선이 왼쪽→오른쪽으로 그어짐
+ *   2) 섹션 뒤 큰 한자 번호(.c26-plx)가 글보다 느리게 움직이는 시차
+ * ========================================================================= */
+
+function useScrollDetails() {
+  useEffect(() => {
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    // 1) 가로선
+    const lists = Array.from(document.querySelectorAll<HTMLElement>("[data-lines]"));
+    if (reduce) {
+      lists.forEach((el) => el.classList.add("c26-drawn"));
+    }
+    const io = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((en) => {
+          if (en.isIntersecting) {
+            en.target.classList.add("c26-drawn");
+            io.unobserve(en.target);
+          }
+        });
+      },
+      { threshold: 0.12 }
+    );
+    if (!reduce) lists.forEach((el) => io.observe(el));
+
+    // 2) 시차
+    const nums = Array.from(document.querySelectorAll<HTMLElement>(".c26-plx"));
+    let raf = 0;
+    const apply = () => {
+      raf = 0;
+      const vh = window.innerHeight;
+      nums.forEach((el) => {
+        const host = el.parentElement;
+        if (!host) return;
+        const r = host.getBoundingClientRect();
+        if (r.bottom < -200 || r.top > vh + 200) return;
+        // 화면 40% 지점을 기준으로 위/아래로 벗어난 만큼 반대로 살짝 밀어서 "느리게" 보이게
+        const off = r.top - vh * 0.4;
+        el.style.transform = `translate3d(0, ${(-off * 0.22).toFixed(1)}px, 0)`;
+      });
+    };
+    const onScroll = () => {
+      if (!raf) raf = requestAnimationFrame(apply);
+    };
+    if (!reduce) {
+      apply();
+      window.addEventListener("scroll", onScroll, { passive: true });
+    }
+    return () => {
+      io.disconnect();
+      window.removeEventListener("scroll", onScroll);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, []);
+}
+
+/* =========================================================================
  * 페이지
  * ========================================================================= */
 
 export default function Concert() {
+  useScrollDetails();
   const [openTeam, setOpenTeam] = useState<number | null>(null);
   // useCallback 으로 고정해야 TeamSheet 의 스크롤 잠금 effect 가 매 렌더마다 다시 돌지 않아요.
   const closeTeam = useCallback(() => setOpenTeam(null), []);
@@ -787,6 +1042,7 @@ export default function Concert() {
   const [toast, setToast] = useState("");
   const [shareError, setShareError] = useState("");
   const [showDock, setShowDock] = useState(false);
+  const { closed: applyClosed } = useApplyDeadline();
   const applyRef = useRef<HTMLDivElement>(null);
   const footerRef = useRef<HTMLElement>(null);
 
@@ -878,6 +1134,56 @@ export default function Concert() {
     }
   };
 
+  /* 인스타 스토리 공유
+   * 인스타는 웹에서 "스토리에 바로 올리기"를 열어주지 않아서, 휴대폰 공유 창에 세로 이미지를 실어 보내요.
+   *   → 공유 창에서 Instagram 을 고르면 스토리 편집 화면으로 이미지가 들어가요.
+   * 동시에 링크를 복사해 둬서, 스토리에서 "링크 스티커"에 바로 붙여넣을 수 있게 해요.
+   * 이미지는 미리 받아 둬요: 아이폰 사파리는 버튼을 누른 "직후"에만 공유 창을 열 수 있어서,
+   * 누른 뒤에 이미지를 내려받기 시작하면 그 사이 권한이 사라져 공유 창이 안 떠요.
+   */
+  const storyFileRef = useRef<File | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    // 첫 화면 로딩을 방해하지 않게 조금 늦게 받아요
+    const timer = window.setTimeout(() => {
+      fetch(STORY_IMAGE_URL)
+        .then((res) => res.blob())
+        .then((blob) => {
+          if (!cancelled) storyFileRef.current = new File([blob], "2026concert-story.jpg", { type: "image/jpeg" });
+        })
+        .catch(() => {
+          /* 못 받아도 버튼을 누르면 아래 대체 방법(이미지 저장)으로 가요 */
+        });
+    }, 2500);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, []);
+
+  const handleStoryShare = async () => {
+    // 링크 스티커용 주소 복사 (기다리지 않고 바로 공유 창을 띄워요)
+    navigator.clipboard?.writeText(PAGE_URL).catch(() => {});
+    const file = storyFileRef.current;
+    if (file && navigator.canShare?.({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file] });
+        setToast("링크가 복사됐어요. 스토리에서 링크 스티커에 붙여넣어 주세요.");
+      } catch {
+        /* 공유 창을 닫은 경우 */
+      }
+      return;
+    }
+    // 공유 창에 이미지를 못 싣는 환경(PC, 일부 브라우저): 이미지를 저장해 주고 안내
+    const a = document.createElement("a");
+    a.href = STORY_IMAGE_URL;
+    a.download = "2026concert-story.jpg";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setToast("스토리 이미지를 저장했어요. 링크도 복사됐으니 인스타 스토리에 올려 주세요.");
+  };
+
   return (
     <div className="relative min-h-screen overflow-x-clip bg-black text-[#d6dbe0] selection:bg-[#7cc4ee] selection:text-black">
       {/* 페이지 전체에 깔리는 아주 옅은 연기 */}
@@ -934,28 +1240,37 @@ export default function Concert() {
               </Rise>
             ))}
           </div>
-          <Rise delay={150}>
-            <dl className="mt-10 border-t border-white/20">
-              {C.description.facts.map((f) => (
-                <div key={f.label} className="flex items-baseline justify-between gap-4 border-b border-white/10 py-4">
-                  <dt className="shrink-0 text-[11px] tracking-[0.3em] text-[#7cc4ee]">{f.label}</dt>
-                  <dd className="c26-serif break-keep text-right text-[15px] font-bold text-white">{f.value}</dd>
+          {/* 정보 카드 2×2 — 구석의 옅은 한자는 섹션 번호(貳)의 큰 한자와 같은 톤이에요 */}
+          <dl className="mt-10 grid grid-cols-2 gap-2 md:gap-3">
+            {C.description.facts.map((f, fi) => (
+              <Rise key={f.label} delay={fi * 90} className="h-full">
+                <div className="relative h-full min-h-[108px] overflow-hidden rounded-xl border border-white/[0.12] px-3.5 pb-4 pt-4 md:min-h-[128px] md:px-5 md:pt-5">
+                  <span
+                    className="c26-serif pointer-events-none absolute -bottom-3 right-1.5 select-none text-[54px] font-black leading-none text-white/[0.06] md:text-[64px]"
+                    aria-hidden="true"
+                  >
+                    {f.hanja}
+                  </span>
+                  <dt className="relative text-[11px] tracking-[0.3em] text-[#7cc4ee] md:text-xs">{f.label}</dt>
+                  <dd className="c26-serif relative mt-2.5 whitespace-pre-line break-keep text-[16.5px] font-bold leading-snug text-white md:text-[19px]">
+                    {f.value}
+                  </dd>
                 </div>
-              ))}
-            </dl>
-          </Rise>
+              </Rise>
+            ))}
+          </dl>
         </Section>
 
         <RingDivider />
 
         {/* ③ Q&A */}
         <Section id="qna" head={{ num: "參", hanja: "問答", eyebrow: "Q & A", title: "자주 묻는 질문" }}>
-          <div className="border-t border-white/20">
+          <div data-lines className="c26-rule-t">
             {C.qna.map((item, i) => {
               const open = openQna === i;
               return (
                 <Rise key={item.q} delay={i * 60}>
-                  <div className="border-b border-white/10">
+                  <div className="c26-rule-b" style={{ "--i": i } as CSSProperties}>
                     <button
                       onClick={() => setOpenQna(open ? null : i)}
                       className="flex w-full items-center gap-4 py-5 text-left"
@@ -993,29 +1308,43 @@ export default function Concert() {
 
         {/* ④ 사전 신청 */}
         <Section id="apply" head={{ num: "肆", hanja: "申請", eyebrow: "RESERVATION", title: "사전 신청" }}>
-          <Rise>
-            <div ref={applyRef} className="relative overflow-hidden border-y border-white/20 px-2 py-12 text-center md:py-16">
-              <InkBlot seed={21} className="pointer-events-none absolute -left-24 -top-24 w-72 opacity-35" />
-              <InkBlot seed={8} className="pointer-events-none absolute -bottom-28 -right-20 w-72 opacity-30" />
-              <div className="relative">
-                <p className="break-keep text-[15px] leading-relaxed text-white/75">
-                  사전 신청하시면 <b className="text-white">우선 입장</b>과
-                  <br />
-                  <b className="text-white">경품 추첨 자동 응모</b> 혜택을 드려요.
-                </p>
-                <a
-                  href={C.applyUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="c26-shine c26-serif mt-7 inline-flex items-center gap-3 rounded-full bg-[#e9eef2] px-9 py-4 text-base font-bold text-black shadow-[0_0_40px_rgba(124,196,238,0.25)] transition-transform active:scale-95 md:hover:-translate-y-0.5"
-                >
-                  사전 신청 바로가기
-                  <span aria-hidden="true">→</span>
-                </a>
-                <p className="mt-4 text-xs text-white/45">{C.applyDeadlineText}</p>
+          <div ref={applyRef}>
+            <Rise>
+              <div data-lines className="c26-rule-y py-9 md:py-11">
+                <ApplyDeadline />
               </div>
-            </div>
-          </Rise>
+            </Rise>
+            <Rise delay={120}>
+              <div className="mt-8 text-center">
+                {applyClosed ? (
+                  // 마감 후엔 신청 버튼을 없애고, 그래도 올 수 있다는 걸 알려줘요
+                  <p className="break-keep text-[15px] leading-relaxed text-white/75">
+                    사전 신청은 마감되었지만,
+                    <br />
+                    <b className="text-white">현장 입장</b>은 누구나 가능해요.
+                  </p>
+                ) : (
+                  <>
+                    <p className="break-keep text-[15px] leading-relaxed text-white/75">
+                      사전 신청하시면 <b className="text-white">우선 입장</b>과
+                      <br />
+                      <b className="text-white">경품 추첨 자동 응모</b> 혜택을 드려요.
+                    </p>
+                    <a
+                      href={C.applyUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      {...inkHandlers}
+                      className="c26-inkbtn c26-serif mt-7 inline-flex items-center gap-3 rounded-full border border-white/60 px-9 py-4 text-base font-bold text-white shadow-[0_0_40px_rgba(124,196,238,0.18)]"
+                    >
+                      사전 신청 바로가기
+                      <span aria-hidden="true">→</span>
+                    </a>
+                  </>
+                )}
+              </div>
+            </Rise>
+          </div>
         </Section>
 
         <RingDivider />
@@ -1025,13 +1354,14 @@ export default function Concert() {
           <Rise>
             <p className="mb-5 text-sm text-white/50">팀을 누르면 곡과 출연진을 볼 수 있어요.</p>
           </Rise>
-          <ol className="border-t border-white/20">
+          <ol data-lines className="c26-rule-t">
             {C.teams.map((team, i) => (
               <li key={team.id}>
                 <Rise delay={(i % 4) * 60}>
                   <button
                     onClick={() => setOpenTeam(i)}
-                    className="group flex w-full items-center gap-4 border-b border-white/10 py-5 text-left transition-colors active:bg-white/[0.04] md:gap-6 md:py-6"
+                    className="c26-rule-b group flex w-full items-center gap-4 py-5 text-left transition-colors active:bg-white/[0.04] md:gap-6 md:py-6"
+                    style={{ "--i": i } as CSSProperties}
                   >
                     <span className="c26-serif w-11 shrink-0 text-[13px] text-[#7cc4ee] md:w-14">第{i + 1}幕</span>
                     <span className="min-w-0 flex-1 transition-transform duration-300 md:group-hover:translate-x-1.5">
@@ -1057,11 +1387,11 @@ export default function Concert() {
           <Rise>
             <p className="mb-5 break-keep text-sm leading-relaxed text-white/60">{C.prizeHowTo}</p>
           </Rise>
-          <ul className="border-t border-white/20">
+          <ul data-lines className="c26-rule-t">
             {C.prizes.map((p, i) => (
               <li key={p.rank}>
                 <Rise delay={i * 80}>
-                  <div className="flex items-baseline gap-4 border-b border-white/10 py-5">
+                  <div className="c26-rule-b flex items-baseline gap-4 py-5" style={{ "--i": i } as CSSProperties}>
                     <span
                       className={`c26-serif w-16 shrink-0 text-[20px] font-black ${i === 0 ? "text-[#9fd3f3]" : "text-white/80"}`}
                     >
@@ -1084,7 +1414,8 @@ export default function Concert() {
             <p className="mb-6 break-keep text-[15px] leading-relaxed text-white/70">
               같이 보고 싶은 사람에게 공연 소식을 전해주세요.
             </p>
-            <div className="flex flex-col gap-2.5 sm:flex-row">
+            {/* 폰: 세로로 세 줄 / PC: 가로 한 줄 */}
+            <div className="flex flex-col gap-2.5 md:flex-row">
               <button
                 onClick={handleKakaoShare}
                 className="flex flex-1 items-center justify-center gap-2 rounded-full bg-[#FEE500] py-3.5 text-[15px] font-semibold text-[#191919] transition-transform active:scale-95"
@@ -1098,8 +1429,20 @@ export default function Concert() {
                 카카오톡으로 공유하기
               </button>
               <button
+                onClick={handleStoryShare}
+                className="flex flex-1 items-center justify-center gap-2 rounded-full bg-[linear-gradient(90deg,#f9a034,#ee2a7b_50%,#6228d7)] py-3.5 text-[15px] font-semibold text-white transition-transform active:scale-95"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                  <rect x="3" y="3" width="18" height="18" rx="5" />
+                  <circle cx="12" cy="12" r="4" />
+                  <circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none" />
+                </svg>
+                인스타 스토리에 올리기
+              </button>
+              <button
                 onClick={handleNativeShare}
-                className="flex-1 rounded-full border border-white/25 py-3.5 text-[15px] text-white/85 transition-colors hover:border-white/60"
+                {...inkHandlers}
+                className="c26-inkbtn flex-1 rounded-full border border-white/25 py-3.5 text-[15px] text-white/85 transition-colors hover:border-white/60"
               >
                 다른 앱으로 공유 · 링크 복사
               </button>
@@ -1117,11 +1460,11 @@ export default function Concert() {
               공연 당일 사전 신청 화면을 보여주시면 아래 혜택을 받을 수 있어요.
             </p>
           </Rise>
-          <ul className="grid grid-cols-2 gap-x-6 lg:grid-cols-3">
+          <ul data-lines className="grid grid-cols-2 gap-x-6 lg:grid-cols-3">
             {C.sponsors.map((s, i) => (
               <li key={s.name}>
                 <Rise delay={(i % 3) * 70}>
-                  <div className="flex h-full flex-col border-t border-white/20 pb-7 pt-4">
+                  <div className="c26-rule-t flex h-full flex-col pb-7 pt-4" style={{ "--i": i } as CSSProperties}>
                     <span className="font-mono text-[10px] tracking-[0.2em] text-[#7cc4ee]">{s.category}</span>
                     <span className="c26-serif mt-2 break-keep text-[17px] font-bold text-white">{s.name}</span>
                     <span className="mt-2 break-keep text-[13px] leading-snug text-white/60">{s.benefit}</span>
@@ -1146,7 +1489,8 @@ export default function Concert() {
               <div className="mt-4 flex gap-2">
                 <button
                   onClick={() => copyText(C.location.address, "주소를 복사했어요.")}
-                  className="flex-1 rounded-full border border-white/20 py-3 text-sm text-white/85 transition-colors hover:border-white/50"
+                  {...inkHandlers}
+                  className="c26-inkbtn flex-1 rounded-full border border-white/20 py-3 text-sm text-white/85 transition-colors hover:border-white/50"
                 >
                   주소 복사
                 </button>
@@ -1162,9 +1506,9 @@ export default function Concert() {
             </div>
           </Rise>
           <Rise delay={150}>
-            <dl className="mt-6 space-y-3">
-              {C.location.directions.map((d) => (
-                <div key={d.label} className="flex gap-4 border-t border-white/[0.08] pt-3">
+            <dl data-lines className="mt-6 space-y-3">
+              {C.location.directions.map((d, di) => (
+                <div key={d.label} className="c26-rule-t flex gap-4 pt-3" style={{ "--i": di } as CSSProperties}>
                   <dt className="w-10 shrink-0 text-xs tracking-widest text-[#7cc4ee]">{d.label}</dt>
                   <dd className="break-keep text-sm text-white/70">{d.text}</dd>
                 </div>
@@ -1196,7 +1540,7 @@ export default function Concert() {
       {/* 하단 고정 사전신청 버튼 (주로 모바일용) */}
       <div
         className={`c26-dock fixed inset-x-0 bottom-0 z-40 px-4 pb-[calc(env(safe-area-inset-bottom)+14px)] pt-6 md:hidden ${
-          showDock ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-full opacity-0"
+          showDock && !applyClosed ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-full opacity-0"
         }`}
         style={{ background: "linear-gradient(to top, rgba(0,0,0,0.92) 55%, transparent)" }}
       >

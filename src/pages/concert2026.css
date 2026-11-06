@@ -218,20 +218,61 @@
 
 /* ---------- 카운트다운 ---------- */
 
-/* 숫자가 바뀔 때 위에서 굴러 내려오듯 교체 */
-.c26-roll {
-  display: inline-block;
-  animation: c26-roll 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+/* 넘어가는 숫자판 (먹 타일) — 한 칸 */
+.c26-flip {
+  position: relative;
+  display: block;
+  width: 25px;
+  height: 36px;
+  perspective: 220px;
+  font-family: "Noto Serif KR", serif;
+  font-weight: 900;
+  font-size: 23px;
+  color: #fff;
 }
-@keyframes c26-roll {
-  from { transform: translateY(-70%); opacity: 0; filter: blur(3px); }
-  to { transform: translateY(0); opacity: 1; filter: blur(0); }
+/* ON STAGE / THANK YOU 는 9칸이라 조금 작게 */
+.c26-flip-word { width: 22px; height: 33px; font-size: 19px; }
+/* 사전 신청 "마감까지 N일" 용 큰 판 */
+.c26-flip-lg { width: 40px; height: 56px; font-size: 34px; }
+@media (min-width: 768px) {
+  .c26-flip { width: 30px; height: 44px; font-size: 28px; }
+  .c26-flip-lg { width: 46px; height: 64px; font-size: 40px; }
+  .c26-flip-word { width: 26px; height: 38px; font-size: 22px; }
 }
-
-/* D-28 글자에 은은한 빛 */
-.c26-dday-glow {
-  text-shadow: 0 0 18px rgba(124, 196, 238, 0.55), 0 0 2px rgba(255, 255, 255, 0.6);
+.c26-flip-half,
+.c26-flip-fold {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 50%;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  background: #15191d;
+  line-height: 1;
+  transition: background-color 1.2s ease;
 }
+/* 위/아래 반쪽이 같은 글자의 위·아래 절반만 보이도록, 글자를 반 칸씩 밀어둬요 */
+.c26-flip-top { top: 0; border-radius: 5px 5px 0 0; align-items: flex-end; }
+.c26-flip-top > span, .c26-flip-fold > span { transform: translateY(50%); }
+.c26-flip-bot { bottom: 0; border-radius: 0 0 5px 5px; align-items: flex-start; border-top: 1px solid #000; }
+.c26-flip-bot > span { transform: translateY(-50%); }
+/* 접히는 날개 — 위 반쪽 자리에서 아래 경첩을 축으로 넘어가요 */
+.c26-flip-fold {
+  top: 0;
+  border-radius: 5px 5px 0 0;
+  align-items: flex-end;
+  background: #1b2025;
+  transform-origin: bottom;
+  backface-visibility: hidden;
+  animation: c26-flip-fold 420ms cubic-bezier(0.4, 0, 0.6, 1) forwards;
+}
+@keyframes c26-flip-fold {
+  to { transform: rotateX(-90deg); }
+}
+/* 공연 중엔 판이 살짝 붉어져요 */
+.c26-board.is-live .c26-flip-half,
+.c26-board.is-live .c26-flip-fold { background: #241416; }
 
 /* 공연 중 표시 점 */
 .c26-live-dot {
@@ -303,3 +344,62 @@
   transform: none;
   filter: blur(0);
 }
+
+/* ---------- 가로선이 그어지며 시작 ---------- */
+/* 테두리 대신 1px 짜리 배경 그라디언트를 0% → 100% 로 늘려서 "선을 긋는" 느낌을 내요.
+ * 목록(data-lines)이 화면에 들어오면 c26-drawn 이 붙고, --i(몇 번째 줄인지)만큼 조금씩 늦게 그어져요. */
+.c26-rule-t {
+  background: linear-gradient(rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.2)) left top / 0% 1px no-repeat;
+  transition: background-size 1.1s cubic-bezier(0.65, 0, 0.35, 1) calc(var(--i, 0) * 90ms);
+}
+.c26-rule-b {
+  background: linear-gradient(rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.1)) left bottom / 0% 1px no-repeat;
+  transition: background-size 1s cubic-bezier(0.65, 0, 0.35, 1) calc(var(--i, 0) * 90ms + 200ms);
+}
+.c26-rule-y {
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.2)) left top / 0% 1px no-repeat,
+    linear-gradient(rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.2)) right bottom / 0% 1px no-repeat;
+  transition: background-size 1.3s cubic-bezier(0.65, 0, 0.35, 1);
+}
+.c26-drawn.c26-rule-t,
+.c26-drawn .c26-rule-t,
+.c26-drawn.c26-rule-b,
+.c26-drawn .c26-rule-b {
+  background-size: 100% 1px;
+}
+.c26-drawn.c26-rule-y {
+  background-size: 100% 1px, 100% 1px;
+}
+
+/* ---------- 누르면 먹이 차오르는 버튼 ---------- */
+.c26-inkbtn {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  transition: color 0.35s ease, border-color 0.35s ease;
+}
+.c26-inkbtn::before {
+  content: "";
+  position: absolute;
+  left: var(--ink-x, 50%);
+  top: var(--ink-y, 50%);
+  width: 12px;
+  height: 12px;
+  margin: -6px 0 0 -6px;
+  border-radius: 50%;
+  background: #e9eef2;
+  transform: scale(0);
+  transition: transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+  z-index: -1;
+}
+.c26-inkbtn.is-inked {
+  color: #000 !important;
+  border-color: #e9eef2 !important;
+}
+.c26-inkbtn.is-inked::before {
+  transform: scale(70);
+}
+
+.c26-flip-lg .c26-flip-top, .c26-flip-lg .c26-flip-fold { border-radius: 7px 7px 0 0; }
+.c26-flip-lg .c26-flip-bot { border-radius: 0 0 7px 7px; }
