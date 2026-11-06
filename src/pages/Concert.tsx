@@ -307,7 +307,7 @@ function Countdown() {
 
   if (cd.phase === "before") {
     const hoursLeft = cd.days * 24 + cd.hours; // 당일엔 일 단위가 없으니 시간으로 합쳐서
-    label = isToday ? "TODAY · D-DAY" : `公演까지 ${dDayLabel(cd)}`;
+    label = isToday ? "TODAY · D-DAY" : `공연까지 ${dDayLabel(cd)}`;
     board = (
       <>
         {!isToday && (
@@ -554,6 +554,42 @@ function BrushWriting() {
  * ========================================================================= */
 
 /** 스크롤하면 서예가 작아지고 흐려지며 뒤로 물러나는 깊이감 (손가락 움직임에 맞춰서만 움직임) */
+/* ---------- 스크롤 효과 다시 맞추기 ----------
+ * 첫 화면 깊이 효과 · 한자 번호 시차는 "스크롤할 때" 다시 계산해요.
+ * 그런데 아이폰 사파리는 다른 사이트(유튜브 등)에 갔다가 돌아오거나, 앱 전환 · 화면 회전 · 덮개 화면을 닫을 때
+ * 스크롤 위치를 바꾸면서도 스크롤 신호를 안 보내는 경우가 있어요.
+ * → 효과가 "아래로 내린 상태" 그대로 남아서 서예가 흐리게 밀리고 카운트다운이 겹쳐 보였어요.
+ * 그래서 스크롤 말고도 이런 순간들에 한 번씩 다시 계산하게 묶어 둬요.
+ */
+function listenScrollLike(cb: () => void) {
+  const onVisible = () => {
+    if (document.visibilityState === "visible") cb();
+  };
+  // 돌아온 직후엔 브라우저가 스크롤 위치를 한두 프레임 늦게 되돌려 놓기도 해서, 조금 뒤에 한 번 더
+  const onReturn = () => {
+    cb();
+    window.setTimeout(cb, 120);
+    window.setTimeout(cb, 400);
+  };
+  window.addEventListener("scroll", cb, { passive: true });
+  window.addEventListener("resize", cb);
+  window.addEventListener("pageshow", onReturn);
+  window.addEventListener("focus", onReturn);
+  document.addEventListener("visibilitychange", onVisible);
+  return () => {
+    window.removeEventListener("scroll", cb);
+    window.removeEventListener("resize", cb);
+    window.removeEventListener("pageshow", onReturn);
+    window.removeEventListener("focus", onReturn);
+    document.removeEventListener("visibilitychange", onVisible);
+  };
+}
+
+/** 덮개 화면(팀 페이지 · 혜택 창)을 닫은 뒤 스크롤 효과를 다시 맞추라고 알려줘요 */
+function refreshScrollEffects() {
+  requestAnimationFrame(() => requestAnimationFrame(() => window.dispatchEvent(new Event("scroll"))));
+}
+
 function useHeroDepth() {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -573,9 +609,9 @@ function useHeroDepth() {
       if (!raf) raf = requestAnimationFrame(apply);
     };
     apply();
-    window.addEventListener("scroll", onScroll, { passive: true });
+    const stop = listenScrollLike(onScroll);
     return () => {
-      window.removeEventListener("scroll", onScroll);
+      stop();
       if (raf) cancelAnimationFrame(raf);
     };
   }, []);
@@ -753,7 +789,7 @@ function Intro() {
 
 /* ---------- 사전 신청 마감까지 남은 날 ----------
  * 공연 카운트다운과 같은 숫자판(FlipCell)을 크게 써요.
- *   마감 전날까지: "申請 마감까지 23 일"
+ *   마감 전날까지: "신청 마감까지 23 일"
  *   마감 당일:     "TODAY"  (오늘 23:59 마감)
  *   마감 후:       "CLOSED" + 신청 버튼 대신 "현장 입장은 가능해요" 안내
  * 날짜 차이는 시간이 아니라 "한국 날짜" 기준으로 세서, 밤 11시에 봐도 내일이 마감이면 1일로 보여요.
@@ -780,15 +816,15 @@ function ApplyDeadline() {
   let cells: ReactNode;
   let aria: string;
   if (closed) {
-    label = "申請";
+    label = "신청";
     cells = "CLOSED".split("").map((ch, i) => <FlipCell key={i} char={ch} large />);
     aria = "사전 신청이 마감되었습니다";
   } else if (isToday) {
-    label = "申請 마감";
+    label = "신청 마감";
     cells = "TODAY".split("").map((ch, i) => <FlipCell key={i} char={ch} large />);
     aria = "오늘 사전 신청이 마감됩니다";
   } else {
-    label = "申請 마감까지";
+    label = "신청 마감까지";
     const digits = String(Math.min(99, daysLeft)).padStart(2, "0").split("");
     cells = (
       <>
@@ -851,6 +887,7 @@ function SponsorSheet({ sponsor, onClose }: { sponsor: ConcertSponsor; onClose: 
     return () => {
       document.body.style.overflow = prevOverflow;
       window.removeEventListener("keydown", onKey);
+      refreshScrollEffects();
     };
   }, [onClose]);
 
@@ -889,6 +926,214 @@ function SponsorSheet({ sponsor, onClose }: { sponsor: ConcertSponsor; onClose: 
           onClick={onClose}
           className="mt-7 w-full rounded-full border border-white/20 py-3 text-sm text-white/80 transition-colors hover:border-white/50"
         >
+          닫기
+        </button>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+/* =========================================================================
+ * 인스타 스토리 — 표지 / 오늘의 D-day 고르기
+ * ========================================================================= */
+
+/** 오늘 기준 D-day 숫자 (당일 0, 지나면 음수) */
+const storyDday = () => kstDayIndex(EVENT_MS) - kstDayIndex(Date.now());
+
+function loadImage(src: string) {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
+}
+
+/**
+ * 오늘의 D-day 스토리 이미지를 그 자리에서 그려요 (1080×1920, 인스타 스토리 크기).
+ * 연기 배경 + 輪舞 서예 + "공연까지 D-24" + 날짜 · 장소 · 주소.
+ * 서버에 미리 만들어 둘 필요 없이, 들어온 날짜에 맞는 숫자로 매일 새로 만들어져요.
+ */
+async function makeDdayStory(): Promise<File | null> {
+  try {
+    const W = 1080;
+    const H = 1920;
+    const d = storyDday();
+    const [smoke, brush] = await Promise.all([loadImage("/concert2026/smoke.jpg"), loadImage("/concert2026/brush.png")]);
+    // 명조체가 다 받아진 뒤에 그려야 글씨가 기본 글꼴로 안 나와요
+    await Promise.all([
+      document.fonts.load('900 300px "Noto Serif KR"'),
+      document.fonts.load('700 52px "Noto Serif KR"'),
+    ]).catch(() => {});
+
+    const cv = document.createElement("canvas");
+    cv.width = W;
+    cv.height = H;
+    const ctx = cv.getContext("2d");
+    if (!ctx) return null;
+
+    ctx.fillStyle = "#000";
+    ctx.fillRect(0, 0, W, H);
+    // 연기 배경 — 화면을 꽉 채우게(cover) 맞추고 반투명하게
+    const sc = Math.max(W / smoke.width, H / smoke.height);
+    ctx.globalAlpha = 0.55;
+    ctx.drawImage(smoke, (W - smoke.width * sc) / 2, (H - smoke.height * sc) / 2, smoke.width * sc, smoke.height * sc);
+    ctx.globalAlpha = 1;
+    const g = ctx.createLinearGradient(0, H * 0.42, 0, H);
+    g.addColorStop(0, "rgba(0,0,0,0)");
+    g.addColorStop(1, "rgba(0,0,0,0.92)");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+
+    ctx.textAlign = "center";
+    ctx.fillStyle = "rgba(255,255,255,0.6)";
+    ctx.font = "500 30px ui-monospace, Menlo, monospace";
+    ctx.fillText("2 0 2 6   A N N U A L   C O N C E R T", W / 2, 190);
+
+    const bw = 640;
+    const bh = (brush.height * bw) / brush.width;
+    ctx.drawImage(brush, (W - bw) / 2, 270, bw, bh);
+
+    const serif = '"Noto Serif KR", serif';
+    ctx.fillStyle = "#7cc4ee";
+    ctx.font = `700 52px ${serif}`;
+    ctx.fillText(d > 0 ? "공연까지" : "바로 오늘이에요", W / 2, 1230);
+    ctx.fillStyle = "#fff";
+    ctx.font = `900 ${d > 0 ? 300 : 230}px ${serif}`;
+    ctx.fillText(d > 0 ? `D-${d}` : "D-DAY", W / 2, 1530);
+    ctx.fillStyle = "rgba(255,255,255,0.88)";
+    ctx.font = `700 54px ${serif}`;
+    ctx.fillText(`${C.dateText} 18:30`, W / 2, 1660);
+    ctx.fillStyle = "rgba(255,255,255,0.62)";
+    ctx.font = "44px Pretendard, sans-serif";
+    ctx.fillText(`${C.location.venueName} · 전석 무료`, W / 2, 1740);
+    ctx.fillStyle = "rgba(255,255,255,0.4)";
+    ctx.font = "30px ui-monospace, Menlo, monospace";
+    ctx.fillText(PAGE_URL.replace(/^https?:\/\//, ""), W / 2, 1850);
+
+    const blob = await new Promise<Blob | null>((r) => cv.toBlob(r, "image/jpeg", 0.9));
+    if (!blob) return null;
+    return new File([blob], `2026concert-D${d > 0 ? d : "DAY"}.jpg`, { type: "image/jpeg" });
+  } catch {
+    return null;
+  }
+}
+
+function StoryPicker({
+  onClose,
+  onPick,
+  coverFile,
+  coverMissing,
+}: {
+  onClose: () => void;
+  onPick: (file: File | null, fallbackHref: string | null) => void;
+  coverFile: File | null;
+  coverMissing: boolean;
+}) {
+  const d = storyDday();
+  const showDday = d >= 0; // 공연이 지나면 D-day 이미지는 안 보여줘요
+  const [ddayFile, setDdayFile] = useState<File | null>(null);
+  const [ddayUrl, setDdayUrl] = useState<string | null>(null);
+
+  // 창이 열리자마자 D-day 이미지를 그려 둬요.
+  // (아이폰은 누른 "직후"에만 공유 창을 열 수 있어서, 누른 뒤에 그리기 시작하면 공유 창이 안 떠요)
+  useEffect(() => {
+    if (!showDday) return;
+    let url: string | null = null;
+    let alive = true;
+    makeDdayStory().then((f) => {
+      if (!alive || !f) return;
+      url = URL.createObjectURL(f);
+      setDdayFile(f);
+      setDdayUrl(url);
+    });
+    return () => {
+      alive = false;
+      if (url) URL.revokeObjectURL(url);
+    };
+  }, [showDday]);
+
+  useEffect(() => {
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener("keydown", onKey);
+      refreshScrollEffects();
+    };
+  }, [onClose]);
+
+  const Option = ({
+    label,
+    sub,
+    src,
+    ready,
+    onClick,
+  }: {
+    label: string;
+    sub: string;
+    src: string | null;
+    ready: boolean;
+    onClick: () => void;
+  }) => (
+    <button
+      onClick={onClick}
+      disabled={!ready}
+      className="group flex flex-1 flex-col items-center gap-3 rounded-2xl border border-white/12 bg-white/[0.03] p-3 transition-colors hover:border-white/35 disabled:opacity-60"
+    >
+      <span className="block aspect-[9/16] w-full overflow-hidden rounded-xl border border-white/10 bg-white/[0.04]">
+        {src ? (
+          <img src={src} alt="" className="h-full w-full object-cover" />
+        ) : (
+          <span className="grid h-full w-full place-items-center text-[11px] text-white/40">만드는 중…</span>
+        )}
+      </span>
+      <span className="text-center">
+        <span className="c26-serif block text-[15px] font-bold text-white">{label}</span>
+        <span className="mt-0.5 block text-[11px] text-white/50">{sub}</span>
+      </span>
+    </button>
+  );
+
+  return createPortal(
+    <div
+      className="c26-sheet-backdrop fixed inset-0 z-[60] flex items-end justify-center bg-black/70 backdrop-blur-sm md:items-center"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label="인스타 스토리 이미지 고르기"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="c26-sheet relative w-full rounded-t-3xl border border-white/10 bg-[#0b0e11] px-5 pb-[calc(env(safe-area-inset-bottom)+24px)] pt-3 md:max-w-md md:rounded-3xl md:pb-7 md:pt-7"
+      >
+        <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-white/20 md:hidden" />
+        <h3 className="c26-serif text-center text-lg font-bold text-white">어떤 이미지로 올릴까요?</h3>
+        <p className="mt-1 text-center text-xs text-white/50">링크는 복사해 뒀어요 · 스토리의 링크 스티커에 붙여넣기</p>
+        <div className="mt-5 flex gap-3">
+          <Option
+            label="표지"
+            sub="輪舞 포스터"
+            src={coverMissing ? null : STORY_IMAGE_URL}
+            ready={!coverMissing}
+            onClick={() => onPick(coverFile, coverFile ? null : STORY_IMAGE_URL)}
+          />
+          {showDday && (
+            <Option
+              label={d > 0 ? `오늘의 D-${d}` : "오늘은 D-DAY"}
+              sub="매일 숫자가 바뀌어요"
+              src={ddayUrl}
+              ready={!!ddayFile}
+              onClick={() => onPick(ddayFile, null)}
+            />
+          )}
+        </div>
+        <button onClick={onClose} className="mt-4 w-full py-2.5 text-xs text-white/45 underline underline-offset-4">
           닫기
         </button>
       </div>
@@ -937,6 +1182,7 @@ function TeamPage({
     return () => {
       document.body.style.overflow = prevOverflow;
       window.removeEventListener("keydown", onKey);
+      refreshScrollEffects();
     };
   }, [onBack]);
 
@@ -1337,13 +1583,14 @@ function useScrollDetails() {
     const onScroll = () => {
       if (!raf) raf = requestAnimationFrame(apply);
     };
+    let stop = () => {};
     if (!reduce) {
       apply();
-      window.addEventListener("scroll", onScroll, { passive: true });
+      stop = listenScrollLike(onScroll);
     }
     return () => {
       io.disconnect();
-      window.removeEventListener("scroll", onScroll);
+      stop();
       if (raf) cancelAnimationFrame(raf);
     };
   }, []);
@@ -1433,12 +1680,7 @@ export default function Concert() {
       setShowDock(pastHero && !applyVisible && !footerVisible);
     };
     onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onScroll);
-    return () => {
-      window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onScroll);
-    };
+    return listenScrollLike(onScroll);
   }, []);
 
   useEffect(() => {
@@ -1523,30 +1765,40 @@ export default function Concert() {
     };
   }, []);
 
-  const handleStoryShare = async () => {
-    // 링크 스티커용 주소 복사 (기다리지 않고 바로 공유 창을 띄워요)
+  // 인스타 버튼 → 표지 / 오늘의 D-day 중 고르는 창
+  const [storyPickOpen, setStoryPickOpen] = useState(false);
+  const closeStoryPick = useCallback(() => setStoryPickOpen(false), []);
+
+  const handleStoryShare = () => {
+    // 링크 스티커용 주소 복사 (고르는 창을 띄우는 이 순간에 미리)
     navigator.clipboard?.writeText(PAGE_URL).catch(() => {});
-    const file = storyFileRef.current;
+    setStoryPickOpen(true);
+  };
+
+  /** 고른 이미지로 공유 창 열기. 공유 창에 이미지를 못 싣는 환경(PC 등)이면 저장해 줘요. */
+  const shareStoryFile = async (file: File | null, fallbackHref: string | null) => {
     if (file && navigator.canShare?.({ files: [file] })) {
       try {
         await navigator.share({ files: [file] });
+        setStoryPickOpen(false);
         setToast("링크가 복사됐어요. 스토리에서 링크 스티커에 붙여넣어 주세요.");
       } catch {
-        /* 공유 창을 닫은 경우 */
+        /* 공유 창을 닫은 경우 — 고르는 창은 그대로 둬요 */
       }
       return;
     }
-    if (storyMissingRef.current) {
+    const href = fallbackHref ?? (file ? URL.createObjectURL(file) : null);
+    if (!href) {
       setToast("스토리 이미지를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.");
       return;
     }
-    // 공유 창에 이미지를 못 싣는 환경(PC, 일부 브라우저): 이미지를 저장해 주고 안내
     const a = document.createElement("a");
-    a.href = STORY_IMAGE_URL;
-    a.download = "2026concert-story.jpg";
+    a.href = href;
+    a.download = file?.name ?? "2026concert-story.jpg";
     document.body.appendChild(a);
     a.click();
     a.remove();
+    setStoryPickOpen(false);
     setToast("스토리 이미지를 저장했어요. 링크도 복사됐으니 인스타 스토리에 올려 주세요.");
   };
 
@@ -1692,9 +1944,9 @@ export default function Concert() {
                 ) : (
                   <>
                     <p className="break-keep text-[15px] leading-relaxed text-white/75">
-                      사전 신청하시면 <b className="text-white">우선 입장</b>과
+                      사전 신청하시면 공연 당일
                       <br />
-                      <b className="text-white">경품 추첨 자동 응모</b> 혜택을 드려요.
+                      <b className="text-white">우선 입장</b>할 수 있어요.
                     </p>
                     <a
                       href={C.applyUrl}
@@ -1944,6 +2196,14 @@ export default function Concert() {
       {openTeam >= 0 && <TeamPage index={openTeam} onBack={closeTeam} onGo={goTeam} onShare={shareTeam} />}
       {openSponsor !== null && (
         <SponsorSheet sponsor={C.sponsors[openSponsor]} onClose={closeSponsor} />
+      )}
+      {storyPickOpen && (
+        <StoryPicker
+          onClose={closeStoryPick}
+          onPick={(file, fallbackHref) => shareStoryFile(file, fallbackHref)}
+          coverFile={storyFileRef.current}
+          coverMissing={storyMissingRef.current}
+        />
       )}
 
       {toast && (
