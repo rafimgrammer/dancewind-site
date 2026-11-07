@@ -1648,6 +1648,91 @@ function useScrollDetails() {
   }, []);
 }
 
+/* ---------- 오른쪽 한자 목차 ----------
+ * 화면 오른쪽 끝에 壹~玖 를 아주 작게 세로로. 지금 보고 있는 섹션만 하늘색으로 살짝 커져요.
+ * 누르면 그 섹션으로 부드럽게 이동. 첫 화면(서예)과 맨 아래(푸터)에선 숨겨서 방해하지 않게 해요.
+ * 지금 섹션은 IntersectionObserver 로 판단: 화면 가운데 띠(위 40% ~ 아래 55% 를 뺀 부분)에 걸친 섹션.
+ */
+const SECTION_INDEX = [
+  { id: "greeting", num: "壹", label: "인사말" },
+  { id: "about", num: "貳", label: "공연 소개" },
+  { id: "qna", num: "參", label: "자주 묻는 질문" },
+  { id: "apply", num: "肆", label: "사전 신청" },
+  { id: "teams", num: "伍", label: "무대 순서" },
+  { id: "prizes", num: "陸", label: "경품 안내" },
+  { id: "share", num: "柒", label: "함께 보러 가요" },
+  { id: "sponsors", num: "捌", label: "함께해 주신 곳" },
+  { id: "location", num: "玖", label: "찾아오시는 길" },
+];
+
+function SectionIndex() {
+  const [current, setCurrent] = useState<string | null>(null);
+
+  useEffect(() => {
+    const els = SECTION_INDEX.map((s) => document.getElementById(s.id)).filter(Boolean) as HTMLElement[];
+    const io = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((e) => {
+          if (e.isIntersecting) setCurrent(e.target.id);
+        });
+      },
+      { rootMargin: "-40% 0px -55% 0px" }
+    );
+    els.forEach((el) => io.observe(el));
+
+    // 첫 섹션보다 위(서예 화면)거나 마지막 섹션을 지나면(푸터) 숨김
+    const first = els[0];
+    const last = els[els.length - 1];
+    const onScroll = () => {
+      const mid = window.innerHeight * 0.5;
+      if (first && first.getBoundingClientRect().top > mid) setCurrent(null);
+      else if (last && last.getBoundingClientRect().bottom < mid) setCurrent(null);
+    };
+    onScroll();
+    const stop = listenScrollLike(onScroll);
+    return () => {
+      io.disconnect();
+      stop();
+    };
+  }, []);
+
+  const go = (id: string) => {
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    document.getElementById(id)?.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+  };
+
+  return (
+    <nav
+      aria-label="섹션 목차"
+      className={`fixed right-0.5 top-1/2 z-40 -translate-y-1/2 transition-opacity duration-500 md:right-4 ${
+        current ? "opacity-100" : "pointer-events-none opacity-0"
+      }`}
+    >
+      <ul className="flex flex-col items-center">
+        {SECTION_INDEX.map((s) => {
+          const on = current === s.id;
+          return (
+            <li key={s.id}>
+              {/* 글씨는 아주 작게. 폭은 20px 로 좁혀서 본문 좌우 여백(24px) 안에만 들어가게 — 본문을 가리지 않아요.
+                  누르는 영역은 세로 28px 로 손가락에 맞게 */}
+              <button
+                onClick={() => go(s.id)}
+                aria-label={`${s.label}로 이동`}
+                aria-current={on ? "true" : undefined}
+                className={`c26-serif grid h-7 w-5 place-items-center font-black leading-none transition-all duration-300 md:w-7 ${
+                  on ? "scale-125 text-[11px] text-[#7cc4ee]" : "text-[9px] text-white/25 hover:text-white/60"
+                }`}
+              >
+                {s.num}
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </nav>
+  );
+}
+
 /* =========================================================================
  * 페이지
  * ========================================================================= */
@@ -2227,6 +2312,9 @@ export default function Concert() {
           {C.instagram.handle}
         </a>
       </footer>
+
+      {/* 오른쪽 한자 목차 */}
+      <SectionIndex />
 
       {/* 하단 고정 사전신청 버튼 (주로 모바일용) */}
       <div
