@@ -644,8 +644,11 @@ function Intro() {
       {/* PC: 가운데 1100px 폭 안에서 왼쪽 서예 · 오른쪽 문구 (큰 모니터에서도 양끝으로 벌어지지 않게) */}
       {/* 모바일: 서예 → 부제 → 카운트다운을 세로로 "실제 자리를 차지하며" 쌓고, 묶음 전체를 화면 가운데에.
           (예전엔 부제·카운트다운이 서예 아래에 떠 있어서(absolute), 화면이 짧은 폰에서 아래 날짜와 겹쳤어요)
-          화면 높이를 꽉 채우지 않고 내용만큼만 차지해서, 날짜 · 버튼이 카운트다운 바로 아래에 붙어 나와요. */}
-      <div className="relative z-10 mx-auto flex w-full flex-col items-center px-6 pt-20 md:h-full md:max-w-[1100px] md:flex-row md:justify-start md:px-10 md:py-0 [@media(max-height:760px)]:pt-14">
+          화면 높이를 꽉 채우지 않고 내용만큼만 차지해서, 날짜 · 버튼이 카운트다운 바로 아래에 붙어 나와요.
+          위 여백(pt)은 "서예 한가운데가 화면 정중앙에 오도록" 계산해요:
+            화면 높이의 절반 − 서예 높이의 절반 (서예 높이 = 폭 × 1.242, brush.png 가 900×1118 이라서)
+          아주 짧은 화면에서도 위 제목과 안 겹치게 최소 56px 은 남겨요. */}
+      <div className="relative z-10 mx-auto flex w-full flex-col items-center px-6 pt-[max(56px,calc(50svh_-_min(66vw,360px)_*_0.621))] md:h-full md:max-w-[1100px] md:flex-row md:justify-start md:px-10 md:py-0">
         <div className="relative w-[min(66vw,360px)] md:w-[min(34vw,460px)]">
           {/* 스크롤 깊이감이 걸리는 묶음: 먹물 · 원 · 서예 · 윤무 (아래 부제·카운트다운은 제외) */}
           <div ref={depthRef} className="relative origin-center will-change-transform">
