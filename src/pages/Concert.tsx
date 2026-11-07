@@ -6,7 +6,7 @@
 // - 문구/팀/경품/스폰서 같은 내용은 전부 src/data/concert2026.ts 에 모아뒀어요.
 // - 애니메이션 정의는 ./concert2026.css 에 있어요.
 
-import { useCallback, useEffect, useId, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate, useParams } from "react-router-dom";
 import { useScrollReveal } from "../hooks/useScrollReveal";
@@ -358,7 +358,7 @@ function Countdown() {
       aria-label={aria}
     >
       <p
-        className={`c26-serif mb-2.5 flex items-center gap-2 text-[10px] tracking-[0.4em] md:text-[11px] ${
+        className={`c26-serif mb-3 flex items-center gap-2 pl-[0.25em] text-[13px] tracking-[0.25em] md:text-sm ${
           cd.phase === "live" ? "text-[#ffb3b3]" : "text-[#7cc4ee]"
         }`}
       >
@@ -642,7 +642,10 @@ function Intro() {
 
       {/* 서예 + 먹물 + 원 */}
       {/* PC: 가운데 1100px 폭 안에서 왼쪽 서예 · 오른쪽 문구 (큰 모니터에서도 양끝으로 벌어지지 않게) */}
-      <div className="relative z-10 mx-auto flex h-[100svh] min-h-[560px] w-full items-center justify-center px-6 md:h-full md:max-w-[1100px] md:justify-start md:px-10">
+      {/* 모바일: 서예 → 부제 → 카운트다운을 세로로 "실제 자리를 차지하며" 쌓고, 묶음 전체를 화면 가운데에.
+          (예전엔 부제·카운트다운이 서예 아래에 떠 있어서(absolute), 화면이 짧은 폰에서 아래 날짜와 겹쳤어요)
+          화면 높이를 꽉 채우지 않고 내용만큼만 차지해서, 날짜 · 버튼이 카운트다운 바로 아래에 붙어 나와요. */}
+      <div className="relative z-10 mx-auto flex w-full flex-col items-center px-6 pt-20 md:h-full md:max-w-[1100px] md:flex-row md:justify-start md:px-10 md:py-0 [@media(max-height:760px)]:pt-14">
         <div className="relative w-[min(66vw,360px)] md:w-[min(34vw,460px)]">
           {/* 스크롤 깊이감이 걸리는 묶음: 먹물 · 원 · 서예 · 윤무 (아래 부제·카운트다운은 제외) */}
           <div ref={depthRef} className="relative origin-center will-change-transform">
@@ -707,32 +710,33 @@ function Intro() {
 
           </div>
 
-          {/* 모바일: 서예 바로 아래 부제 (위치용 div 와 애니메이션 p 를 나눠야 transform 이 안 겹쳐요) */}
-          <div className="absolute inset-x-[-20vw] top-full mt-12 text-center md:hidden [@media(max-height:760px)]:mt-7">
-            <p className="c26-rise c26-serif text-[15px] text-white/75" style={{ animationDelay: afterBrush(-0.2) }}>
-              : {C.subtitle}
-            </p>
-            {/* 스크롤 안내 — 부제와 카운트다운 사이, 작고 옅게 */}
-            <a
-              href="#info"
-              className="c26-rise mt-5 inline-flex flex-col items-center gap-1.5 text-white/40 [@media(max-height:760px)]:mt-3"
-              style={{ animationDelay: afterBrush(0.2) }}
-              aria-label="아래로 스크롤해서 더 보기"
-            >
-              <span className="font-mono text-[9px] tracking-[0.35em]">SCROLL</span>
-              <span className="relative block h-6 w-px overflow-hidden bg-white/10">
-                <span className="c26-scroll-line absolute inset-0 bg-white/70" />
-              </span>
-            </a>
-            <div className="c26-rise mt-4" style={{ animationDelay: afterBrush(0.1) }}>
-              <Countdown />
-            </div>
+        </div>
+
+        {/* 모바일: 서예 바로 아래 부제 (위치용 div 와 애니메이션 p 를 나눠야 transform 이 안 겹쳐요) */}
+        <div className="mt-12 w-full text-center md:hidden [@media(max-height:760px)]:mt-7">
+          <p className="c26-rise c26-serif text-[15px] text-white/75" style={{ animationDelay: afterBrush(-0.2) }}>
+            : {C.subtitle}
+          </p>
+          {/* 스크롤 안내 — 부제와 카운트다운 사이, 작고 옅게 */}
+          <a
+            href="#info"
+            className="c26-rise mt-5 inline-flex flex-col items-center gap-1.5 text-white/40 [@media(max-height:760px)]:mt-3"
+            style={{ animationDelay: afterBrush(0.2) }}
+            aria-label="아래로 스크롤해서 더 보기"
+          >
+            <span className="font-mono text-[9px] tracking-[0.35em]">SCROLL</span>
+            <span className="relative block h-6 w-px overflow-hidden bg-white/10">
+              <span className="c26-scroll-line absolute inset-0 bg-white/70" />
+            </span>
+          </a>
+          <div className="c26-rise mt-4" style={{ animationDelay: afterBrush(0.1) }}>
+            <Countdown />
           </div>
         </div>
       </div>
 
       {/* 문구 */}
-      <div id="info" className="relative z-10 scroll-mt-8 px-6 pb-6 text-center md:absolute md:right-[max(40px,calc(50%-510px))] md:top-1/2 md:max-w-sm md:-translate-y-1/2 md:p-0 md:text-left">
+      <div id="info" className="relative z-10 mt-10 scroll-mt-8 px-6 pb-16 text-center md:absolute md:mt-0 md:right-[max(40px,calc(50%-510px))] md:top-1/2 md:max-w-sm md:-translate-y-1/2 md:p-0 md:text-left">
         <p className="c26-rise c26-serif mb-4 hidden text-lg text-white/75 md:block" style={{ animationDelay: afterBrush(-0.2) }}>
           : {C.subtitle}
         </p>
@@ -1171,6 +1175,41 @@ function TeamPage({
   const next = C.teams[index + 1];
   const members = [...team.members].sort((a, b) => Number(b === team.leader) - Number(a === team.leader));
 
+  // 멤버 이름이 두 줄로 넘어가면, 둘째 줄 맨 앞에 오는 " · " 는 숨겨요.
+  // (줄이 어디서 바뀌는지는 화면 너비에 따라 달라서, 그려진 뒤 위치를 재서 판단해요)
+  const membersRef = useRef<HTMLUListElement>(null);
+  useLayoutEffect(() => {
+    const ul = membersRef.current;
+    if (!ul) return;
+    const fix = () => {
+      const items = Array.from(ul.children) as HTMLElement[];
+      // 먼저 모두 보이게 한 뒤 줄 위치를 재요 (숨긴 상태로 재면 줄바꿈 위치가 달라져요)
+      items.forEach((li) => {
+        const sep = li.querySelector<HTMLElement>("[data-sep]");
+        if (sep) {
+          sep.style.display = "";
+          sep.style.visibility = "";
+        }
+      });
+      // 앞에서부터 차례로: 줄 맨 앞이면 점을 빼요.
+      // 점을 빼서 이름이 좁아지면 윗줄로 다시 올라갈 수도 있는데, 그땐 점 자리만 비워 두고(보이지만 않게) 그 줄에 남겨요.
+      items.forEach((li, i) => {
+        const sep = li.querySelector<HTMLElement>("[data-sep]");
+        if (!sep || i === 0) return;
+        if (li.offsetTop <= items[i - 1].offsetTop + 2) return;
+        sep.style.display = "none";
+        if (li.offsetTop <= items[i - 1].offsetTop + 2) {
+          sep.style.display = "";
+          sep.style.visibility = "hidden";
+        }
+      });
+    };
+    fix();
+    const ro = new ResizeObserver(fix);
+    ro.observe(ul);
+    return () => ro.disconnect();
+  }, [index]);
+
   // 열려 있는 동안 뒤 페이지 스크롤 잠금 + ESC 로 닫기
   useEffect(() => {
     const prevOverflow = document.body.style.overflow;
@@ -1232,7 +1271,8 @@ function TeamPage({
         {/* 프로그램북 한 장 — 이중 테두리 */}
         <article key={team.id} className="c26-rise rounded-[3px] border border-white/20 p-1.5">
           <div className="border border-white/10 px-5 pb-7 pt-8 text-center md:px-8">
-            <p className="font-mono text-[9px] tracking-[0.4em] text-[#7cc4ee]">
+            {/* 자간(tracking)은 마지막 글자 뒤에도 붙어서 글씨가 왼쪽으로 쏠려 보여요 → 왼쪽에 같은 만큼 여백(pl)을 줘서 정확히 가운데로 */}
+            <p className="pl-[0.4em] font-mono text-[9px] tracking-[0.4em] text-[#7cc4ee]">
               第{index + 1}幕 · PROGRAMME
             </p>
             <h1 className="c26-serif mt-3 break-keep text-[34px] font-black leading-tight text-white md:text-[40px]">
@@ -1241,7 +1281,7 @@ function TeamPage({
             <hr className="mx-auto my-6 w-8 border-white/15" />
 
             {/* 곡 — 줄 전체가 유튜브 링크. 빨간 재생 버튼으로 "누르면 유튜브"가 한눈에 보이게 */}
-            <p className="text-[10px] tracking-[0.3em] text-white/45">SONG</p>
+            <p className="pl-[0.3em] text-[10px] tracking-[0.3em] text-white/45">SONG</p>
             <p className="mt-1.5 text-[11px] text-white/40">곡을 누르면 유튜브에서 들을 수 있어요</p>
             <ul className="mt-3 text-left">
               {team.songs.map((song) => (
@@ -1278,27 +1318,36 @@ function TeamPage({
               ))}
             </ul>
 
-            {/* 멤버 — 이름을 " · " 로 이어 적고 팀장은 하늘색 */}
-            <p className="mt-8 text-[10px] tracking-[0.3em] text-white/45">
+            {/* 멤버 — 이름을 " · " 로 이어 적고 팀장은 하늘색.
+                이름 하나하나를 칸으로 나눠 flex-wrap 으로 놓아야, 화면이 좁으면 이름 단위로 다음 줄로 넘어가요.
+                (예전엔 이름 사이에 띄어쓰기 없이 붙어 있어서 줄을 못 바꾸고 화면 밖으로 넘쳤어요) */}
+            <p className="mt-8 pl-[0.3em] text-[10px] tracking-[0.3em] text-white/45">
               MEMBERS <span className="ml-1 text-white/30">{team.members.length}</span>
             </p>
-            <p className="c26-serif mt-3 break-keep text-[15px] leading-[2.1] text-white">
+            <ul
+              ref={membersRef}
+              className="c26-serif mt-3 flex flex-wrap items-center justify-center gap-y-1.5 text-[15px] leading-relaxed text-white"
+            >
               {members.map((m, mi) => (
-                <span key={m}>
-                  {mi > 0 && <span className="mx-1.5 text-white/30">·</span>}
+                <li key={m} className="flex items-center whitespace-nowrap">
+                  {mi > 0 && (
+                    <span data-sep className="mx-2 text-white/30" aria-hidden="true">
+                      ·
+                    </span>
+                  )}
                   {m === team.leader ? (
-                    <span className="whitespace-nowrap font-bold text-[#9fd3f3]">
+                    <span className="flex items-center gap-1 font-bold text-[#9fd3f3]">
                       {m}
-                      <span className="ml-1 rounded-full bg-[#7cc4ee] px-1.5 py-px align-middle font-sans text-[9px] font-bold text-black">
+                      <span className="rounded-full bg-[#7cc4ee] px-1.5 py-px font-sans text-[9px] font-bold leading-[1.5] text-black">
                         팀장
                       </span>
                     </span>
                   ) : (
-                    <span className="whitespace-nowrap">{m}</span>
+                    m
                   )}
-                </span>
+                </li>
               ))}
-            </p>
+            </ul>
           </div>
         </article>
 
