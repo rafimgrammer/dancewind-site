@@ -49,6 +49,9 @@ export const CONCERT_2026 = {
   priceText: "전석 무료",
 
   applyUrl: "https://forms.gle/",
+  // 카카오톡 공유용 "초대장" 메시지 템플릿 ID (카카오 디벨로퍼스 > 도구 > 메시지 템플릿 에서 만든 피드형 A).
+  // 0 이면 아직 템플릿을 안 만든 것 → 예전 공통 템플릿으로 보내요.
+  kakaoTemplateId: 138720,
   // ⚠️ 임시 마감일 — 회장단에게 확정 날짜 받으면 아래 두 줄을 같이 고쳐 주세요.
   //    applyDeadlineAt 은 "사전 신청 마감까지 N일" 숫자판과 마감 후 버튼 숨김에 쓰여요.
   applyDeadlineAt: "2026-11-30T23:59:00+09:00",

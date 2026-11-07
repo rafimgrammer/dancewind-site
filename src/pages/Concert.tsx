@@ -1838,19 +1838,41 @@ export default function Concert() {
   const handleKakaoShare = async () => {
     setShareError("");
     try {
-      await shareToKakao({
-        templateArgs: {
-          title: `${C.titleHanja} ${C.titleKorean} — ${C.edition}`,
-          description: `${C.dateText} ${C.timeText} · ${C.location.venueName}`,
-          image_url: `${SITE_URL}/share/concert2026-share.jpg?v=3`,
-          button_title: "공연 보러 가기",
-          link_url: PAGE_URL,
-        },
-      });
+      if (C.kakaoTemplateId) {
+        // 초대장 템플릿: 이미지 · 제목 · 설명 · 버튼 2개를 콘솔에서 전부 고정해 둬서 채울 값이 없어요.
+        await shareToKakao({ templateId: C.kakaoTemplateId, templateArgs: {} });
+      } else {
+        // 초대장 템플릿을 만들기 전까지는 예전 공통 템플릿으로
+        await shareToKakao({
+          templateArgs: {
+            title: `${C.titleHanja} ${C.titleKorean} — ${C.edition}`,
+            description: `${C.dateText} ${C.timeText} · ${C.location.venueName}`,
+            image_url: `${SITE_URL}/share/concert2026-share.jpg?v=3`,
+            button_title: "공연 보러 가기",
+            link_url: PAGE_URL,
+          },
+        });
+      }
     } catch {
       setShareError("카카오톡 공유를 불러오지 못했어요. 잠시 후 다시 시도해주세요.");
     }
   };
+
+  // 카톡 초대장의 [사전 신청] 버튼은 /2026concert?go=apply 로 들어와요 → 사전 신청 섹션으로 바로 내려가요.
+  // (구글 폼 주소는 카카오 앱에 등록된 도메인이 아니라서 카톡 버튼에 바로 못 걸어요)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const target = params.get("go");
+    if (!target) return;
+    // 주소창에서 ?go=... 는 지워 둬요 (새로고침하거나 공유할 때 또 내려가지 않게)
+    params.delete("go");
+    const rest = params.toString();
+    window.history.replaceState(window.history.state, "", window.location.pathname + (rest ? `?${rest}` : "") + window.location.hash);
+    const timer = window.setTimeout(() => {
+      document.getElementById(target)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 700);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   const handleNativeShare = async () => {
     if (navigator.share) {
