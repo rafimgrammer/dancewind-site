@@ -95,8 +95,136 @@ function RingDivider() {
 }
 
 /** 섹션 머리말 — 큰 한자 번호 + 한자·영문 눈썹 + 한 글자씩 먹처럼 떠오르는 제목 */
+/* -------------------------------------------------------------------------
+ * ⑦ 글자가 굴러 바뀌는 버튼
+ *   같은 글자를 위아래로 두 줄 겹쳐 두고, 한 줄 높이만큼 위로 밀어 올려요.
+ *   두 줄이 똑같아서, 다 올라간 뒤 제자리로 "툭" 돌아와도 눈에는 안 보여요.
+ *   - 마우스가 있는 기기(PC): 버튼에 올리면 굴러 올라가고, 떼면 내려와요 (CSS :hover)
+ *   - 폰: 누르는 순간 한 번 굴러가요 (Concert 의 pointerdown 리스너가 is-rolling 을 붙였다 뗌)
+ *   사용법: 버튼(a/button)에 className "c26-roll" 을 붙이고, 글자를 <RollText> 로 감싸요.
+ * ------------------------------------------------------------------------- */
+function RollText({ children }: { children: ReactNode }) {
+  return (
+    <span className="c26-roll-txt">
+      <span className="c26-roll-in">
+        <span>{children}</span>
+        {/* 화면 읽기 프로그램이 같은 글자를 두 번 읽지 않게 */}
+        <span aria-hidden="true">{children}</span>
+      </span>
+    </span>
+  );
+}
+
+const prefersReducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/* -------------------------------------------------------------------------
+ * ⑨ 해독되듯 나타나는 영문 라벨
+ *   active 가 true 가 되는 순간 0.6초 동안 무작위 글자로 섞였다가,
+ *   왼쪽 글자부터 차례로 제 글자로 맞춰져요. (한 번만)
+ *   라벨이 고정폭 글꼴(font-mono)이라 글자가 바뀌어도 폭이 흔들리지 않아요.
+ * ------------------------------------------------------------------------- */
+const SCRAMBLE_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789#*+";
+
+function useScramble(text: string, active: boolean) {
+  const [display, setDisplay] = useState(text);
+  const doneRef = useRef(false);
+
+  useEffect(() => {
+    if (!active || doneRef.current) return;
+    doneRef.current = true;
+    if (prefersReducedMotion()) return;
+
+    const chars = Array.from(text);
+    const total = 18; // 프레임 수 (34ms × 18 ≈ 0.6초)
+    let frame = 0;
+    let finished = false;
+    const id = window.setInterval(() => {
+      frame++;
+      setDisplay(
+        chars
+          .map((c, i) => {
+            // 공백 · 기호(&, -)는 그대로 두고 알파벳 · 숫자만 섞어요
+            if (!/[A-Za-z0-9]/.test(c)) return c;
+            const settleAt = (total * i) / chars.length + 6; // 왼쪽 글자부터 차례로 맞춰짐
+            return frame > settleAt ? c : SCRAMBLE_CHARS[Math.floor(Math.random() * SCRAMBLE_CHARS.length)];
+          })
+          .join(""),
+      );
+      if (frame > total + 8) {
+        finished = true;
+        window.clearInterval(id);
+        setDisplay(text);
+      }
+    }, 34);
+    return () => {
+      window.clearInterval(id);
+      setDisplay(text);
+      // 개발 모드(StrictMode)는 효과를 한 번 껐다 다시 켜요 — 끝나기 전에 꺼졌으면 다음에 다시 돌게
+      if (!finished) doneRef.current = false;
+    };
+  }, [active, text]);
+
+  return display;
+}
+
+/* -------------------------------------------------------------------------
+ * ⑬ 숫자가 차오르는 글자
+ *   문장 안의 숫자를 전부 찾아서(예: "12월 1일 (화)\n18:30" → 12, 1, 18, 30)
+ *   화면에 들어올 때 0 에서 그 숫자까지 1.3초 동안 차오르게 해요. (한 번만)
+ *   - 숫자 칸은 최종 자릿수만큼 폭을 미리 잡아 둬서, 세는 동안 옆 글자가 들썩이지 않아요.
+ *   - 문구는 데이터 파일 그대로라, 날짜 · 인원을 바꿔도 따로 손댈 곳이 없어요.
+ *   - 모션 줄이기 설정을 켠 사람에게는 처음부터 최종 숫자로 보여요.
+ * ------------------------------------------------------------------------- */
+function CountUpText({ text, duration = 1300 }: { text: string; duration?: number }) {
+  const { ref, visible } = useScrollReveal<HTMLSpanElement>(0.6);
+  const [progress, setProgress] = useState(() => (prefersReducedMotion() ? 1 : 0));
+
+  useEffect(() => {
+    if (!visible || progress === 1) return;
+    let raf = 0;
+    const start = performance.now() + 150; // 카드가 떠오르는 동안 살짝 기다렸다가 시작
+    const tick = (now: number) => {
+      const t = Math.min(1, Math.max(0, (now - start) / duration));
+      setProgress(t);
+      if (t < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+    // progress 는 일부러 뺐어요 (매 프레임 다시 시작하지 않게)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible, duration]);
+
+  const eased = 1 - Math.pow(1 - progress, 3); // 처음엔 빠르게, 끝에서 천천히
+  const parts = text.split(/(\d+)/); // 홀수 번째 칸이 숫자
+
+  return (
+    <span ref={ref}>
+      <span className="sr-only">{text}</span>
+      <span aria-hidden="true">
+        {parts.map((part, i) => {
+          if (i % 2 === 0) return part;
+          const target = Number(part);
+          const now = Math.round(target * eased);
+          // "01", "30" 처럼 원래 두 자리였던 숫자는 세는 동안에도 두 자리로
+          const shown = part.length > 1 && part.startsWith("0") ? String(now).padStart(part.length, "0") : String(now);
+          return (
+            <span
+              key={i}
+              className="inline-block text-right tabular-nums"
+              style={{ minWidth: `${part.length}ch` }}
+            >
+              {shown}
+            </span>
+          );
+        })}
+      </span>
+    </span>
+  );
+}
+
 function SectionHead({ num, hanja, eyebrow, title }: { num: string; hanja: string; eyebrow: string; title: string }) {
   const { ref, visible } = useScrollReveal<HTMLDivElement>(0.35);
+  const eyebrowShown = useScramble(eyebrow, visible);
   const chars = Array.from(title);
   return (
     <div ref={ref} className="relative mb-10 md:mb-0">
@@ -116,7 +244,10 @@ function SectionHead({ num, hanja, eyebrow, title }: { num: string; hanja: strin
       >
         <span>{hanja}</span>
         <span className="h-px w-6 bg-[#7cc4ee]/50" />
-        <span className="font-mono text-[11px] tracking-[0.25em]">{eyebrow}</span>
+        <span className="font-mono text-[11px] tracking-[0.25em]">
+          <span className="sr-only">{eyebrow}</span>
+          <span aria-hidden="true" className="whitespace-pre">{eyebrowShown}</span>
+        </span>
       </p>
       {/* 제목: 한 글자씩 흐릿한 먹이 번지듯 떠오름 */}
       <h2
@@ -766,17 +897,17 @@ function Intro() {
               href={C.applyUrl}
               target="_blank"
               rel="noreferrer"
-              className="c26-shine rounded-full bg-[#e9eef2] px-6 py-3 text-sm font-semibold text-black transition-transform active:scale-95 md:hover:-translate-y-0.5"
+              className="c26-shine c26-roll rounded-full bg-[#e9eef2] px-6 py-3 text-sm font-semibold text-black transition-transform active:scale-95 md:hover:-translate-y-0.5"
             >
-              사전 신청하기
+              <RollText>사전 신청하기</RollText>
             </a>
           )}
           <a
             href="#teams"
             {...inkHandlers}
-            className="c26-inkbtn rounded-full border border-white/25 px-6 py-3 text-sm text-white/85 transition-colors hover:border-white/60"
+            className="c26-inkbtn c26-roll rounded-full border border-white/25 px-6 py-3 text-sm text-white/85 transition-colors hover:border-white/60"
           >
-            라인업 보기
+            <RollText>라인업 보기</RollText>
           </a>
         </div>
       </div>
@@ -858,11 +989,12 @@ function ApplyDeadline() {
 /** 하단 고정 버튼 문구 — "D-28 · 사전 신청하기" */
 function DockLabel() {
   const cd = useCountdown();
-  if (cd.phase !== "before") return <>사전 신청하기</>;
+  if (cd.phase !== "before") return <RollText>사전 신청하기</RollText>;
   return (
     <>
       <span className="mr-2 rounded-full bg-black px-2.5 py-0.5 text-[12px] text-white">{dDayLabel(cd)}</span>
-      사전 신청하기
+      {/* D-day 칩은 그대로 두고 글자만 굴러가요 */}
+      <RollText>사전 신청하기</RollText>
     </>
   );
 }
@@ -1160,19 +1292,190 @@ function songUrl(song: ConcertTeam["songs"][number]) {
   return song.youtube || `https://www.youtube.com/results?search_query=${encodeURIComponent(`${song.artist} ${song.title}`)}`;
 }
 
+/* =========================================================================
+ * 맥 지니 — 무대 순서의 팀 줄에서 프로그램북이 빨려 나오고, 닫으면 빨려 들어가요
+ *
+ * 어떻게 휘게 만드나요?
+ *   화면 한 장을 통째로 휘게 하는 CSS 는 없어요. 그래서 팀 화면을 "가로 띠" 여러 장으로
+ *   복제해서 잘라 두고, 띠마다 위치 · 폭 · 높이를 조금씩 다르게 움직여요.
+ *   - 누른 줄에서 가까운 띠가 먼저, 먼 띠가 늦게 따라 나와서 깔때기 모양이 돼요.
+ *   - 덜 나온 띠일수록 폭이 좁고 납작해요.
+ *   다 열리면 복제본은 지우고 진짜 화면(버튼이 눌리는 화면)을 보여줘요.
+ *
+ *   p = 0(닫힘, 줄 속에 쏙) ~ 1(다 열림). 열 땐 0→1, 닫을 땐 1→0 으로 같은 그림을 거꾸로 돌려요.
+ *   그래서 열리는 도중에 뒤로가기를 눌러도 그 자리에서 자연스럽게 되돌아가요.
+ * ========================================================================= */
+type GenieSrc = { cx: number; cy: number; w: number };
+type GenieLayer = { root: HTMLDivElement; dim: HTMLDivElement; strips: HTMLDivElement[]; W: number; H: number };
+
+const GENIE_OPEN_MS = 560;
+const GENIE_CLOSE_MS = 500;
+
+/** 무대 순서에서 그 팀 줄의 화면상 위치 — 화면 밖이면 null (그땐 지니 대신 살짝 페이드) */
+function teamRowRect(id: string): GenieSrc | null {
+  const el = document.querySelector<HTMLElement>(`[data-team-row="${id}"]`);
+  if (!el) return null;
+  const r = el.getBoundingClientRect();
+  if (r.height === 0 || r.bottom < 0 || r.top > window.innerHeight) return null;
+  return { cx: r.left + r.width / 2, cy: r.top + r.height / 2, w: r.width };
+}
+
+/** 팀 화면(source)을 가로 띠 여러 장으로 복제해서 body 맨 위에 깔아요 */
+function buildGenieLayer(source: HTMLElement): GenieLayer {
+  const W = window.innerWidth;
+  const H = window.innerHeight;
+  // 띠 하나가 약 30px — 폰 기준 28장 정도. 많을수록 곡선이 매끄럽고, 적을수록 가벼워요
+  const n = Math.min(32, Math.max(16, Math.round(H / 30)));
+  const h = H / n;
+
+  const root = document.createElement("div");
+  root.className = "c26-genie";
+  root.setAttribute("aria-hidden", "true");
+  const dim = document.createElement("div");
+  dim.className = "c26-genie-dim";
+  root.appendChild(dim);
+
+  const strips: HTMLDivElement[] = [];
+  for (let k = 0; k < n; k++) {
+    const strip = document.createElement("div");
+    strip.className = "c26-genie-strip";
+    strip.style.top = `${k * h}px`;
+    strip.style.height = `${h + 0.75}px`; // 띠 사이 머리카락 같은 틈이 안 보이게 살짝 겹쳐요
+    const clone = source.cloneNode(true) as HTMLElement;
+    clone.removeAttribute("role");
+    clone.removeAttribute("aria-modal");
+    clone.removeAttribute("aria-label");
+    clone.classList.remove("c26-team-fade-in", "c26-team-fade-out");
+    // 원본은 화면 전체(fixed)라서, 복제본은 띠 안에서 제 위치(위로 k칸만큼)에 놓이게 바꿔요
+    Object.assign(clone.style, {
+      position: "absolute",
+      inset: "auto",
+      top: `${-k * h}px`,
+      left: "0px",
+      width: `${W}px`,
+      height: `${H}px`,
+      visibility: "visible",
+      pointerEvents: "none",
+    });
+    strip.appendChild(clone);
+    root.appendChild(strip);
+    strips.push(strip);
+  }
+  document.body.appendChild(root);
+  // 스크롤해서 보던 위치 그대로 (복제는 스크롤 위치까지는 안 따라와서 직접 맞춰요)
+  strips.forEach((strip) => {
+    (strip.firstChild as HTMLElement).scrollTop = source.scrollTop;
+  });
+  return { root, dim, strips, W, H };
+}
+
+const easeInOutCubic = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
+
+/** p(0~1) 순간의 모양을 그려요 */
+function drawGenie(g: GenieLayer, src: GenieSrc, p: number) {
+  const n = g.strips.length;
+  const h = g.H / n;
+  g.dim.style.opacity = String(0.55 * p); // 뒤 페이지는 열리는 만큼 어두워져요
+  g.strips.forEach((strip, k) => {
+    const finalY = (k + 0.5) * h; // 다 열렸을 때 이 띠의 세로 중심
+    const lag = Math.abs(finalY - src.cy) / g.H; // 누른 줄에서 멀수록 늦게 나와요
+    const q = clamp01((p - lag * 0.5) / 0.5);
+    const e = easeInOutCubic(q);
+    const cy = lerp(src.cy, finalY, e);
+    const w = lerp(src.w * 0.3, g.W, Math.pow(e, 2.4)); // 오래 좁게 있다가 마지막에 펴져요 → 깔때기
+    const cx = lerp(src.cx, g.W / 2, Math.pow(e, 1.8));
+    const sy = lerp(0.04, 1, e);
+    strip.style.transform = `translate3d(${cx - g.W / 2}px, ${cy - finalY}px, 0) scale(${w / g.W}, ${sy})`;
+    strip.style.visibility = q <= 0 ? "hidden" : "visible";
+  });
+}
+
 function TeamPage({
   index,
+  leaving,
   onBack,
   onGo,
   onShare,
+  onClosed,
 }: {
   index: number;
+  /** true 가 되면 닫히는 애니메이션을 하고, 끝나면 onClosed 를 불러요 */
+  leaving: boolean;
   onBack: () => void;
   onGo: (i: number) => void;
   onShare: (team: ConcertTeam) => void;
+  onClosed: () => void;
 }) {
   const team = C.teams[index];
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // ── 맥 지니 열기 / 닫기 ──
+  const genie = useRef<{ layer: GenieLayer | null; p: number; raf: number }>({ layer: null, p: 0, raf: 0 });
+  const leavingRef = useRef(leaving);
+  leavingRef.current = leaving;
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const g = genie.current;
+    const target = leaving ? 0 : 1;
+    cancelAnimationFrame(g.raf);
+    el.style.pointerEvents = leaving ? "none" : ""; // 닫히는 중엔 버튼이 안 눌리게
+
+    const src = teamRowRect(team.id);
+    // 지니를 쓸 수 없을 때(링크로 바로 들어와서 무대 순서 줄이 화면에 없음 · 모션 줄이기 설정): 살짝 페이드
+    if (!src || prefersReducedMotion()) {
+      g.layer?.root.remove();
+      g.layer = null;
+      g.p = target;
+      el.style.visibility = "";
+      if (target === 1) {
+        el.classList.add("c26-team-fade-in");
+        return;
+      }
+      el.classList.remove("c26-team-fade-in");
+      el.classList.add("c26-team-fade-out");
+      const t = window.setTimeout(onClosed, prefersReducedMotion() ? 0 : 220);
+      return () => window.clearTimeout(t);
+    }
+
+    if (!g.layer) {
+      g.layer = buildGenieLayer(el);
+      drawGenie(g.layer, src, g.p);
+    }
+    el.style.visibility = "hidden"; // 움직이는 동안엔 복제본만 보여요
+    const layer = g.layer;
+    const from = g.p;
+    const duration = (target === 1 ? GENIE_OPEN_MS : GENIE_CLOSE_MS) * Math.abs(target - from);
+    const start = performance.now();
+    const step = (now: number) => {
+      const t = duration > 0 ? Math.min(1, (now - start) / duration) : 1;
+      g.p = from + (target - from) * t;
+      drawGenie(layer, src, g.p);
+      if (t < 1) {
+        g.raf = requestAnimationFrame(step);
+        return;
+      }
+      layer.root.remove();
+      g.layer = null;
+      if (target === 1) el.style.visibility = "";
+      else onClosed();
+    };
+    g.raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(g.raf);
+    // 열기/닫기 방향이 바뀔 때만 다시 돌아요 (팀 이름 · onClosed 가 바뀌어도 진행 중인 애니메이션은 그대로)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leaving]);
+  // 화면이 아예 사라질 때 남은 복제본 정리
+  useEffect(() => {
+    const g = genie.current;
+    return () => {
+      cancelAnimationFrame(g.raf);
+      g.layer?.root.remove();
+      g.layer = null;
+    };
+  }, []);
   const [scrolled, setScrolled] = useState(false);
   const prev = C.teams[index - 1];
   const next = C.teams[index + 1];
@@ -1218,7 +1521,7 @@ function TeamPage({
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onBack();
+      if (e.key === "Escape" && !leavingRef.current) onBack();
     };
     window.addEventListener("keydown", onKey);
     return () => {
@@ -1242,7 +1545,7 @@ function TeamPage({
     <div
       ref={scrollRef}
       onScroll={(e) => setScrolled(e.currentTarget.scrollTop > 120)}
-      className="c26-page-in fixed inset-0 z-[60] overflow-y-auto bg-black text-[#d6dbe0]"
+      className="fixed inset-0 z-[60] overflow-y-auto bg-black text-[#d6dbe0]"
       role="dialog"
       aria-modal="true"
       aria-label={`${team.name} 무대 정보`}
@@ -1375,9 +1678,9 @@ function TeamPage({
         </div>
         <button
           onClick={() => onShare(team)}
-          className="mt-2.5 w-full rounded-full border border-white/20 py-3 text-sm text-white/85 transition-colors hover:border-white/50"
+          className="c26-roll mt-2.5 w-full rounded-full border border-white/20 py-3 text-sm text-white/85 transition-colors hover:border-white/50"
         >
-          이 무대 공유하기
+          <RollText>이 무대 공유하기</RollText>
         </button>
         <button onClick={onBack} className="mt-2 w-full py-3 text-xs text-white/45 underline underline-offset-4">
           무대 순서로 돌아가기
@@ -1739,10 +2042,41 @@ function SectionIndex() {
 
 export default function Concert() {
   useScrollDetails();
+
+  // ⑦ 폰에서 버튼을 누르는 순간 글자가 한 번 굴러가게 — 버튼마다 핸들러를 다는 대신
+  //    문서 전체에서 한 번만 듣고, 눌린 곳에서 가장 가까운 .c26-roll 을 찾아요.
+  //    (팀 페이지 · 혜택 창처럼 포털로 띄운 화면 안의 버튼도 같이 돼요)
+  useEffect(() => {
+    const onDown = (e: PointerEvent) => {
+      if (e.pointerType === "mouse") return; // PC 는 :hover 로 이미 굴러가요
+      const el = (e.target as Element | null)?.closest?.(".c26-roll");
+      if (!el) return;
+      el.classList.remove("is-rolling");
+      void (el as HTMLElement).offsetWidth; // 연속으로 눌러도 애니메이션이 처음부터 다시 시작되게
+      el.classList.add("is-rolling");
+    };
+    const onEnd = (e: AnimationEvent) => {
+      if (e.animationName === "c26-roll") (e.target as Element).closest(".c26-roll")?.classList.remove("is-rolling");
+    };
+    document.addEventListener("pointerdown", onDown, { passive: true });
+    document.addEventListener("animationend", onEnd);
+    return () => {
+      document.removeEventListener("pointerdown", onDown);
+      document.removeEventListener("animationend", onEnd);
+    };
+  }, []);
   // 주소 /2026concert/{팀 id} → 그 팀 프로그램북 화면을 띄움
   const navigate = useNavigate();
   const teamId = useParams()["*"] || "";
   const openTeam = teamId ? C.teams.findIndex((t) => t.id === teamId) : -1;
+  // 주소에서 팀이 빠져도(뒤로가기) 바로 지우지 않고, 빨려 들어가는 애니메이션이 끝날 때까지 붙잡아 둬요.
+  //   shownTeam : 지금 화면에 떠 있는 팀 (애니메이션 중 포함)
+  //   teamLeaving : 주소엔 이미 없지만 아직 닫히는 중
+  // (렌더 도중에 state 를 맞추는 건 React 공식 문서의 "props 변화에 맞춰 state 조정하기" 방식이에요)
+  const [shownTeam, setShownTeam] = useState(openTeam);
+  if (openTeam >= 0 && shownTeam !== openTeam) setShownTeam(openTeam);
+  const teamLeaving = openTeam < 0 && shownTeam >= 0;
+  const handleTeamClosed = useCallback(() => setShownTeam(-1), []);
   // useCallback 으로 고정해야 팀 화면 · 혜택 창의 스크롤 잠금 effect 가 매 렌더마다 다시 돌지 않아요.
   // 사이트 안에서 들어왔으면 뒤로가기(스크롤 위치 그대로), 링크로 바로 들어왔으면 공연 페이지로
   const closeTeam = useCallback(() => {
@@ -2030,7 +2364,7 @@ export default function Concert() {
                   </span>
                   <dt className="relative text-[11px] tracking-[0.3em] text-[#7cc4ee] md:text-xs">{f.label}</dt>
                   <dd className="c26-serif relative mt-2.5 whitespace-pre-line break-keep text-[16.5px] font-bold leading-snug text-white md:text-[19px]">
-                    {f.value}
+                    <CountUpText text={f.value} />
                   </dd>
                 </div>
               </Rise>
@@ -2112,9 +2446,9 @@ export default function Concert() {
                       target="_blank"
                       rel="noreferrer"
                       {...inkHandlers}
-                      className="c26-inkbtn c26-serif mt-7 inline-flex items-center gap-3 rounded-full border border-white/60 px-9 py-4 text-base font-bold text-white shadow-[0_0_40px_rgba(124,196,238,0.18)]"
+                      className="c26-inkbtn c26-roll c26-serif mt-7 inline-flex items-center gap-3 rounded-full border border-white/60 px-9 py-4 text-base font-bold text-white shadow-[0_0_40px_rgba(124,196,238,0.18)]"
                     >
-                      사전 신청 바로가기
+                      <RollText>사전 신청 바로가기</RollText>
                       <span aria-hidden="true">→</span>
                     </a>
                   </>
@@ -2137,6 +2471,7 @@ export default function Concert() {
                 <Rise delay={(i % 4) * 60}>
                   <button
                     onClick={() => navigate(`/2026concert/${team.id}`)}
+                    data-team-row={team.id}
                     className="c26-rule-b group flex w-full items-center gap-4 py-5 text-left transition-colors active:bg-white/[0.04] md:gap-6 md:py-6"
                     style={{ "--i": i } as CSSProperties}
                   >
@@ -2174,7 +2509,9 @@ export default function Concert() {
                       {p.rank}
                     </span>
                     <p className="min-w-0 flex-1 break-keep text-[15px] font-medium text-white">{p.item}</p>
-                    <span className="shrink-0 text-xs text-white/50">{p.count}</span>
+                    <span className="shrink-0 text-xs text-white/50">
+                      <CountUpText text={p.count} duration={900} />
+                    </span>
                   </div>
                 </Rise>
               </li>
@@ -2194,7 +2531,7 @@ export default function Concert() {
             <div className="flex flex-col gap-2.5 md:flex-row">
               <button
                 onClick={handleKakaoShare}
-                className="flex flex-1 items-center justify-center gap-2 rounded-full bg-[#FEE500] py-3.5 text-[15px] font-semibold text-[#191919] transition-transform active:scale-95"
+                className="c26-roll flex flex-1 items-center justify-center gap-2 rounded-full bg-[#FEE500] py-3.5 text-[15px] font-semibold text-[#191919] transition-transform active:scale-95"
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
                   <path
@@ -2202,25 +2539,25 @@ export default function Concert() {
                     fill="currentColor"
                   />
                 </svg>
-                카카오톡으로 공유하기
+                <RollText>카카오톡으로 공유하기</RollText>
               </button>
               <button
                 onClick={handleStoryShare}
-                className="flex flex-1 items-center justify-center gap-2 rounded-full bg-[linear-gradient(90deg,#f9a034,#ee2a7b_50%,#6228d7)] py-3.5 text-[15px] font-semibold text-white transition-transform active:scale-95"
+                className="c26-roll flex flex-1 items-center justify-center gap-2 rounded-full bg-[linear-gradient(90deg,#f9a034,#ee2a7b_50%,#6228d7)] py-3.5 text-[15px] font-semibold text-white transition-transform active:scale-95"
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                   <rect x="3" y="3" width="18" height="18" rx="5" />
                   <circle cx="12" cy="12" r="4" />
                   <circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none" />
                 </svg>
-                인스타 스토리에 올리기
+                <RollText>인스타 스토리에 올리기</RollText>
               </button>
               <button
                 onClick={handleNativeShare}
                 {...inkHandlers}
-                className="c26-inkbtn flex-1 rounded-full border border-white/25 py-3.5 text-[15px] text-white/85 transition-colors hover:border-white/60"
+                className="c26-inkbtn c26-roll flex-1 rounded-full border border-white/25 py-3.5 text-[15px] text-white/85 transition-colors hover:border-white/60"
               >
-                다른 앱으로 공유 · 링크 복사
+                <RollText>다른 앱으로 공유 · 링크 복사</RollText>
               </button>
             </div>
             {shareError && <p className="mt-3 text-xs text-red-300">{shareError}</p>}
@@ -2295,9 +2632,9 @@ export default function Concert() {
               <button
                 onClick={() => copyText(C.location.address, "주소를 복사했어요.")}
                 {...inkHandlers}
-                className="c26-inkbtn mt-2 w-full rounded-full border border-white/20 py-3 text-sm text-white/85 transition-colors hover:border-white/50"
+                className="c26-inkbtn c26-roll mt-2 w-full rounded-full border border-white/20 py-3 text-sm text-white/85 transition-colors hover:border-white/50"
               >
-                주소 복사
+                <RollText>주소 복사</RollText>
               </button>
             </div>
           </Rise>
@@ -2349,13 +2686,22 @@ export default function Concert() {
           href={C.applyUrl}
           target="_blank"
           rel="noreferrer"
-          className="c26-shine c26-serif flex w-full items-center justify-center rounded-full bg-[#e9eef2] py-3.5 text-[15px] font-bold text-black"
+          className="c26-shine c26-roll c26-serif flex w-full items-center justify-center rounded-full bg-[#e9eef2] py-3.5 text-[15px] font-bold text-black"
         >
           <DockLabel />
         </a>
       </div>
 
-      {openTeam >= 0 && <TeamPage index={openTeam} onBack={closeTeam} onGo={goTeam} onShare={shareTeam} />}
+      {shownTeam >= 0 && (
+        <TeamPage
+          index={shownTeam}
+          leaving={teamLeaving}
+          onBack={closeTeam}
+          onGo={goTeam}
+          onShare={shareTeam}
+          onClosed={handleTeamClosed}
+        />
+      )}
       {openSponsor !== null && (
         <SponsorSheet sponsor={C.sponsors[openSponsor]} onClose={closeSponsor} />
       )}

@@ -459,14 +459,86 @@
   to { transform: scale(5); opacity: 0; }
 }
 
-/* ---------- 팀 상세 화면: 오른쪽에서 밀려 들어옴 ---------- */
-.c26-page-in {
-  animation: c26-page-in 0.42s cubic-bezier(0.32, 0.72, 0, 1) both;
+/* ---------- 팀 상세 화면: 맥 지니 (Concert.tsx 의 buildGenieLayer / drawGenie) ----------
+   팀 화면을 가로 띠로 복제한 층. 팀 화면(z-60) 바로 위에 깔려요. */
+.c26-genie {
+  position: fixed;
+  inset: 0;
+  z-index: 61;
+  overflow: hidden;
+  pointer-events: none;
 }
-@keyframes c26-page-in {
-  from { transform: translateX(100%); }
-  to { transform: none; }
+.c26-genie-dim {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  opacity: 0;
+}
+.c26-genie-strip {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  overflow: hidden;
+  transform-origin: 50% 50%;
+  will-change: transform;
+}
+
+/* 지니를 못 쓸 때(링크로 바로 들어옴 · 무대 순서 줄이 화면 밖): 살짝 떠오르며 열리고 가라앉으며 닫혀요 */
+.c26-team-fade-in {
+  animation: c26-team-fade-in 0.32s cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+.c26-team-fade-out {
+  animation: c26-team-fade-out 0.22s ease-in both;
+}
+@keyframes c26-team-fade-in {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes c26-team-fade-out {
+  from { opacity: 1; transform: none; }
+  to { opacity: 0; transform: translateY(14px); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .c26-page-in { animation: none; }
+  .c26-team-fade-in,
+  .c26-team-fade-out { animation: none; }
+}
+/* ---------- ⑦ 글자가 굴러 바뀌는 버튼 (RollText) ----------
+   글자 두 줄을 세로로 겹쳐 두고 한 줄 높이(1.25em)만큼만 보여줘요.
+   위로 50%(= 한 줄) 올리면 아래 줄이 같은 글자라 "굴러 바뀐" 것처럼 보여요. */
+.c26-roll-txt {
+  display: inline-block;
+  height: 1.25em;
+  line-height: 1.25em;
+  overflow: hidden;
+  vertical-align: middle;
+}
+.c26-roll-in {
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.45s cubic-bezier(0.7, 0, 0.2, 1);
+}
+.c26-roll-in > span {
+  display: block;
+  height: 1.25em;
+  white-space: nowrap;
+}
+/* PC: 마우스를 올리면 올라가고, 떼면 내려와요 */
+@media (hover: hover) and (pointer: fine) {
+  .c26-roll:hover .c26-roll-in,
+  .c26-roll:focus-visible .c26-roll-in {
+    transform: translateY(-50%);
+  }
+}
+/* 폰: 누를 때 한 번 올라가고, 끝나면 제자리 (두 줄이 같아서 돌아오는 게 안 보여요) */
+.c26-roll.is-rolling .c26-roll-in {
+  animation: c26-roll 0.5s cubic-bezier(0.7, 0, 0.2, 1);
+}
+@keyframes c26-roll {
+  from { transform: translateY(0); }
+  to { transform: translateY(-50%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .c26-roll-in { transition: none; }
+  .c26-roll.is-rolling .c26-roll-in { animation: none; }
+  .c26-roll:hover .c26-roll-in { transform: none; }
 }
