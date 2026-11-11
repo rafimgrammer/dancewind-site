@@ -3,5 +3,8 @@
 /2026concert/  /2026concert.html   200
 /2026concert/*  /2026concert.html   200
 
+/practice-ai    https://chumbaram-practice-ai.netlify.app/        200
+/practice-ai/*  https://chumbaram-practice-ai.netlify.app/:splat  200
+
 # 나머지는 전부 React 앱(SPA)으로
 /*    /index.html   200
