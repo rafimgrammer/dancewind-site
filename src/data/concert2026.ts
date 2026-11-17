@@ -59,7 +59,7 @@ export const CONCERT_2026 = {
   runtimeText: "약 2시간 예상",
   priceText: "전석 무료",
 
-  applyUrl: "https://forms.gle/",
+  applyUrl: "https://forms.gle/BhaUdU4wccE2E5ah8",
   // 카카오톡 공유용 "초대장" 메시지 템플릿 ID (카카오 디벨로퍼스 > 도구 > 메시지 템플릿 에서 만든 피드형 A).
   // 0 이면 아직 템플릿을 안 만든 것 → 예전 공통 템플릿으로 보내요.
   kakaoTemplateId:138720,
