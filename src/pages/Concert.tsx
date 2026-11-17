@@ -1902,7 +1902,34 @@ function SectionIndex() {
  * 페이지
  * ========================================================================= */
 
+/** 카톡 초대장의 [사전 신청] 버튼은 /2026concert?go=apply 로 들어와요.
+ *  구글 폼 주소(forms.gle)는 우리 카카오 앱에 등록된 도메인이 아니라서 카톡 버튼에 바로 걸 수가 없어요.
+ *  그래서 우리 사이트를 한 번 거치되, 페이지를 그리기 전에 곧바로 구글 폼으로 넘겨요.
+ *  location.replace 를 써서 뒤로 가기를 눌러도 이 중간 단계로 다시 돌아오지 않아요. */
+function isApplyRedirect() {
+  if (typeof window === "undefined") return false;
+  return new URLSearchParams(window.location.search).get("go") === "apply";
+}
+
+function ApplyRedirect() {
+  useEffect(() => {
+    window.location.replace(KO.applyUrl);
+  }, []);
+  return (
+    <div className="flex min-h-[100svh] items-center justify-center bg-black px-6 text-center text-sm text-white/60">
+      사전 신청 폼으로 이동하고 있어요…
+    </div>
+  );
+}
+
+/** 바깥 껍데기 — ?go=apply 면 페이지 대신 폼으로 넘기고, 아니면 원래 공연 페이지를 그려요.
+ *  (조건에 따라 훅 개수가 달라지면 안 돼서, 판단은 여기서 하고 실제 페이지는 ConcertPage 로 분리했어요) */
 export default function Concert() {
+  const [redirect] = useState(isApplyRedirect);
+  return redirect ? <ApplyRedirect /> : <ConcertPage />;
+}
+
+function ConcertPage() {
   useScrollDetails();
 
   // 언어 — 바꾸면 이 폰에 기억하고, 주소에도 ?lang=en 을 붙여 둬요 (그 상태로 링크를 복사해도 영어로 열리게)
@@ -2084,8 +2111,8 @@ export default function Concert() {
     }
   };
 
-  // 카톡 초대장의 [사전 신청] 버튼은 /2026concert?go=apply 로 들어와요 → 사전 신청 섹션으로 바로 내려가요.
-  // (구글 폼 주소는 카카오 앱에 등록된 도메인이 아니라서 카톡 버튼에 바로 못 걸어요)
+  // ?go=섹션id 로 들어오면 그 섹션으로 바로 내려가요. (예: ?go=teams)
+  // ※ ?go=apply 는 위의 Concert 껍데기에서 구글 폼으로 바로 넘기기 때문에 여기까지 오지 않아요.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const target = params.get("go");
