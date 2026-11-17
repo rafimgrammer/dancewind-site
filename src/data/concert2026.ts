@@ -236,7 +236,7 @@ export const CONCERT_2026 = {
     },
     {
       id: "12",
-      name: "블러디 야르다이스~~~~-",
+      name: "블러디 야르다이스~~~~",
       songs: [
         { title: "Big Girls Don't Cry", artist: "ENHYPEN" },
         { title: "Bloody Paradise", artist: "ENHYPEN" },
