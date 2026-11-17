@@ -253,7 +253,7 @@ export const CONCERT_2026_EN: typeof CONCERT_2026 = {
 
   description: {
     heading: t(K.description.heading),
-    body: K.description.body.map(t),
+    body: K.description.body.map((para) => ({ ...para, text: t(para.text) })),
     facts: K.description.facts.map((f) => ({ ...f, label: t(f.label), value: t(f.value) })),
   },
 
@@ -268,7 +268,6 @@ export const CONCERT_2026_EN: typeof CONCERT_2026 = {
   prizeHowTo: t(K.prizeHowTo),
   prizes: K.prizes.map((p) => ({ rank: t(p.rank), item: t(p.item), count: t(p.count) })),
 
-  sponsors: K.sponsors.map((s) => ({ ...s, benefit: t(s.benefit) })),
 
   location: {
     ...K.location,

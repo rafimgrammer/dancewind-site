@@ -6,12 +6,12 @@
 // - 문구/팀/경품/스폰서 같은 내용은 전부 src/data/concert2026.ts 에 모아뒀어요.
 // - 애니메이션 정의는 ./concert2026.css 에 있어요.
 
-import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
+import { Fragment, useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate, useParams } from "react-router-dom";
 import { useScrollReveal } from "../hooks/useScrollReveal";
 import { shareToKakao } from "../lib/kakaoShare";
-import { CONCERT_2026 as C, type ConcertSponsor, type ConcertTeam } from "../data/concert2026";
+import { CONCERT_2026 as C, type ConcertTeam } from "../data/concert2026";
 import { BRUSH_END, BRUSH_SPRITE, BRUSH_STROKES, BRUSH_VIEWBOX } from "../data/concert2026Strokes";
 
 /** 서예를 다 쓴 시각 기준으로 뒤따르는 문구들의 등장 시각 */
@@ -1000,80 +1000,6 @@ function DockLabel() {
 }
 
 /* =========================================================================
- * 팀 상세 시트 (모바일: 아래에서 올라오는 시트 / PC: 가운데 모달)
- * ========================================================================= */
-
-/** 협찬처 혜택 창 — body 에 포털로 붙이고, 열려 있는 동안 뒤 스크롤을 막아요 */
-const SPONSOR_CATEGORY: Record<string, string> = {
-  CAFE: "카페",
-  FOOD: "식당",
-  PUB: "술집",
-  BEAUTY: "뷰티",
-  PHOTO: "사진",
-  PLAY: "놀거리",
-  FITNESS: "운동",
-  ETC: "기타",
-};
-
-function SponsorSheet({ sponsor, onClose }: { sponsor: ConcertSponsor; onClose: () => void }) {
-  useEffect(() => {
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => {
-      document.body.style.overflow = prevOverflow;
-      window.removeEventListener("keydown", onKey);
-      refreshScrollEffects();
-    };
-  }, [onClose]);
-
-  return createPortal(
-    <div
-      className="c26-sheet-backdrop fixed inset-0 z-[60] flex items-end justify-center bg-black/70 backdrop-blur-sm md:items-center"
-      onClick={onClose}
-      role="dialog"
-      aria-modal="true"
-      aria-label={`${sponsor.name} 혜택`}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className="c26-sheet relative w-full rounded-t-3xl border border-white/10 bg-[#0b0e11] px-6 pb-[calc(env(safe-area-inset-bottom)+28px)] pt-3 md:max-w-md md:rounded-3xl md:pb-8 md:pt-8"
-      >
-        <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-white/20 md:hidden" />
-        <p className="font-mono text-[10px] tracking-[0.2em] text-[#7cc4ee]">
-          {sponsor.category} · {SPONSOR_CATEGORY[sponsor.category] ?? sponsor.category}
-        </p>
-        <h3 className="c26-serif mt-2 break-keep text-2xl font-bold text-white">{sponsor.name}</h3>
-        <p className="mt-4 break-keep text-[15px] leading-relaxed text-white/80">
-          {sponsor.benefit || "혜택은 곧 안내돼요."}
-        </p>
-        <p className="mt-5 text-xs text-white/40">공연 당일 사전 신청 화면을 보여주세요.</p>
-        {sponsor.url && (
-          <a
-            href={sponsor.url}
-            target="_blank"
-            rel="noreferrer"
-            className="mt-5 inline-block text-sm text-[#9fd3f3] underline underline-offset-4"
-          >
-            매장 정보 보기 →
-          </a>
-        )}
-        <button
-          onClick={onClose}
-          className="mt-7 w-full rounded-full border border-white/20 py-3 text-sm text-white/80 transition-colors hover:border-white/50"
-        >
-          닫기
-        </button>
-      </div>
-    </div>,
-    document.body
-  );
-}
-
-/* =========================================================================
  * 인스타 스토리 — 표지 / 오늘의 D-day 고르기
  * ========================================================================= */
 
@@ -1281,116 +1207,22 @@ function StoryPicker({
   );
 }
 
+/** 팀 이름 글자 수에 따라 글씨 크기를 줄여요 — 문장처럼 긴 팀명도 몇 줄 안에 들어가게.
+ *  [overflow-wrap:anywhere] 는 "졸업두달남은…끌어치기" 처럼 띄어쓰기 없는 긴 이름이
+ *  화면 밖으로 넘치지 않고 줄을 바꾸게 해줘요. (break-keep 만 있으면 띄어쓰기에서만 줄이 바뀌어요) */
+function teamNameSize(name: string, where: "page" | "list") {
+  const n = Array.from(name).length; // 이모지도 한 글자로 세요
+  if (where === "page") {
+    return n <= 10 ? "text-[34px] md:text-[40px]" : n <= 20 ? "text-[26px] md:text-[32px]" : "text-[21px] md:text-[26px]";
+  }
+  return n <= 12 ? "text-[21px] md:text-2xl" : n <= 24 ? "text-[18px] md:text-[21px]" : "text-[16px] md:text-[19px]";
+}
+
 /* =========================================================================
  * 팀 상세 — 프로그램북 한 장
  * 주소가 /2026concert/{팀 id} 일 때 공연 페이지 위에 전체 화면으로 덮여요.
  * 공연 페이지는 밑에 그대로 남아 있어서, 뒤로가기 하면 보던 스크롤 위치(무대 순서)로 돌아가요.
  * ========================================================================= */
-
-/** 곡 유튜브 주소 — 따로 안 적었으면 "가수 곡제목" 유튜브 검색으로 */
-function songUrl(song: ConcertTeam["songs"][number]) {
-  return song.youtube || `https://www.youtube.com/results?search_query=${encodeURIComponent(`${song.artist} ${song.title}`)}`;
-}
-
-/* =========================================================================
- * 맥 지니 — 무대 순서의 팀 줄에서 프로그램북이 빨려 나오고, 닫으면 빨려 들어가요
- *
- * 어떻게 휘게 만드나요?
- *   화면 한 장을 통째로 휘게 하는 CSS 는 없어요. 그래서 팀 화면을 "가로 띠" 여러 장으로
- *   복제해서 잘라 두고, 띠마다 위치 · 폭 · 높이를 조금씩 다르게 움직여요.
- *   - 누른 줄에서 가까운 띠가 먼저, 먼 띠가 늦게 따라 나와서 깔때기 모양이 돼요.
- *   - 덜 나온 띠일수록 폭이 좁고 납작해요.
- *   다 열리면 복제본은 지우고 진짜 화면(버튼이 눌리는 화면)을 보여줘요.
- *
- *   p = 0(닫힘, 줄 속에 쏙) ~ 1(다 열림). 열 땐 0→1, 닫을 땐 1→0 으로 같은 그림을 거꾸로 돌려요.
- *   그래서 열리는 도중에 뒤로가기를 눌러도 그 자리에서 자연스럽게 되돌아가요.
- * ========================================================================= */
-type GenieSrc = { cx: number; cy: number; w: number };
-type GenieLayer = { root: HTMLDivElement; dim: HTMLDivElement; strips: HTMLDivElement[]; W: number; H: number };
-
-const GENIE_OPEN_MS = 560;
-const GENIE_CLOSE_MS = 500;
-
-/** 무대 순서에서 그 팀 줄의 화면상 위치 — 화면 밖이면 null (그땐 지니 대신 살짝 페이드) */
-function teamRowRect(id: string): GenieSrc | null {
-  const el = document.querySelector<HTMLElement>(`[data-team-row="${id}"]`);
-  if (!el) return null;
-  const r = el.getBoundingClientRect();
-  if (r.height === 0 || r.bottom < 0 || r.top > window.innerHeight) return null;
-  return { cx: r.left + r.width / 2, cy: r.top + r.height / 2, w: r.width };
-}
-
-/** 팀 화면(source)을 가로 띠 여러 장으로 복제해서 body 맨 위에 깔아요 */
-function buildGenieLayer(source: HTMLElement): GenieLayer {
-  const W = window.innerWidth;
-  const H = window.innerHeight;
-  // 띠 하나가 약 30px — 폰 기준 28장 정도. 많을수록 곡선이 매끄럽고, 적을수록 가벼워요
-  const n = Math.min(32, Math.max(16, Math.round(H / 30)));
-  const h = H / n;
-
-  const root = document.createElement("div");
-  root.className = "c26-genie";
-  root.setAttribute("aria-hidden", "true");
-  const dim = document.createElement("div");
-  dim.className = "c26-genie-dim";
-  root.appendChild(dim);
-
-  const strips: HTMLDivElement[] = [];
-  for (let k = 0; k < n; k++) {
-    const strip = document.createElement("div");
-    strip.className = "c26-genie-strip";
-    strip.style.top = `${k * h}px`;
-    strip.style.height = `${h + 0.75}px`; // 띠 사이 머리카락 같은 틈이 안 보이게 살짝 겹쳐요
-    const clone = source.cloneNode(true) as HTMLElement;
-    clone.removeAttribute("role");
-    clone.removeAttribute("aria-modal");
-    clone.removeAttribute("aria-label");
-    clone.classList.remove("c26-team-fade-in", "c26-team-fade-out");
-    // 원본은 화면 전체(fixed)라서, 복제본은 띠 안에서 제 위치(위로 k칸만큼)에 놓이게 바꿔요
-    Object.assign(clone.style, {
-      position: "absolute",
-      inset: "auto",
-      top: `${-k * h}px`,
-      left: "0px",
-      width: `${W}px`,
-      height: `${H}px`,
-      visibility: "visible",
-      pointerEvents: "none",
-    });
-    strip.appendChild(clone);
-    root.appendChild(strip);
-    strips.push(strip);
-  }
-  document.body.appendChild(root);
-  // 스크롤해서 보던 위치 그대로 (복제는 스크롤 위치까지는 안 따라와서 직접 맞춰요)
-  strips.forEach((strip) => {
-    (strip.firstChild as HTMLElement).scrollTop = source.scrollTop;
-  });
-  return { root, dim, strips, W, H };
-}
-
-const easeInOutCubic = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
-const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
-const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
-
-/** p(0~1) 순간의 모양을 그려요 */
-function drawGenie(g: GenieLayer, src: GenieSrc, p: number) {
-  const n = g.strips.length;
-  const h = g.H / n;
-  g.dim.style.opacity = String(0.55 * p); // 뒤 페이지는 열리는 만큼 어두워져요
-  g.strips.forEach((strip, k) => {
-    const finalY = (k + 0.5) * h; // 다 열렸을 때 이 띠의 세로 중심
-    const lag = Math.abs(finalY - src.cy) / g.H; // 누른 줄에서 멀수록 늦게 나와요
-    const q = clamp01((p - lag * 0.5) / 0.5);
-    const e = easeInOutCubic(q);
-    const cy = lerp(src.cy, finalY, e);
-    const w = lerp(src.w * 0.3, g.W, Math.pow(e, 2.4)); // 오래 좁게 있다가 마지막에 펴져요 → 깔때기
-    const cx = lerp(src.cx, g.W / 2, Math.pow(e, 1.8));
-    const sy = lerp(0.04, 1, e);
-    strip.style.transform = `translate3d(${cx - g.W / 2}px, ${cy - finalY}px, 0) scale(${w / g.W}, ${sy})`;
-    strip.style.visibility = q <= 0 ? "hidden" : "visible";
-  });
-}
 
 function TeamPage({
   index,
@@ -1411,75 +1243,23 @@ function TeamPage({
   const team = C.teams[index];
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // ── 맥 지니 열기 / 닫기 ──
-  const genie = useRef<{ layer: GenieLayer | null; p: number; raf: number }>({ layer: null, p: 0, raf: 0 });
+  // ── 열기 / 닫기: 오른쪽에서 밀려 들어오고, 오른쪽으로 빠져나가요 + 뒤 화면에 어두운 막 ──
+  //   움직이는 건 화면 한 장의 "위치"와 막 한 장의 "투명도"뿐이라 폰이 그래픽 칩으로 가볍게 처리해요.
+  //   (예전 지니는 화면을 28장 복제해서 움직여서 무거웠어요)
+  //   닫힐 땐 CSS 애니메이션이 끝나는 순간(onAnimationEnd) onClosed 를 불러 화면을 지워요.
   const leavingRef = useRef(leaving);
   leavingRef.current = leaving;
-  useLayoutEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const g = genie.current;
-    const target = leaving ? 0 : 1;
-    cancelAnimationFrame(g.raf);
-    el.style.pointerEvents = leaving ? "none" : ""; // 닫히는 중엔 버튼이 안 눌리게
-
-    const src = teamRowRect(team.id);
-    // 지니를 쓸 수 없을 때(링크로 바로 들어와서 무대 순서 줄이 화면에 없음 · 모션 줄이기 설정): 살짝 페이드
-    if (!src || prefersReducedMotion()) {
-      g.layer?.root.remove();
-      g.layer = null;
-      g.p = target;
-      el.style.visibility = "";
-      if (target === 1) {
-        el.classList.add("c26-team-fade-in");
-        return;
-      }
-      el.classList.remove("c26-team-fade-in");
-      el.classList.add("c26-team-fade-out");
-      const t = window.setTimeout(onClosed, prefersReducedMotion() ? 0 : 220);
-      return () => window.clearTimeout(t);
-    }
-
-    if (!g.layer) {
-      g.layer = buildGenieLayer(el);
-      drawGenie(g.layer, src, g.p);
-    }
-    el.style.visibility = "hidden"; // 움직이는 동안엔 복제본만 보여요
-    const layer = g.layer;
-    const from = g.p;
-    const duration = (target === 1 ? GENIE_OPEN_MS : GENIE_CLOSE_MS) * Math.abs(target - from);
-    const start = performance.now();
-    const step = (now: number) => {
-      const t = duration > 0 ? Math.min(1, (now - start) / duration) : 1;
-      g.p = from + (target - from) * t;
-      drawGenie(layer, src, g.p);
-      if (t < 1) {
-        g.raf = requestAnimationFrame(step);
-        return;
-      }
-      layer.root.remove();
-      g.layer = null;
-      if (target === 1) el.style.visibility = "";
-      else onClosed();
-    };
-    g.raf = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(g.raf);
-    // 열기/닫기 방향이 바뀔 때만 다시 돌아요 (팀 이름 · onClosed 가 바뀌어도 진행 중인 애니메이션은 그대로)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [leaving]);
-  // 화면이 아예 사라질 때 남은 복제본 정리
   useEffect(() => {
-    const g = genie.current;
-    return () => {
-      cancelAnimationFrame(g.raf);
-      g.layer?.root.remove();
-      g.layer = null;
-    };
-  }, []);
+    // 모션 줄이기 설정이면 애니메이션이 없어서 animationend 가 안 와요 → 바로 닫기
+    if (leaving && prefersReducedMotion()) onClosed();
+  }, [leaving, onClosed]);
   const [scrolled, setScrolled] = useState(false);
   const prev = C.teams[index - 1];
   const next = C.teams[index + 1];
-  const members = [...team.members].sort((a, b) => Number(b === team.leader) - Number(a === team.leader));
+  // 팀장(여럿일 수 있어요)을 맨 앞으로 — sort 는 순서가 같으면 원래 순서를 지켜서, 팀장끼리 · 팀원끼리 순서는 그대로예요
+  const leaders = team.leaders ?? [];
+  const isLeader = (m: string) => leaders.includes(m);
+  const members = [...team.members].sort((a, b) => Number(isLeader(b)) - Number(isLeader(a)));
 
   // 멤버 이름이 두 줄로 넘어가면, 둘째 줄 맨 앞에 오는 " · " 는 숨겨요.
   // (줄이 어디서 바뀌는지는 화면 너비에 따라 달라서, 그려진 뒤 위치를 재서 판단해요)
@@ -1542,10 +1322,22 @@ function TeamPage({
   }, [index, team.name]);
 
   return createPortal(
+    <>
+      {/* 뒤 화면(무대 순서) 위에 깔리는 어두운 막 — 팀 화면이 밀려오는 동안 서서히 어두워져요 */}
+      <div
+        aria-hidden="true"
+        className={`fixed inset-0 z-[59] bg-black/55 ${leaving ? "c26-dim-out" : "c26-dim-in"}`}
+      />
     <div
       ref={scrollRef}
       onScroll={(e) => setScrolled(e.currentTarget.scrollTop > 120)}
-      className="fixed inset-0 z-[60] overflow-y-auto bg-black text-[#d6dbe0]"
+      onAnimationEnd={(e) => {
+        // 팀 화면 자체의 "빠져나가기"가 끝났을 때만 (안쪽 요소들의 애니메이션 끝 신호는 무시)
+        if (leaving && e.target === e.currentTarget) onClosed();
+      }}
+      className={`fixed inset-0 z-[60] overflow-y-auto bg-black text-[#d6dbe0] ${
+        leaving ? "pointer-events-none c26-team-out" : "c26-team-in"
+      }`}
       role="dialog"
       aria-modal="true"
       aria-label={`${team.name} 무대 정보`}
@@ -1560,7 +1352,7 @@ function TeamPage({
           ←
         </button>
         <span
-          className={`c26-serif text-xs tracking-[0.2em] text-white/55 transition-opacity duration-300 ${scrolled ? "opacity-100" : "opacity-0"}`}
+          className={`c26-serif min-w-0 flex-1 truncate px-3 text-center text-xs tracking-[0.2em] text-white/55 transition-opacity duration-300 ${scrolled ? "opacity-100" : "opacity-0"}`}
         >
           第{index + 1}幕 · {team.name}
         </span>
@@ -1575,59 +1367,42 @@ function TeamPage({
 
       <div className="mx-auto max-w-[520px] px-[18px] pb-[calc(env(safe-area-inset-bottom)+36px)] pt-2">
         {/* 프로그램북 한 장 — 이중 테두리 */}
-        <article key={team.id} className="c26-rise rounded-[3px] border border-white/20 p-1.5">
+        {/* 프로그램북이 살짝 떠오르며 나타나요 — 화면이 밀려오는 동안 같이 움직이니까, 무거운 흐림(blur) 없이 위치 · 투명도만 */}
+        <article key={team.id} className="c26-team-card rounded-[3px] border border-white/20 p-1.5">
           <div className="border border-white/10 px-5 pb-7 pt-8 text-center md:px-8">
             {/* 자간(tracking)은 마지막 글자 뒤에도 붙어서 글씨가 왼쪽으로 쏠려 보여요 → 왼쪽에 같은 만큼 여백(pl)을 줘서 정확히 가운데로 */}
             <p className="pl-[0.4em] font-mono text-[9px] tracking-[0.4em] text-[#7cc4ee]">
               第{index + 1}幕 · PROGRAMME
             </p>
-            <h1 className="c26-serif mt-3 break-keep text-[34px] font-black leading-tight text-white md:text-[40px]">
+            <h1 className={`c26-serif mt-3 break-keep font-black leading-tight text-white [overflow-wrap:anywhere] ${teamNameSize(team.name, "page")}`}>
               {team.name}
             </h1>
             <hr className="mx-auto my-6 w-8 border-white/15" />
 
-            {/* 곡 — 줄 전체가 유튜브 링크. 빨간 재생 버튼으로 "누르면 유튜브"가 한눈에 보이게 */}
-            <p className="pl-[0.3em] text-[10px] tracking-[0.3em] text-white/45">SONG</p>
-            <p className="mt-1.5 text-[11px] text-white/40">곡을 누르면 유튜브에서 들을 수 있어요</p>
-            <ul className="mt-3 text-left">
-              {team.songs.map((song) => (
-                <li key={song.artist + song.title}>
-                  <a
-                    href={songUrl(song)}
-                    target="_blank"
-                    rel="noreferrer"
-                    aria-label={`${song.artist} - ${song.title} 유튜브에서 듣기`}
-                    className="group flex items-center gap-3 rounded-xl px-2 py-3 transition-colors hover:bg-white/[0.05] active:bg-white/[0.08]"
-                  >
-                    <span className="min-w-0 flex-1">
-                      <span className="flex items-baseline gap-2">
-                        <span className="break-keep text-[15px] font-semibold text-white underline decoration-white/25 underline-offset-4 group-hover:decoration-white/70">
-                          {song.title}
-                        </span>
-                        <span className="h-px flex-1 translate-y-[-3px] border-b border-dotted border-white/25" aria-hidden="true" />
-                      </span>
-                      <span className="mt-1 block text-xs text-white/55">{song.artist}</span>
-                    </span>
-                    {/* 재생 버튼 — 빨간색은 페이지에서 혼자 튀어서, 페이지 톤(흰 테두리 + 하늘색 ▶)으로.
-                        누르거나 마우스를 올리면 흰 바탕으로 채워져요 */}
-                    <span
-                      className="flex shrink-0 items-center gap-1.5 rounded-full border border-white/25 bg-white/[0.06] py-1.5 pl-2 pr-2.5 text-[11px] font-semibold text-white/85 transition-all group-hover:border-[#e9eef2] group-hover:bg-[#e9eef2] group-hover:text-black group-active:scale-95 [&>svg]:text-[#7cc4ee] group-hover:[&>svg]:text-black"
-                      aria-hidden="true"
-                    >
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M8 5.5v13a1 1 0 0 0 1.52.85l10.4-6.5a1 1 0 0 0 0-1.7L9.52 4.65A1 1 0 0 0 8 5.5Z" />
-                      </svg>
-                      YouTube
-                    </span>
-                  </a>
-                </li>
-              ))}
-            </ul>
+            {/* 곡 — 종이 프로그램북처럼 "곡 제목 ······ 가수" 한 줄. 링크 없이 글자만 보여줘요.
+                곡 제목이 길면 제목만 두 줄로 넘어가고, 가수는 오른쪽 끝에 붙어 있어요. */}
+            {team.songs.length > 0 && (
+              <>
+                <p className="pl-[0.3em] text-[10px] tracking-[0.3em] text-white/45">SONG</p>
+                <ul className="mt-3 text-left">
+                  {team.songs.map((song) => (
+                    <li key={song.artist + song.title} className="flex items-baseline gap-2 py-1.5">
+                      <span className="break-keep text-[15px] font-semibold text-white">{song.title}</span>
+                      <span
+                        className="min-w-[16px] flex-1 translate-y-[-4px] border-b border-dotted border-white/25"
+                        aria-hidden="true"
+                      />
+                      <span className="max-w-[45%] shrink-0 break-keep text-right text-xs text-white/55">{song.artist}</span>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
 
             {/* 멤버 — 이름을 " · " 로 이어 적고 팀장은 하늘색.
                 이름 하나하나를 칸으로 나눠 flex-wrap 으로 놓아야, 화면이 좁으면 이름 단위로 다음 줄로 넘어가요.
                 (예전엔 이름 사이에 띄어쓰기 없이 붙어 있어서 줄을 못 바꾸고 화면 밖으로 넘쳤어요) */}
-            <p className="mt-8 pl-[0.3em] text-[10px] tracking-[0.3em] text-white/45">
+            <p className={`pl-[0.3em] text-[10px] tracking-[0.3em] text-white/45 ${team.songs.length > 0 ? "mt-8" : ""}`}>
               MEMBERS <span className="ml-1 text-white/30">{team.members.length}</span>
             </p>
             <ul
@@ -1641,7 +1416,7 @@ function TeamPage({
                       ·
                     </span>
                   )}
-                  {m === team.leader ? (
+                  {isLeader(m) ? (
                     <span className="flex items-center gap-1 font-bold text-[#9fd3f3]">
                       {m}
                       <span className="rounded-full bg-[#7cc4ee] px-1.5 py-px font-sans text-[9px] font-bold leading-[1.5] text-black">
@@ -1686,7 +1461,8 @@ function TeamPage({
           무대 순서로 돌아가기
         </button>
       </div>
-    </div>,
+    </div>
+    </>,
     document.body
   );
 }
@@ -2106,8 +1882,6 @@ export default function Concert() {
   useEffect(() => {
     if (teamId && openTeam < 0) navigate("/2026concert", { replace: true });
   }, [teamId, openTeam, navigate]);
-  const [openSponsor, setOpenSponsor] = useState<number | null>(null);
-  const closeSponsor = useCallback(() => setOpenSponsor(null), []);
   const [openQna, setOpenQna] = useState<number | null>(0);
   const [toast, setToast] = useState("");
   const [shareError, setShareError] = useState("");
@@ -2345,9 +2119,20 @@ export default function Concert() {
             </p>
           </Rise>
           <div className="mt-5 space-y-4">
-            {C.description.body.map((line, i) => (
+            {/* 문단마다 tone 으로 굵기를 달리해요 — bold: 강조 문장 / light: 여운 남기는 마무리 / 없으면 보통 */}
+            {C.description.body.map((para, i) => (
               <Rise key={i} delay={i * 120}>
-                <p className="break-keep text-[15px] leading-[1.9] text-white/75 md:text-base">{line}</p>
+                <p
+                  className={`break-keep text-[15px] leading-[1.9] md:text-base ${
+                    para.tone === "bold"
+                      ? "font-bold text-white"
+                      : para.tone === "light"
+                        ? "font-light text-white/55"
+                        : "text-white/75"
+                  }`}
+                >
+                  {para.text}
+                </p>
               </Rise>
             ))}
           </div>
@@ -2439,7 +2224,7 @@ export default function Concert() {
                     <p className="break-keep text-[15px] leading-relaxed text-white/75">
                       사전 신청하시면 공연 당일
                       <br />
-                      <b className="text-white">우선 입장</b>할 수 있어요.
+                      <b className="text-white">스폰 쿠폰 3장</b>을 받을 수 있어요.
                     </p>
                     <a
                       href={C.applyUrl}
@@ -2467,17 +2252,19 @@ export default function Concert() {
           </Rise>
           <ol data-lines className="c26-rule-t">
             {C.teams.map((team, i) => (
-              <li key={team.id}>
+              <Fragment key={team.id}>
+              <li>
                 <Rise delay={(i % 4) * 60}>
                   <button
                     onClick={() => navigate(`/2026concert/${team.id}`)}
-                    data-team-row={team.id}
                     className="c26-rule-b group flex w-full items-center gap-4 py-5 text-left transition-colors active:bg-white/[0.04] md:gap-6 md:py-6"
                     style={{ "--i": i } as CSSProperties}
                   >
                     <span className="c26-serif w-11 shrink-0 text-[13px] text-[#7cc4ee] md:w-14">第{i + 1}幕</span>
                     <span className="min-w-0 flex-1 transition-transform duration-300 md:group-hover:translate-x-1.5">
-                      <span className="c26-serif block break-keep text-[21px] font-black leading-tight text-white md:text-2xl">
+                      <span
+                        className={`c26-serif block break-keep font-black leading-tight text-white [overflow-wrap:anywhere] ${teamNameSize(team.name, "list")}`}
+                      >
                         {team.name}
                       </span>
                     </span>
@@ -2487,6 +2274,24 @@ export default function Concert() {
                   </button>
                 </Rise>
               </li>
+              {/* 게스트 무대 자리 — 팀 줄과 같은 크기로 넣되 금색 "客"(손님 객)으로 구분해요.
+                  누르는 줄이 아니라서 버튼이 아니라 그냥 글자이고, 화살표 대신 GUEST 태그가 붙어요.
+                  게스트 이름(guestName)이 정해지면 그 이름이, 아직이면 "게스트 무대"가 나와요. */}
+              {team.guestAfter && (
+                <li
+                  className="c26-rule-b flex items-center gap-4 py-5 md:gap-6 md:py-6"
+                  style={{ "--i": i } as CSSProperties}
+                >
+                  <span className="c26-serif w-11 shrink-0 text-[13px] text-[#f3c98b] md:w-14">客</span>
+                  <span className="c26-serif min-w-0 flex-1 break-keep text-[17px] font-bold leading-tight text-white/85 [overflow-wrap:anywhere] md:text-xl">
+                    {(team as ConcertTeam).guestName || "게스트 무대"}
+                  </span>
+                  <span className="shrink-0 rounded-full border border-[#f3c98b]/50 px-2 py-0.5 font-mono text-[9.5px] tracking-[0.2em] text-[#f3c98b]">
+                    GUEST
+                  </span>
+                </li>
+              )}
+              </Fragment>
             ))}
           </ol>
         </Section>
@@ -2569,14 +2374,10 @@ export default function Concert() {
         {/* ⑧ 스폰서 */}
         <Section id="sponsors" head={{ num: "捌", hanja: "協贊", eyebrow: "SPONSORS", title: "함께해 주신 곳" }}>
           {/* 크레딧 문단 — 30곳이 넘어도 한 화면 안팎에 들어가게, 이름만 " · " 로 이어 가운데 정렬해요.
-              이름을 누르면 아래에서 혜택 창이 올라와요. */}
+              가게 이름 하나는 whitespace-nowrap 이라 "오일장 햄버거"처럼 띄어쓰기가 있어도 중간에서 줄이 안 바뀌어요. */}
           <Rise>
             <div className="mx-auto max-w-[640px] text-center">
-              <p className="c26-serif break-keep text-sm leading-relaxed text-white/55">
-                이 무대를 함께 만들어 주신 분들
-                <br />
-                공연 당일 사전 신청 화면을 보여주시면 혜택을 받을 수 있어요.
-              </p>
+              <p className="c26-serif break-keep text-sm leading-relaxed text-white/55">이 무대를 함께 만들어 주신 분들</p>
               <p className="c26-serif mt-6 break-keep text-[15px] font-bold leading-[2.1] text-white md:text-[17px]">
                 {C.sponsors.map((s, i) => (
                   <span key={s.name}>
@@ -2585,16 +2386,10 @@ export default function Concert() {
                         ·
                       </span>
                     )}
-                    <button
-                      onClick={() => setOpenSponsor(i)}
-                      className="whitespace-nowrap underline decoration-white/15 underline-offset-[5px] transition-colors hover:text-[#cfeafb] hover:decoration-[#7cc4ee]/60"
-                    >
-                      {s.name}
-                    </button>
+                    <span className="whitespace-nowrap">{s.name}</span>
                   </span>
                 ))}
               </p>
-              <p className="mt-4 text-[11.5px] text-white/40">이름을 누르면 혜택이 보여요</p>
             </div>
           </Rise>
         </Section>
@@ -2701,9 +2496,6 @@ export default function Concert() {
           onShare={shareTeam}
           onClosed={handleTeamClosed}
         />
-      )}
-      {openSponsor !== null && (
-        <SponsorSheet sponsor={C.sponsors[openSponsor]} onClose={closeSponsor} />
       )}
       {storyPickOpen && (
         <StoryPicker

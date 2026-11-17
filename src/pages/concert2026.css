@@ -459,49 +459,52 @@
   to { transform: scale(5); opacity: 0; }
 }
 
-/* ---------- 팀 상세 화면: 맥 지니 (Concert.tsx 의 buildGenieLayer / drawGenie) ----------
-   팀 화면을 가로 띠로 복제한 층. 팀 화면(z-60) 바로 위에 깔려요. */
-.c26-genie {
-  position: fixed;
-  inset: 0;
-  z-index: 61;
-  overflow: hidden;
-  pointer-events: none;
+/* ---------- 팀 상세 화면: 오른쪽에서 밀려옴 + 어두운 막 ----------
+   위치(transform)와 투명도(opacity)만 움직여서 폰이 그래픽 칩으로 가볍게 처리해요. */
+.c26-team-in {
+  animation: c26-team-in 0.42s cubic-bezier(0.32, 0.72, 0, 1) both;
 }
-.c26-genie-dim {
-  position: absolute;
-  inset: 0;
-  background: #000;
-  opacity: 0;
+.c26-team-out {
+  animation: c26-team-out 0.36s cubic-bezier(0.5, 0, 0.75, 0) both;
 }
-.c26-genie-strip {
-  position: absolute;
-  left: 0;
-  width: 100%;
-  overflow: hidden;
-  transform-origin: 50% 50%;
-  will-change: transform;
+@keyframes c26-team-in {
+  from { transform: translateX(100%); }
+  to { transform: none; }
 }
-
-/* 지니를 못 쓸 때(링크로 바로 들어옴 · 무대 순서 줄이 화면 밖): 살짝 떠오르며 열리고 가라앉으며 닫혀요 */
-.c26-team-fade-in {
-  animation: c26-team-fade-in 0.32s cubic-bezier(0.32, 0.72, 0, 1) both;
+@keyframes c26-team-out {
+  from { transform: none; }
+  to { transform: translateX(100%); }
 }
-.c26-team-fade-out {
-  animation: c26-team-fade-out 0.22s ease-in both;
+/* 팀 화면 안의 프로그램북 카드 (이전/다음 무대로 넘길 때도 다시 떠올라요) */
+.c26-team-card {
+  animation: c26-team-card 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.08s both;
 }
-@keyframes c26-team-fade-in {
-  from { opacity: 0; transform: translateY(14px); }
+@keyframes c26-team-card {
+  from { opacity: 0; transform: translateY(12px); }
   to { opacity: 1; transform: none; }
 }
-@keyframes c26-team-fade-out {
-  from { opacity: 1; transform: none; }
-  to { opacity: 0; transform: translateY(14px); }
+.c26-dim-in {
+  animation: c26-dim-in 0.4s ease-out both;
+}
+.c26-dim-out {
+  animation: c26-dim-out 0.34s ease-in both;
+}
+@keyframes c26-dim-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes c26-dim-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .c26-team-fade-in,
-  .c26-team-fade-out { animation: none; }
+  .c26-team-in,
+  .c26-team-out,
+  .c26-dim-in,
+  .c26-dim-out,
+  .c26-team-card { animation: none; }
 }
+
 /* ---------- ⑦ 글자가 굴러 바뀌는 버튼 (RollText) ----------
    글자 두 줄을 세로로 겹쳐 두고 한 줄 높이(1.25em)만큼만 보여줘요.
    위로 50%(= 한 줄) 올리면 아래 줄이 같은 글자라 "굴러 바뀐" 것처럼 보여요. */

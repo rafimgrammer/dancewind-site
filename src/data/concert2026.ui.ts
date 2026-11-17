@@ -58,8 +58,8 @@ const ko = {
   applyClosedBold: "현장 입장",
   applyClosedLine2: "은 누구나 가능해요.",
   applyOpenLine1: "사전 신청하시면 공연 당일",
-  applyOpenBold: "우선 입장",
-  applyOpenLine2: "할 수 있어요.",
+  applyOpenBold: "스폰 쿠폰 3장",
+  applyOpenLine2: "을 받을 수 있어요.",
   applyGo: "사전 신청 바로가기",
 
   // 무대 순서 · 팀 페이지
@@ -190,7 +190,7 @@ const en: DeepPartial<ConcertUI> = {
   applyClosedBold: "walk-in entry",
   applyClosedLine2: " is open to everyone.",
   applyOpenLine1: "Pre-register to get",
-  applyOpenBold: "priority entry",
+  applyOpenBold: "3 sponsor coupons",
   applyOpenLine2: " on the day of the show.",
   applyGo: "Pre-register Now",
 
