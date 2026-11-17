@@ -34,8 +34,8 @@ const EN: Record<string, string> = {
     "About 120 min (incl. a 10-min intermission)",
   "전석 무료":
     "Free admission",
-  "11월 30일(월) 23:59 마감":
-    "Closes Mon, Nov 30, 11:59 PM",
+  "11월 30일(월) 20:00 마감":
+    "Closes Mon, Nov 30, 8:00 PM",
 
   // ── 인사말
   "다시, 원을 그리며":
@@ -226,13 +226,13 @@ const EN: Record<string, string> = {
     "The Dancewind Executive Team",
   // 공연 소개
   "輪(바퀴 륜), 舞(춤출 무).":
-    "輪 means \"wheel\" or \"circle,\" and 舞 means \"dance.\"",
+    "輪 means \"wheel\" or \"circle,\" while 舞 means \"dance.\"",
   "윤무는 여러 사람이 하나의 원을 이루어 함께 춤추는 것을 의미합니다.":
-    "Yunmu (輪舞) means many people forming a single circle and dancing together.",
+    "Yunmu (輪舞) represents many dancers coming together to move as one in a continuous circle.",
   "각자의 자리에서 서로 다른 색깔을 지닌 우리가 춤이라는 공통된 열정으로 만나 하나의 무대를 만들어 갑니다. 혼자가 아닌 함께이기에 더욱 빛나는 순간들, 수많은 연습과 노력으로 쌓아 온 시간들을 오늘 하나의 무대에 담았습니다.":
-    "We each come from different places and bring our own colors, but a shared passion for dance brings us together to create one stage. Today, we share with you all the hours we've poured into practice, and the moments that shine brighter because we're together.",
+    "We each come from different places and have different backgrounds, bringing our own colors and stories. Yet, our shared passion for dance brings us together on one stage. Today, we share with you the countless hours we've devoted to practice, the dedication behind every movement, and the unforgettable moments that became even brighter because we were together.",
   "서로의 움직임이 연결되고, 각자의 열정이 하나의 흐름이 되는 순간인 지금 춤바람의 무대가 시작됩니다.":
-    "Now our movements connect, our passions flow together as one, and Dancewind's stage begins.",
+    "As our movements connect and our passions flow together as one, the Dancewind show begins.",
   "약 2시간\n(예상)":
     "About\n2 hours",
   // 자주 묻는 질문
