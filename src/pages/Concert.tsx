@@ -1290,15 +1290,58 @@ function StoryPicker({
   );
 }
 
-/** 팀 이름 글자 수에 따라 글씨 크기를 줄여요 — 문장처럼 긴 팀명도 몇 줄 안에 들어가게.
+/** (무대 순서 목록 전용) 팀 이름 글자 수에 따라 글씨 크기를 줄여요 — 문장처럼 긴 팀명도 몇 줄 안에 들어가게.
  *  [overflow-wrap:anywhere] 는 "졸업두달남은…끌어치기" 처럼 띄어쓰기 없는 긴 이름이
  *  화면 밖으로 넘치지 않고 줄을 바꾸게 해줘요. (break-keep 만 있으면 띄어쓰기에서만 줄이 바뀌어요) */
-function teamNameSize(name: string, where: "page" | "list") {
+function teamNameSize(name: string) {
   const n = Array.from(name).length; // 이모지도 한 글자로 세요
-  if (where === "page") {
-    return n <= 10 ? "text-[34px] md:text-[40px]" : n <= 20 ? "text-[26px] md:text-[32px]" : "text-[21px] md:text-[26px]";
-  }
   return n <= 12 ? "text-[21px] md:text-2xl" : n <= 24 ? "text-[18px] md:text-[21px]" : "text-[16px] md:text-[19px]";
+}
+
+/** 팀 상세 화면의 팀명 — 정해 둔 줄(pageLines)대로만 나누고, 각 줄은 절대 다시 꺾이지 않게 해요.
+ *  기기마다 화면 폭이 달라서 "몇 글자면 몇 px" 로는 줄바꿈 위치가 제각각이었어요.
+ *  그래서 실제로 그려 본 뒤 가장 긴 줄의 폭을 재서, 그 줄이 카드 폭에 꼭 맞을 때까지만 글씨를 줄여요.
+ *  (짧은 팀명은 최대 크기 그대로, 긴 팀명만 필요한 만큼 작아져요) */
+function TeamTitle({ lines }: { lines: string[] }) {
+  const boxRef = useRef<HTMLHeadingElement>(null);
+  const [size, setSize] = useState<number | null>(null);
+
+  useLayoutEffect(() => {
+    const box = boxRef.current;
+    if (!box) return;
+    const fit = () => {
+      const max = window.matchMedia("(min-width: 768px)").matches ? 40 : 34;
+      // 최대 크기로 한 번 그려서 가장 긴 줄의 폭을 재요
+      box.style.fontSize = `${max}px`;
+      const spans = Array.from(box.querySelectorAll<HTMLElement>("[data-line]"));
+      const widest = Math.max(...spans.map((el) => el.scrollWidth));
+      const room = box.clientWidth;
+      const next = widest > room ? Math.max(12, Math.floor(max * (room / widest) * 0.98)) : max;
+      // 잰 크기를 바로 적어 둬요. (React 가 다시 그리지 않는 경우에도 지운 채로 남지 않게)
+      box.style.fontSize = `${next}px`;
+      setSize(next);
+    };
+    fit();
+    // 화면 회전·창 크기 변경, 글꼴이 늦게 받아진 경우에도 다시 맞춰요
+    const ro = new ResizeObserver(fit);
+    ro.observe(box);
+    document.fonts?.ready.then(fit).catch(() => {});
+    return () => ro.disconnect();
+  }, [lines]);
+
+  return (
+    <h1
+      ref={boxRef}
+      className="c26-serif mt-3 font-black leading-[1.25] text-white"
+      style={{ fontSize: size ?? undefined, visibility: size === null ? "hidden" : undefined }}
+    >
+      {lines.map((line, i) => (
+        <span key={i} data-line className="block whitespace-nowrap">
+          {line}
+        </span>
+      ))}
+    </h1>
+  );
 }
 
 /* =========================================================================
@@ -1458,9 +1501,7 @@ function TeamPage({
             <p className="pl-[0.4em] font-mono text-[9px] uppercase tracking-[0.4em] text-[#7cc4ee]">
               {T.actLabel(index + 1)} · PROGRAMME
             </p>
-            <h1 className={`c26-serif mt-3 break-keep font-black leading-tight text-white [overflow-wrap:anywhere] ${teamNameSize(team.name, "page")}`}>
-              {team.name}
-            </h1>
+            <TeamTitle lines={(team as ConcertTeam).pageLines ?? [team.name]} />
             <hr className="mx-auto my-6 w-8 border-white/15" />
 
             {/* 곡 — 종이 프로그램북처럼 "곡 제목 ······ 가수" 한 줄. 링크 없이 글자만 보여줘요.
@@ -2438,7 +2479,7 @@ function ConcertPage() {
                     <span className="c26-serif w-11 shrink-0 text-[13px] text-[#7cc4ee] md:w-14">{T.actLabel(i + 1)}</span>
                     <span className="min-w-0 flex-1 transition-transform duration-300 md:group-hover:translate-x-1.5">
                       <span
-                        className={`c26-serif block break-keep font-black leading-tight text-white [overflow-wrap:anywhere] ${teamNameSize(team.name, "list")}`}
+                        className={`c26-serif block break-keep font-black leading-tight text-white [overflow-wrap:anywhere] ${teamNameSize(team.name)}`}
                       >
                         {team.name}
                       </span>

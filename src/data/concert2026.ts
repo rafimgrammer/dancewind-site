@@ -17,6 +17,9 @@ export interface ConcertTeam {
   guestAfter?: boolean;
   /** 그 게스트의 이름 — 정해지면 적어 주세요. 비워 두면 "게스트 무대"로 보여요 */
   guestName?: string;
+  /** 팀 상세 화면에서 팀명을 이 줄들로 나눠서 보여줘요. (줄마다 한 줄에 딱 맞게 글씨 크기가 맞춰져요)
+   *  없으면 팀명 전체를 한 줄로 보여줘요. 무대 순서 목록에는 영향 없어요. */
+  pageLines?: string[];
 }
 
 export interface ConcertPrize {
@@ -117,6 +120,7 @@ export const CONCERT_2026 = {
     {
       id: "1",
       name: "덜컹덜컹달려간다댄스윈드야",
+      pageLines: ["덜컹덜컹달려간다", "댄스윈드야"],
       songs: [
         { title: "With", artist: "리센느" },
       ],
@@ -136,6 +140,7 @@ export const CONCERT_2026 = {
     {
       id: "3",
       name: "동금은서유빈 바짓가랑이 잡기",
+      pageLines: ["동금은서유빈", "바짓가랑이 잡기"],
       songs: [
         { title: "Beggin'", artist: "Måneskin" },
       ],
@@ -169,6 +174,7 @@ export const CONCERT_2026 = {
     {
       id: "6",
       name: "안녕하세요예진입니다잘부탁드립니다",
+      pageLines: ["안녕하세요예진입니다잘부탁", "드립니다"],
       songs: [
         { title: "Rope Burn", artist: "Janet Jackson" },
       ],
@@ -187,6 +193,7 @@ export const CONCERT_2026 = {
     {
       id: "8",
       name: "얘들아 여기까지 오느라 수고했고 언니들이 재밌는 거 보여줄게 ㅋㅋ",
+      pageLines: ["얘들아 여기까지 오느라 수고했고", "언니들이 재밌는 거 보여줄게 ㅋㅋ"],
       songs: [
         { title: "ICONIC BY MISTAKE", artist: "LE SSERAFIM, ILLIT, KATSEYE" },
       ],
@@ -206,6 +213,7 @@ export const CONCERT_2026 = {
     {
       id: "10",
       name: "난왜이꿈이영원할것같지..영원할건가보다",
+      pageLines: ["난왜이꿈이영원할것같지..", "영원할건가보다"],
       songs: [
         { title: "Dream of You", artist: "청하" },
       ],
@@ -217,6 +225,7 @@ export const CONCERT_2026 = {
     {
       id: "11",
       name: "졸업두달남은김유정조은서남윤하의인생최후의끌어치기",
+      pageLines: ["졸업두달남은김유정조은서남윤하의", "인생최후의끌어치기"],
       songs: [
         { title: "Take Me Higher", artist: "Diana Ross" },
         { title: "Vroom Vroom", artist: "Charli XCX" },
@@ -250,6 +259,7 @@ export const CONCERT_2026 = {
     {
       id: "14",
       name: "안녕하세요 윤하찡입니다이거 제 이모지얌~🥴",
+      pageLines: ["안녕하세요 윤하찡입니다", "이거 제 이모지얌~🥴"],
       songs: [
         { title: "NEON", artist: "A2O LITE" },
       ],
@@ -278,6 +288,7 @@ export const CONCERT_2026 = {
     {
       id: "17",
       name: "준우야 누나도 이제 한계다. 그냥 나가 살아라. 누나도 형도 충분히 기다려줬다. 당장 짐 싸라.",
+      pageLines: ["준우야 누나도 이제 한계다. 그냥", "나가 살아라. 누나도 형도 충분히", "기다려줬다. 당장 짐 싸라."],
       songs: [
         { title: "XYZ", artist: "NiiHWA" },
         { title: "Birthday Suit", artist: "Mike Jay" },
