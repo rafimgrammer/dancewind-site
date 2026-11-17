@@ -210,6 +210,48 @@ const EN: Record<string, string> = {
     "Parking",
   "교내 주차장 이용 가능 (혼잡 예상)":
     "On-campus parking available (may be crowded)",
+
+  // ── 2026-11-17 회장단 확정 문구
+  // 기본 정보 (2026-11 회장단 수정분)
+  "약 2시간 예상":
+    "About 2 hours",
+  // 인사말
+  "안녕하세요, 한림대학교 댄스동아리 춤바람입니다.":
+    "Hello! We are Chumbaram, the dance club of Hallym University.",
+  "한 해 동안 거울 앞에서 수없이 연습하고 땀 흘리며 춤춰 온 부원들의 수많은 궤적들이 모여서 오늘 다채로운 무대가 됩니다.":
+    "All year long, our members have practiced countless times in front of the mirror, sweating and dancing together. Today, the many paths they have traced come together as one colorful stage.",
+  "바쁜 연말에 귀한 걸음 해주신 모든 분들께 진심으로 감사드립니다. 무대 위 저희의 궤적이 여러분의 하루에 작은 바람이 되기를 바랍니다.":
+    "Thank you so much for making time for us in the busy end-of-year season. We hope the paths we trace on stage bring a fresh breeze to your day.",
+  "춤바람 회장단 일동":
+    "The Chumbaram Executive Team",
+  // 공연 소개
+  "輪(바퀴 륜), 舞(춤출 무).":
+    "輪 means \"wheel\" or \"circle,\" and 舞 means \"dance.\"",
+  "윤무는 여러 사람이 하나의 원을 이루어 함께 춤추는 것을 의미합니다.":
+    "Yunmu (輪舞) means many people forming a single circle and dancing together.",
+  "각자의 자리에서 서로 다른 색깔을 지닌 우리가 춤이라는 공통된 열정으로 만나 하나의 무대를 만들어 갑니다. 혼자가 아닌 함께이기에 더욱 빛나는 순간들, 수많은 연습과 노력으로 쌓아 온 시간들을 오늘 하나의 무대에 담았습니다.":
+    "We each come from different places and bring our own colors, but a shared passion for dance brings us together to create one stage. Today, we share with you all the hours we've poured into practice, and the moments that shine brighter because we're together.",
+  "서로의 움직임이 연결되고, 각자의 열정이 하나의 흐름이 되는 순간인 지금 춤바람의 무대가 시작됩니다.":
+    "Now our movements connect, our passions flow together as one, and Chumbaram's stage begins.",
+  "약 2시간\n(예상)":
+    "About\n2 hours",
+  // 자주 묻는 질문
+  "필수는 아니지만, 사전 신청자는 스폰 쿠폰 3장을, 현장 신청자는 스폰 쿠폰 2장을 받을 수 있어요!":
+    "It's not required! Pre-registered guests get 3 coupons for our sponsor stores, and guests who register on-site get 2.",
+  "교내 주차장을 이용할 수 있지만 주차비가 발생합니다!":
+    "You can park on campus, but parking fees apply!",
+  // 경품
+  "에어팟 5세대":
+    "AirPods (5th generation)",
+  "무신사 5만원권":
+    "₩50,000 MUSINSA (fashion store) gift card",
+  "배민 2만원권":
+    "₩20,000 Baemin (food delivery app) voucher",
+  "3명":
+    "3 winners",
+  // 찾아오시는 길
+  "교내 주차장 이용 가능 (주차비 발생)":
+    "On-campus parking available (fees apply)",
 };
 
 /** 사람 · 곡 이름 — 대부분 그대로 두고, 바꿀 것만 (번역 대기 목록엔 안 잡혀요) */
@@ -217,6 +259,11 @@ const NAME_EN: Record<string, string> = {
   "춤바람 전원": "All Chumbaram members",
   "춤바람 Remix": "Chumbaram Remix",
   손오공: "Super", // SEVENTEEN '손오공'의 공식 영어 제목
+  // 한글로 적은 가수 이름 → 공식 영어 표기
+  리센느: "RESCENE",
+  창모: "CHANGMO",
+  청하: "CHUNG HA",
+  "나우아임영, Royal 44": "nowimyoung, Royal 44",
 };
 
 const missing = new Set<string>();

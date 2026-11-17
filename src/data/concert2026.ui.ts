@@ -68,11 +68,10 @@ const ko = {
   teamAria: (name: string) => `${name} 무대 정보`,
   backToLineup: "무대 순서로 돌아가기",
   shareStage: "이 무대 공유하기",
-  songHint: "곡을 누르면 유튜브에서 들을 수 있어요",
-  songAria: (artist: string, title: string) => `${artist} - ${title} 유튜브에서 듣기`,
   leader: "팀장",
   prevStage: "← 이전 무대",
   nextStage: "다음 무대 →",
+  guestStage: "게스트 무대",
 
   // 함께 보러 가요
   shareLead: "같이 보고 싶은 사람에게 공연 소식을 전해주세요.",
@@ -98,23 +97,7 @@ const ko = {
 
   // 협찬
   sponsorLead1: "이 무대를 함께 만들어 주신 분들",
-  sponsorLead2: "공연 당일 사전 신청 화면을 보여주시면 혜택을 받을 수 있어요.",
   sponsorNameNote: "",
-  sponsorHint: "이름을 누르면 혜택이 보여요",
-  sponsorAria: (name: string) => `${name} 혜택`,
-  sponsorSoon: "혜택은 곧 안내돼요.",
-  sponsorShow: "공연 당일 사전 신청 화면을 보여주세요.",
-  sponsorMore: "매장 정보 보기 →",
-  sponsorCategory: {
-    CAFE: "카페",
-    FOOD: "식당",
-    PUB: "술집",
-    BEAUTY: "뷰티",
-    PHOTO: "사진",
-    PLAY: "놀거리",
-    FITNESS: "운동",
-    ETC: "기타",
-  } as Record<string, string>,
   close: "닫기",
 
   // 찾아오시는 길
@@ -189,9 +172,9 @@ const en: DeepPartial<ConcertUI> = {
   applyClosedLine1: "Pre-registration has closed, but",
   applyClosedBold: "walk-in entry",
   applyClosedLine2: " is open to everyone.",
-  applyOpenLine1: "Pre-register to get",
+  applyOpenLine1: "Pre-register now and get",
   applyOpenBold: "3 sponsor coupons",
-  applyOpenLine2: " on the day of the show.",
+  applyOpenLine2: " at the show.",
   applyGo: "Pre-register Now",
 
   actLabel: (n) => `Act ${n}`,
@@ -199,11 +182,10 @@ const en: DeepPartial<ConcertUI> = {
   teamAria: (name) => `About ${name}`,
   backToLineup: "Back to the running order",
   shareStage: "Share this performance",
-  songHint: "Tap a song to listen on YouTube",
-  songAria: (artist, title) => `Listen to ${artist} - ${title} on YouTube`,
   leader: "Leader",
   prevStage: "← Previous",
   nextStage: "Next →",
+  guestStage: "Guest Stage",
 
   shareLead: "Know someone who'd love this show? Pass it along.",
   shareKakao: "Share on KakaoTalk",
@@ -225,23 +207,7 @@ const en: DeepPartial<ConcertUI> = {
   storyImgVenue: (venue) => `${venue} · Free admission`,
 
   sponsorLead1: "The people who helped make this stage happen",
-  sponsorLead2: "Show your pre-registration confirmation on the day of the show to get their offers.",
   sponsorNameNote: "Store names are shown in Korean, just as they appear on their signs.",
-  sponsorHint: "Tap a name to see the offer",
-  sponsorAria: (name) => `Offer from ${name}`,
-  sponsorSoon: "Details coming soon.",
-  sponsorShow: "Show your pre-registration confirmation on the day of the show.",
-  sponsorMore: "View store info →",
-  sponsorCategory: {
-    CAFE: "Café",
-    FOOD: "Restaurant",
-    PUB: "Bar",
-    BEAUTY: "Beauty",
-    PHOTO: "Photo",
-    PLAY: "Fun & games",
-    FITNESS: "Fitness",
-    ETC: "Other",
-  },
   close: "Close",
 
   mapApps: { kakao: "KakaoMap", naver: "Naver Map", tmap: "TMAP" },
