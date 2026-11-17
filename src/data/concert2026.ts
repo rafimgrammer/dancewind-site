@@ -164,6 +164,7 @@ export const CONCERT_2026 = {
       members: ["정은호", "이주은", "정예원", "조유빈", "조수아", "이새봄", "박하은"],
       leaders: ["정은호", "이주은"],
       guestAfter: true,
+      guestName: "Co'k",
     },
     {
       id: "6",
@@ -211,6 +212,7 @@ export const CONCERT_2026 = {
       members: ["고다연", "남혜린", "조수아", "박하은", "김보민", "조유빈", "박서윤", "백윤지", "황유림"],
       leaders: ["고다연"],
       guestAfter: true,
+      guestName: "해파리",
     },
     {
       id: "11",
@@ -243,6 +245,7 @@ export const CONCERT_2026 = {
       members: ["김준우", "밀리", "고다연", "김수민", "maja", "박서윤", "신비송"],
       leaders: ["김준우", "밀리"],
       guestAfter: true,
+      guestName: "ZAP",
     },
     {
       id: "14",

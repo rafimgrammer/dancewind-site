@@ -2398,20 +2398,24 @@ export default function Concert() {
                 </Rise>
               </li>
               {/* 게스트 무대 자리 — 팀 줄과 같은 크기로 넣되 금색 "客"(손님 객)으로 구분해요.
-                  누르는 줄이 아니라서 버튼이 아니라 그냥 글자이고, 화살표 대신 GUEST 태그가 붙어요.
-                  게스트 이름(guestName)이 정해지면 그 이름이, 아직이면 "게스트 무대"가 나와요. */}
+                  누르는 줄이 아니라서 버튼이 아니라 그냥 글자예요.
+                  "GUEST SHOW - 게스트 이름" 형식이고, guestName이 비어 있으면 "GUEST SHOW"만 나와요. */}
               {team.guestAfter && (
-                <li
-                  className="c26-rule-b flex items-center gap-4 py-5 md:gap-6 md:py-6"
-                  style={{ "--i": i } as CSSProperties}
-                >
-                  <span className="c26-serif w-11 shrink-0 text-[13px] text-[#f3c98b] md:w-14">客</span>
-                  <span className="c26-serif min-w-0 flex-1 break-keep text-[17px] font-bold leading-tight text-white/85 [overflow-wrap:anywhere] md:text-xl">
-                    {(team as ConcertTeam).guestName || T.guestStage}
-                  </span>
-                  <span className="shrink-0 rounded-full border border-[#f3c98b]/50 px-2 py-0.5 font-mono text-[9.5px] tracking-[0.2em] text-[#f3c98b]">
-                    GUEST
-                  </span>
+                <li>
+                  {/* 팀 줄과 똑같이 Rise로 감싸서 스르륵 같이 올라오게 해요.
+                      바로 앞 팀 줄보다 60ms 늦게 시작해서 순서대로 나타나는 느낌을 줘요. */}
+                  <Rise delay={(i % 4) * 60 + 60}>
+                    <div
+                      className="c26-rule-b flex items-center gap-4 py-5 md:gap-6 md:py-6"
+                      style={{ "--i": i } as CSSProperties}
+                    >
+                      <span className="c26-serif w-11 shrink-0 text-[13px] text-[#f3c98b] md:w-14">客</span>
+                      <span className="c26-serif min-w-0 flex-1 break-keep text-[17px] font-bold leading-tight text-white/85 [overflow-wrap:anywhere] md:text-xl">
+                        <span className="text-[#f3c98b]">GUEST SHOW</span>
+                        {(team as ConcertTeam).guestName && <> - {(team as ConcertTeam).guestName}</>}
+                      </span>
+                    </div>
+                  </Rise>
                 </li>
               )}
               </Fragment>
