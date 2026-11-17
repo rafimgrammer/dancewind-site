@@ -10,7 +10,7 @@ import { createContext, Fragment, useCallback, useContext, useEffect, useId, use
 import { createPortal } from "react-dom";
 import { useNavigate, useParams } from "react-router-dom";
 import { useScrollReveal } from "../hooks/useScrollReveal";
-import { shareToKakao } from "../lib/kakaoShare";
+import { shareToKakao, shareToKakaoFeed } from "../lib/kakaoShare";
 import { CONCERT_2026 as KO, type ConcertTeam } from "../data/concert2026";
 import { CONCERT_2026_EN } from "../data/concert2026.en";
 import { CONCERT_UI, type ConcertLang, type ConcertUI } from "../data/concert2026.ui";
@@ -2096,7 +2096,22 @@ function ConcertPage() {
   const handleKakaoShare = async () => {
     setShareError("");
     try {
-      if (C.kakaoTemplateId) {
+      if (lang === "en") {
+        // 영어 페이지: 콘솔 템플릿(한국어 고정) 대신, 같은 모양의 카드를 코드에서 영어로 채워 보내요.
+        // 카드·[Visit site]는 영어 페이지(?lang=en)로, [Pre-register]는 한국어와 똑같이 구글 폼으로 바로 가요.
+        await shareToKakaoFeed({
+          title: T.kakaoInviteTitle,
+          description: T.kakaoInviteDesc,
+          imageUrl: `${SITE_URL}/share/concert2026-invite-en.jpg`,
+          imageWidth: 1080,
+          imageHeight: 1080,
+          linkUrl: `${PAGE_URL}?lang=en`,
+          buttons: [
+            { title: T.kakaoBtnSite, url: `${PAGE_URL}?lang=en` },
+            { title: T.kakaoBtnApply, url: `${PAGE_URL}?go=apply` },
+          ],
+        });
+      } else if (C.kakaoTemplateId) {
         // 초대장 템플릿: 이미지 · 제목 · 설명 · 버튼 2개를 콘솔에서 전부 고정해 둬서 채울 값이 없어요.
         await shareToKakao({ templateId: C.kakaoTemplateId, templateArgs: {} });
       } else {

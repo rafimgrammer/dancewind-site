@@ -76,6 +76,11 @@ const ko = {
   // 함께 보러 가요
   shareLead: "같이 보고 싶은 사람에게 공연 소식을 전해주세요.",
   shareKakao: "카카오톡으로 공유하기",
+  // 카톡 공유 카드 — 한국어는 카카오 콘솔 템플릿을 쓰니까 실제로는 영어(en)만 쓰여요
+  kakaoInviteTitle: "",
+  kakaoInviteDesc: "",
+  kakaoBtnSite: "",
+  kakaoBtnApply: "",
   shareStory: "인스타 스토리에 올리기",
   shareOther: "다른 앱으로 공유 · 링크 복사",
 
@@ -189,6 +194,10 @@ const en: DeepPartial<ConcertUI> = {
 
   shareLead: "Know someone who'd love this show? Pass it along.",
   shareKakao: "Share on KakaoTalk",
+  kakaoInviteTitle: "You're invited! Dancewind 2026 Annual Concert 「輪舞」",
+  kakaoInviteDesc: "Tue, Dec 1 · 6:30 PM · Ilsong Art Hall, Hallym University · Free admission",
+  kakaoBtnSite: "Visit site",
+  kakaoBtnApply: "Pre-register",
   shareStory: "Post to Instagram Story",
   shareOther: "Share via other apps · Copy link",
 

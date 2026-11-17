@@ -72,3 +72,39 @@ export async function shareToKakao({ templateId, templateArgs }: KakaoCustomShar
     templateArgs,
   });
 }
+export interface KakaoFeedShareOptions {
+  title: string;
+  description: string;
+  imageUrl: string;
+  imageWidth?: number;
+  imageHeight?: number;
+  /** 카드(이미지·제목)를 눌렀을 때 열릴 주소 */
+  linkUrl: string;
+  /** 아래 버튼 (최대 2개) */
+  buttons: { title: string; url: string }[];
+}
+
+/**
+ * 카카오톡 공유하기 — 콘솔 템플릿 없이 코드에서 카드 내용을 직접 채우는 방식(기본 피드형).
+ * 영어 페이지처럼 문구만 다른 카드가 필요할 때 콘솔에 템플릿을 하나 더 만들지 않아도 돼요.
+ * (링크 주소는 카카오 앱에 등록된 도메인이어야 열려요 → hallymdancewind.com)
+ */
+export async function shareToKakaoFeed(opt: KakaoFeedShareOptions) {
+  await loadKakaoSdk();
+
+  window.Kakao.Share.sendDefault({
+    objectType: "feed",
+    content: {
+      title: opt.title,
+      description: opt.description,
+      imageUrl: opt.imageUrl,
+      imageWidth: opt.imageWidth,
+      imageHeight: opt.imageHeight,
+      link: { mobileWebUrl: opt.linkUrl, webUrl: opt.linkUrl },
+    },
+    buttons: opt.buttons.map((b) => ({
+      title: b.title,
+      link: { mobileWebUrl: b.url, webUrl: b.url },
+    })),
+  });
+}
