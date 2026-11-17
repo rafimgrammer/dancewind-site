@@ -25,7 +25,7 @@ const EN: Record<string, string> = {
   "원을 그리며 하나되는 우리의 궤적":
     "Our paths, circling into one",
   "2026 춤바람 정기공연":
-    "Chumbaram 2026 Annual Concert",
+    "Dancewind 2026 Annual Concert",
   "2026. 12. 01 (화)":
     "Tue, Dec 1, 2026",
   "18:30 공연 시작":
@@ -41,13 +41,13 @@ const EN: Record<string, string> = {
   "다시, 원을 그리며":
     "Once More, in a Circle",
   "안녕하세요. 한림대학교 스트릿 댄스 동아리 춤바람입니다.":
-    "Hello! We are Chumbaram, the street dance club of Hallym University.",
+    "Hello! We are Dancewind, the street dance club of Hallym University.",
   "한 해 동안 동방의 거울 앞에서 수없이 돌고, 넘어지고, 다시 일어섰습니다. 그렇게 그려온 수많은 원들이 모여 오늘 하나의 무대가 됩니다.":
     "All year long, in front of the mirror in our club room, we spun, fell, and got back up more times than we can count. On this stage, all the circles we have drawn finally come together as one.",
   "바쁜 연말, 귀한 걸음 해주신 모든 분들께 진심으로 감사드립니다. 무대 위 저희의 궤적이 여러분의 하루에 작은 바람이 되기를 바랍니다.":
     "Thank you so much for making time for us in the busy end-of-year season. We hope what we share on stage feels like a fresh breeze in your day.",
   "춤바람 회장 OOO 올림":
-    "OOO, President of Chumbaram",
+    "OOO, President of Dancewind",
 
   // ── 공연 소개
   "輪舞 — 둥글게 이어지는 춤":
@@ -55,7 +55,7 @@ const EN: Record<string, string> = {
   "윤무(輪舞)는 여럿이 둥글게 원을 이루며 추는 춤을 뜻합니다. 손을 맞잡고 돌아가는 원 안에서는 처음과 끝이 따로 없습니다.":
     "Yunmu (輪舞) is a dance performed by many people moving together in a circle. In a ring of joined hands, there is no beginning and no end.",
   "이번 공연은 서로 다른 장르의 여덟 팀이 각자의 궤적을 그리다, 마지막에 하나의 원으로 모이는 구성으로 준비했습니다. 힙합, 걸스힙합, 코레오, 왁킹, 케이팝까지 — 춤바람의 1년이 한 바퀴로 이어집니다.":
-    "In this show, eight teams from different genres each trace their own path, then come together as one circle at the end. Hip-hop, girls' hip-hop, choreo, waacking, and K-pop — a whole year of Chumbaram, coming full circle.",
+    "In this show, eight teams from different genres each trace their own path, then come together as one circle at the end. Hip-hop, girls' hip-hop, choreo, waacking, and K-pop — a whole year of Dancewind, coming full circle.",
 
   // ── 공연 소개 카드
   "일시":
@@ -123,7 +123,7 @@ const EN: Record<string, string> = {
   "참여상":
     "Bonus",
   "춤바람 한정 스티커 세트":
-    "Limited-edition Chumbaram sticker set",
+    "Limited-edition Dancewind sticker set",
   "선착순 50명":
     "First 50 to arrive",
 
@@ -217,13 +217,13 @@ const EN: Record<string, string> = {
     "About 2 hours",
   // 인사말
   "안녕하세요, 한림대학교 댄스동아리 춤바람입니다.":
-    "Hello! We are Chumbaram, the dance club of Hallym University.",
+    "Hello! We are Dancewind, the dance club of Hallym University.",
   "한 해 동안 거울 앞에서 수없이 연습하고 땀 흘리며 춤춰 온 부원들의 수많은 궤적들이 모여서 오늘 다채로운 무대가 됩니다.":
     "All year long, our members have practiced countless times in front of the mirror, sweating and dancing together. Today, the many paths they have traced come together as one colorful stage.",
   "바쁜 연말에 귀한 걸음 해주신 모든 분들께 진심으로 감사드립니다. 무대 위 저희의 궤적이 여러분의 하루에 작은 바람이 되기를 바랍니다.":
     "Thank you so much for making time for us in the busy end-of-year season. We hope the paths we trace on stage bring a fresh breeze to your day.",
   "춤바람 회장단 일동":
-    "The Chumbaram Executive Team",
+    "The Dancewind Executive Team",
   // 공연 소개
   "輪(바퀴 륜), 舞(춤출 무).":
     "輪 means \"wheel\" or \"circle,\" and 舞 means \"dance.\"",
@@ -232,7 +232,7 @@ const EN: Record<string, string> = {
   "각자의 자리에서 서로 다른 색깔을 지닌 우리가 춤이라는 공통된 열정으로 만나 하나의 무대를 만들어 갑니다. 혼자가 아닌 함께이기에 더욱 빛나는 순간들, 수많은 연습과 노력으로 쌓아 온 시간들을 오늘 하나의 무대에 담았습니다.":
     "We each come from different places and bring our own colors, but a shared passion for dance brings us together to create one stage. Today, we share with you all the hours we've poured into practice, and the moments that shine brighter because we're together.",
   "서로의 움직임이 연결되고, 각자의 열정이 하나의 흐름이 되는 순간인 지금 춤바람의 무대가 시작됩니다.":
-    "Now our movements connect, our passions flow together as one, and Chumbaram's stage begins.",
+    "Now our movements connect, our passions flow together as one, and Dancewind's stage begins.",
   "약 2시간\n(예상)":
     "About\n2 hours",
   // 자주 묻는 질문
@@ -256,8 +256,8 @@ const EN: Record<string, string> = {
 
 /** 사람 · 곡 이름 — 대부분 그대로 두고, 바꿀 것만 (번역 대기 목록엔 안 잡혀요) */
 const NAME_EN: Record<string, string> = {
-  "춤바람 전원": "All Chumbaram members",
-  "춤바람 Remix": "Chumbaram Remix",
+  "춤바람 전원": "All Dancewind members",
+  "춤바람 Remix": "Dancewind Remix",
   손오공: "Super", // SEVENTEEN '손오공'의 공식 영어 제목
   // 한글로 적은 가수 이름 → 공식 영어 표기
   리센느: "RESCENE",
