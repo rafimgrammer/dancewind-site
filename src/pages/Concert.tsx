@@ -22,7 +22,11 @@ import "./concert2026.css";
 
 const SITE_URL = "https://hallymdancewind.com";
 const PAGE_URL = `${SITE_URL}/${KO.slug}`;
-const STORY_IMAGE_URL = "/share/concert2026-story.jpg"; // 인스타 스토리용 1080×1920 이미지
+// 인스타 스토리용 1080×1920 표지 이미지 — 영어 페이지에서는 글자만 영어로 바꾼 판을 써요
+const STORY_IMAGE_URLS: Record<ConcertLang, string> = {
+  ko: "/share/concert2026-story.jpg",
+  en: "/share/concert2026-story-en.jpg",
+};
 const KAKAO_MAP_KEY = import.meta.env.VITE_KAKAO_MAP_KEY;
 
 /* =========================================================================
@@ -1173,7 +1177,8 @@ function StoryPicker({
   coverFile: File | null;
   coverMissing: boolean;
 }) {
-  const { C, T } = useLang();
+  const { lang, C, T } = useLang();
+  const coverUrl = STORY_IMAGE_URLS[lang];
   const d = storyDday();
   const showDday = d >= 0; // 공연이 지나면 D-day 이미지는 안 보여줘요
   const [ddayFile, setDdayFile] = useState<File | null>(null);
@@ -1262,9 +1267,9 @@ function StoryPicker({
           <Option
             label={T.storyCover}
             sub={T.storyCoverSub}
-            src={coverMissing ? null : STORY_IMAGE_URL}
+            src={coverMissing ? null : coverUrl}
             ready={!coverMissing}
-            onClick={() => onPick(coverFile, coverFile ? null : STORY_IMAGE_URL)}
+            onClick={() => onPick(coverFile, coverFile ? null : coverUrl)}
           />
           {showDday && (
             <Option
@@ -2153,11 +2158,15 @@ function ConcertPage() {
    */
   const storyFileRef = useRef<File | null>(null);
   const storyMissingRef = useRef(false); // 이미지 파일이 서버에 없다고 확인되면 true
+  const storyFirstLoadRef = useRef(true);
+  // 언어가 바뀌면(KO ↔ EN) 그 언어의 표지를 새로 받아 둬요. 받기 전에 누르면 아래 대체 방법으로 가요.
   useEffect(() => {
     let cancelled = false;
-    // 첫 화면 로딩을 방해하지 않게 조금 늦게 받아요
+    storyFileRef.current = null;
+    storyMissingRef.current = false;
+    // 첫 화면 로딩을 방해하지 않게 조금 늦게 받아요 (언어를 바꾼 뒤에는 바로)
     const timer = window.setTimeout(() => {
-      fetch(STORY_IMAGE_URL)
+      fetch(STORY_IMAGE_URLS[lang])
         .then((res) => (res.ok ? res.blob() : Promise.reject(new Error(String(res.status)))))
         .then((blob) => {
           if (cancelled) return;
@@ -2165,17 +2174,18 @@ function ConcertPage() {
             storyMissingRef.current = true; // 이미지가 아니면(파일 없음 → HTML) 쓰지 않음
             return;
           }
-          storyFileRef.current = new File([blob], "2026concert-story.jpg", { type: blob.type });
+          storyFileRef.current = new File([blob], lang === "en" ? "2026concert-story-en.jpg" : "2026concert-story.jpg", { type: blob.type });
         })
         .catch(() => {
           /* 못 받아도 버튼을 누르면 아래 대체 방법(이미지 저장)으로 가요 */
         });
-    }, 2500);
+    }, storyFirstLoadRef.current ? 2500 : 0);
+    storyFirstLoadRef.current = false;
     return () => {
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, []);
+  }, [lang]);
 
   // 인스타 버튼 → 표지 / 오늘의 D-day 중 고르는 창
   const [storyPickOpen, setStoryPickOpen] = useState(false);
