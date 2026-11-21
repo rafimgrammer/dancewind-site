@@ -1,0 +1,21 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Dancewind//2026 Concert//KO
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+BEGIN:VEVENT
+UID:2026concert@hallymdancewind.com
+DTSTAMP:20261122T000000Z
+DTSTART:20261201T093000Z
+DTEND:20261201T113000Z
+SUMMARY:Dancewind Annual Concert 「輪舞」
+DESCRIPTION:Dancewind 2026 Annual Concert · Free admission\nhttps://hallymdancewind.com/2026concert?lang=en
+LOCATION:Ilsong Art Hall\, Hallym University (강원특별자치도 춘천시 한림대학길 1)
+URL:https://hallymdancewind.com/2026concert?lang=en
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Dancewind Annual Concert 「輪舞」
+TRIGGER:-PT2H
+END:VALARM
+END:VEVENT
+END:VCALENDAR

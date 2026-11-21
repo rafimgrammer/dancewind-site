@@ -1,0 +1,21 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Dancewind//2026 Concert//KO
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+BEGIN:VEVENT
+UID:2026concert@hallymdancewind.com
+DTSTAMP:20261122T000000Z
+DTSTART:20261201T093000Z
+DTEND:20261201T113000Z
+SUMMARY:춤바람 정기공연 「輪舞 윤무」
+DESCRIPTION:2026 춤바람 정기공연 · 전석 무료\nhttps://hallymdancewind.com/2026concert
+LOCATION:한림대학교 일송아트홀\, 강원특별자치도 춘천시 한림대학길 1
+URL:https://hallymdancewind.com/2026concert
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:춤바람 정기공연 「輪舞 윤무」
+TRIGGER:-PT2H
+END:VALARM
+END:VEVENT
+END:VCALENDAR

@@ -252,6 +252,18 @@ const EN: Record<string, string> = {
   // 찾아오시는 길
   "교내 주차장 이용 가능 (주차비 발생)":
     "On-campus parking available (fees apply)",
+
+  // ── 공연이 끝난 뒤
+  "함께 그린 원, 고맙습니다":
+    "Thank You for Completing the Circle",
+  "2026 정기공연 「輪舞」를 찾아 주신 모든 분들께 진심으로 감사드립니다.":
+    "Thank you, from the bottom of our hearts, to everyone who came to our 2026 Annual Concert 「輪舞」.",
+  "객석에서 보내 주신 함성과 박수 덕분에 저희의 궤적이 하나의 원으로 완성될 수 있었어요.":
+    "Your cheers and applause are what turned our separate paths into one complete circle.",
+  "오늘의 무대가 여러분의 연말에 오래 남는 장면이 되었기를 바랍니다. 다음 무대에서 또 만나요.":
+    "We hope tonight stays with you as a lasting memory of the year. See you at our next show.",
+  "경품 추첨이 모두 끝났어요. 당첨되신 분들 축하드려요!":
+    "The prize draw is over. Congratulations to all the winners!",
 };
 
 /** 사람 · 곡 이름 — 대부분 그대로 두고, 바꿀 것만 (번역 대기 목록엔 안 잡혀요) */
@@ -321,6 +333,14 @@ export const CONCERT_2026_EN: typeof CONCERT_2026 = {
     venueName: t(K.location.venueName),
     address: t(K.location.address),
     directions: K.location.directions.map((d) => ({ label: t(d.label), text: t(d.text) })),
+  },
+
+  afterShow: {
+    ...K.afterShow,
+    heading: t(K.afterShow.heading),
+    body: K.afterShow.body.map(t),
+    sign: t(K.afterShow.sign),
+    prizeNote: t(K.afterShow.prizeNote),
   },
 };
 

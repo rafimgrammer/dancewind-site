@@ -57,6 +57,7 @@ export const CONCERT_2026 = {
   dateText: "2026. 12. 01 (화)",
   timeText: "18:30 공연 시작",
   // 카운트다운 기준 시각 (한국시간 공연 시작)
+  // ⚠️ 바뀌면 캘린더 파일 public/concert2026/dancewind-2026*.ics 의 DTSTART/DTEND 도 같이 고쳐 주세요.
   eventAt: "2026-12-01T18:30:00+09:00",
   runtimeMinutes: 120,
   runtimeText: "약 2시간 예상",
@@ -355,5 +356,23 @@ export const CONCERT_2026 = {
   instagram: {
     handle: "@hallym_dancewind",
     url: "https://www.instagram.com/hallym_dancewind?igsh=MWFweWs4cGVvcTNvYw==",
+  },
+
+  // 공연이 끝난 뒤(eventAt + runtimeMinutes 이후) 페이지가 바뀌면서 쓰는 문구.
+  //   - 인사말 자리에 아래 heading/body/sign 이 들어가요.
+  //   - 자주 묻는 질문 · 사전 신청 · 함께 보러 가요 · 찾아오시는 길 섹션은 사라져요.
+  //   - 미리 보기: 주소 뒤에 ?preview=after 를 붙이면 지금 바로 "공연 끝난 화면"을 볼 수 있어요.
+  afterShow: {
+    heading: "함께 그린 원, 고맙습니다",
+    body: [
+      "2026 정기공연 「輪舞」를 찾아 주신 모든 분들께 진심으로 감사드립니다.",
+      "객석에서 보내 주신 함성과 박수 덕분에 저희의 궤적이 하나의 원으로 완성될 수 있었어요.",
+      "오늘의 무대가 여러분의 연말에 오래 남는 장면이 되었기를 바랍니다. 다음 무대에서 또 만나요.",
+    ],
+    sign: "춤바람 회장단 일동",
+    prizeNote: "경품 추첨이 모두 끝났어요. 당첨되신 분들 축하드려요!",
+    // 공연 영상 · 사진이 올라오면 그 주소를 넣어 주세요 (유튜브 재생목록, 인스타 게시물 등).
+    // 비워 두면 첫 화면 버튼이 인스타그램으로 연결돼요.
+    recapUrl: "",
   },
 };

@@ -379,6 +379,34 @@ const KST_OFFSET_MS = 9 * 3_600_000;
 const EVENT_MS = new Date(KO.eventAt).getTime();
 const EVENT_END_MS = EVENT_MS + KO.runtimeMinutes * 60_000;
 
+/* ---------- 미리 보기용 시계 ----------
+ * 주소 뒤에 ?preview=... 를 붙이면 그 시점인 것처럼 페이지 전체(카운트다운 · 신청 마감 · 공연 후 화면)가 바뀌어요.
+ *   ?preview=dday  → 공연 당일, 시작 3시간 전
+ *   ?preview=live  → 공연 시작 15분 뒤 (ON STAGE)
+ *   ?preview=after → 공연이 끝난 뒤 (THANK YOU + 감사 화면)
+ * 붙이지 않으면 진짜 지금 시각 그대로예요. 페이지를 처음 열 때 한 번만 읽어요. */
+const PREVIEW_OFFSET_MS = (() => {
+  if (typeof window === "undefined") return 0;
+  const p = new URLSearchParams(window.location.search).get("preview");
+  const target =
+    p === "after" ? EVENT_END_MS + 60_000 : p === "live" ? EVENT_MS + 15 * 60_000 : p === "dday" ? EVENT_MS - 3 * 3_600_000 : null;
+  return target === null ? 0 : target - Date.now();
+})();
+const nowMs = () => Date.now() + PREVIEW_OFFSET_MS;
+
+type ShowPhase = "before" | "live" | "after";
+const phaseAt = (ms: number): ShowPhase => (ms >= EVENT_END_MS ? "after" : ms >= EVENT_MS ? "live" : "before");
+
+/** 공연 전 / 공연 중 / 공연 후 — 섹션을 바꾸는 용도라 30초마다만 확인해요 */
+function useShowPhase(): ShowPhase {
+  const [phase, setPhase] = useState(() => phaseAt(nowMs()));
+  useEffect(() => {
+    const timer = window.setInterval(() => setPhase(phaseAt(nowMs())), 30_000);
+    return () => window.clearInterval(timer);
+  }, []);
+  return phase;
+}
+
 /** 한국 날짜 기준 "몇 번째 날"인지 — D-day 는 시간이 아니라 날짜 차이로 세는 게 일반적이라서 */
 const kstDayIndex = (ms: number) => Math.floor((ms + KST_OFFSET_MS) / DAY_MS);
 
@@ -388,9 +416,9 @@ type CountdownState =
   | { phase: "after" };
 
 function useCountdown(): CountdownState {
-  const [now, setNow] = useState(() => Date.now());
+  const [now, setNow] = useState(nowMs);
   useEffect(() => {
-    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    const timer = window.setInterval(() => setNow(nowMs()), 1000);
     return () => window.clearInterval(timer);
   }, []);
 
@@ -507,7 +535,7 @@ function Countdown() {
   const { C, T } = useLang();
   const cd = useCountdown();
   const isToday = cd.phase === "before" && cd.dDay <= 0;
-  const minutesIn = Math.max(0, Math.floor((Date.now() - EVENT_MS) / 60_000));
+  const minutesIn = Math.max(0, Math.floor((nowMs() - EVENT_MS) / 60_000));
 
   let label: ReactNode;
   let board: ReactNode;
@@ -829,6 +857,7 @@ function Intro() {
   const { C, T } = useLang();
   const depthRef = useHeroDepth();
   const { closed: applyClosed } = useApplyDeadline(); // 마감 후엔 첫 화면의 "사전 신청하기" 버튼도 숨겨요
+  const phase = useShowPhase(); // 공연이 끝나면 신청 버튼 자리에 "다시 보기(또는 인스타)" 버튼
   // 모바일: 첫 화면(100svh) 정중앙에 서예, 날짜·카운트다운·버튼은 그 바로 아래로 이어짐
   // PC: 한 화면 안에 왼쪽 서예 + 오른쪽 문구
   return (
@@ -969,15 +998,26 @@ function Intro() {
           className="c26-rise mt-5 flex justify-center gap-2.5 md:justify-start"
           style={{ animationDelay: afterBrush(0.3) }}
         >
-          {!applyClosed && (
+          {phase === "after" ? (
             <a
-              href={C.applyUrl}
+              href={C.afterShow.recapUrl || C.instagram.url}
               target="_blank"
               rel="noreferrer"
               className="c26-shine c26-roll rounded-full bg-[#e9eef2] px-6 py-3 text-sm font-semibold text-black transition-transform active:scale-95 md:hover:-translate-y-0.5"
             >
-              <RollText>{T.applyCta}</RollText>
+              <RollText>{C.afterShow.recapUrl ? T.recapCta : T.instaCta}</RollText>
             </a>
+          ) : (
+            !applyClosed && (
+              <a
+                href={C.applyUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="c26-shine c26-roll rounded-full bg-[#e9eef2] px-6 py-3 text-sm font-semibold text-black transition-transform active:scale-95 md:hover:-translate-y-0.5"
+              >
+                <RollText>{T.applyCta}</RollText>
+              </a>
+            )
           )}
           <a
             href="#teams"
@@ -987,6 +1027,11 @@ function Intro() {
             <RollText>{T.lineupCta}</RollText>
           </a>
         </div>
+        {phase === "before" && (
+          <div className="c26-rise mt-4" style={{ animationDelay: afterBrush(0.45) }}>
+            <AddToCalendar align="responsive" />
+          </div>
+        )}
       </div>
 
       {/* ── 맨 위에 덮여 있다가 걷히는 안개 ── */}
@@ -1012,10 +1057,10 @@ function Intro() {
 const APPLY_DEADLINE_MS = new Date(KO.applyDeadlineAt).getTime();
 
 function useApplyDeadline() {
-  const [now, setNow] = useState(() => Date.now());
+  const [now, setNow] = useState(nowMs);
   useEffect(() => {
     // 날짜 단위라 1초마다 볼 필요는 없어서 30초 간격 (마감 순간도 최대 30초 안에 반영돼요)
-    const timer = window.setInterval(() => setNow(Date.now()), 30_000);
+    const timer = window.setInterval(() => setNow(nowMs()), 30_000);
     return () => window.clearInterval(timer);
   }, []);
   const closed = now > APPLY_DEADLINE_MS;
@@ -1083,7 +1128,7 @@ function DockLabel() {
  * ========================================================================= */
 
 /** 오늘 기준 D-day 숫자 (당일 0, 지나면 음수) */
-const storyDday = () => kstDayIndex(EVENT_MS) - kstDayIndex(Date.now());
+const storyDday = () => kstDayIndex(EVENT_MS) - kstDayIndex(nowMs());
 
 function loadImage(src: string) {
   return new Promise<HTMLImageElement>((resolve, reject) => {
@@ -1648,9 +1693,73 @@ function openMapApp(app: MapApp) {
 }
 
 /** 마지막 마무리 인사 — "12월 1일, 일송아트홀에서 만나요" */
-function ClosingNote() {
+/* ---------- 캘린더에 저장 ----------
+ * 누르면 두 갈래가 펼쳐져요.
+ *   - 구글 캘린더: 일정이 채워진 구글 캘린더 "일정 추가" 화면을 새 창으로 (안드로이드는 보통 앱으로 열려요)
+ *   - 아이폰 · 기타: public/concert2026/dancewind-2026(-en).ics 파일 → 아이폰은 바로 "캘린더에 추가" 창이 떠요.
+ *     (시작 2시간 전 알림이 같이 들어가요. 공연 시각이 바뀌면 .ics 파일도 같이 고쳐 주세요)
+ */
+const gcalStamp = (ms: number) => new Date(ms).toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+
+function AddToCalendar({ align = "center" }: { align?: "center" | "responsive" }) {
+  const { lang, C, T } = useLang();
+  const [open, setOpen] = useState(false);
+  const pageUrl = `${PAGE_URL}${lang === "en" ? "?lang=en" : ""}`;
+  const googleUrl =
+    "https://calendar.google.com/calendar/render?" +
+    new URLSearchParams({
+      action: "TEMPLATE",
+      text: T.calendarTitle(C.titleHanja, C.titleKorean),
+      dates: `${gcalStamp(EVENT_MS)}/${gcalStamp(EVENT_END_MS)}`,
+      details: T.calendarDetails(pageUrl),
+      // 지도 앱이 정확히 찾도록 주소는 한국어로
+      location: `${C.location.venueName}, ${KO.location.address}`,
+      ctz: "Asia/Seoul",
+    }).toString();
+  const icsUrl = `/concert2026/dancewind-2026${lang === "en" ? "-en" : ""}.ics`;
+  const justify = align === "center" ? "justify-center" : "justify-center md:justify-start";
+  const optionCls =
+    "c26-inkbtn rounded-full border border-white/20 px-4 py-2 text-xs text-white/85 transition-colors hover:border-white/50";
+
+  return (
+    <div>
+      <div className={`flex ${justify}`}>
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
+          className="c26-roll inline-flex items-center gap-2 py-1 text-[13px] text-white/60 transition-colors hover:text-white"
+        >
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
+            <rect x="3.5" y="5" width="17" height="15.5" rx="2.5" />
+            <path d="M3.5 9.5h17M8 3v4M16 3v4" strokeLinecap="round" />
+          </svg>
+          <RollText>{T.calendarAdd}</RollText>
+          <span className={`text-white/40 transition-transform duration-300 ${open ? "rotate-45" : ""}`} aria-hidden="true">
+            +
+          </span>
+        </button>
+      </div>
+      <div className={`grid transition-[grid-template-rows] duration-400 ease-out ${open ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}>
+        <div className="overflow-hidden">
+          <div className={`flex flex-wrap gap-2 pt-3 ${justify}`}>
+            <a href={googleUrl} target="_blank" rel="noreferrer" tabIndex={open ? 0 : -1} {...inkHandlers} className={optionCls}>
+              {T.calendarGoogle}
+            </a>
+            <a href={icsUrl} tabIndex={open ? 0 : -1} {...inkHandlers} className={optionCls}>
+              {T.calendarApple}
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ClosingNote({ phase }: { phase: ShowPhase }) {
   const { T } = useLang();
   const { ref, visible } = useScrollReveal<HTMLDivElement>(0.4);
+  const over = phase === "after";
   return (
     <div ref={ref} className="mt-14 border-t border-white/10 pt-10 text-center">
       <svg viewBox="0 0 52 52" className="mx-auto mb-5 h-[52px] w-[52px]" aria-hidden="true">
@@ -1678,14 +1787,32 @@ function ClosingNote() {
           transitionDelay: visible ? "0.9s" : "0s",
         }}
       >
-        <p className="c26-serif text-2xl font-black leading-snug text-white md:text-3xl">
-          {T.closingLine1}
-          <br />
-          {T.closingPre}
-          <span className="text-[#7cc4ee]">{T.closingVenue}</span>
-          {T.closingLine2}
-        </p>
-        <p className="mt-3 text-xs text-white/50">{T.closingSub}</p>
+        {over ? (
+          <>
+            <p className="c26-serif text-2xl font-black leading-snug text-white md:text-3xl">
+              {T.afterClosingLine1}
+              <br />
+              <span className="text-[#7cc4ee]">{T.afterClosingLine2}</span>
+            </p>
+            <p className="mt-3 text-xs text-white/50">{T.afterClosingSub}</p>
+          </>
+        ) : (
+          <>
+            <p className="c26-serif text-2xl font-black leading-snug text-white md:text-3xl">
+              {T.closingLine1}
+              <br />
+              {T.closingPre}
+              <span className="text-[#7cc4ee]">{T.closingVenue}</span>
+              {T.closingLine2}
+            </p>
+            <p className="mt-3 text-xs text-white/50">{T.closingSub}</p>
+            {phase === "before" && (
+              <div className="mt-5">
+                <AddToCalendar />
+              </div>
+            )}
+          </>
+        )}
       </div>
     </div>
   );
@@ -1863,24 +1990,21 @@ function useScrollDetails() {
  * 지금 섹션은 IntersectionObserver 로 판단: 화면 가운데 띠(위 40% ~ 아래 55% 를 뺀 부분)에 걸친 섹션.
  */
 // 섹션 이름은 concert2026.ui.ts 의 sections (id 와 이름이 같아요)
-const SECTION_INDEX: { id: keyof ConcertUI["sections"]; num: string }[] = [
-  { id: "greeting", num: "壹" },
-  { id: "about", num: "貳" },
-  { id: "qna", num: "參" },
-  { id: "apply", num: "肆" },
-  { id: "teams", num: "伍" },
-  { id: "prizes", num: "陸" },
-  { id: "share", num: "柒" },
-  { id: "sponsors", num: "捌" },
-  { id: "location", num: "玖" },
-];
+type SectionId = keyof ConcertUI["sections"];
 
-function SectionIndex() {
+/** 화면에 나오는 섹션 순서 — 공연이 끝나면 공연 전에만 필요한 섹션(질문 · 신청 · 공유 · 오시는 길)이 빠져요.
+ *  섹션 번호(壹 貳 參 …)는 이 순서대로 다시 매겨서 중간에 번호가 비지 않아요. */
+const SECTIONS_BEFORE: SectionId[] = ["greeting", "about", "qna", "apply", "teams", "prizes", "share", "sponsors", "location"];
+const SECTIONS_AFTER: SectionId[] = ["thanks", "about", "teams", "prizes", "sponsors"];
+const SECTION_NUMS = ["壹", "貳", "參", "肆", "伍", "陸", "柒", "捌", "玖", "拾"];
+
+function SectionIndex({ ids }: { ids: SectionId[] }) {
   const { T } = useLang();
   const [current, setCurrent] = useState<string | null>(null);
+  const idsKey = ids.join(",");
 
   useEffect(() => {
-    const els = SECTION_INDEX.map((s) => document.getElementById(s.id)).filter(Boolean) as HTMLElement[];
+    const els = idsKey.split(",").map((id) => document.getElementById(id)).filter(Boolean) as HTMLElement[];
     const io = new IntersectionObserver(
       (entries) => {
         entries.forEach((e) => {
@@ -1905,7 +2029,7 @@ function SectionIndex() {
       io.disconnect();
       stop();
     };
-  }, []);
+  }, [idsKey]);
 
   const go = (id: string) => {
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -1920,7 +2044,8 @@ function SectionIndex() {
       }`}
     >
       <ul className="flex flex-col items-center">
-        {SECTION_INDEX.map((s) => {
+        {ids.map((id, i) => {
+          const s = { id, num: SECTION_NUMS[i] };
           const on = current === s.id;
           return (
             <li key={s.id}>
@@ -2078,6 +2203,11 @@ function ConcertPage() {
   const [shareError, setShareError] = useState("");
   const [showDock, setShowDock] = useState(false);
   const { closed: applyClosed } = useApplyDeadline();
+  // 공연이 끝나면(after) 섹션 구성이 바뀌어요 — SECTIONS_BEFORE / SECTIONS_AFTER 참고
+  const phase = useShowPhase();
+  const over = phase === "after";
+  const sectionIds = over ? SECTIONS_AFTER : SECTIONS_BEFORE;
+  const numOf = (id: SectionId) => SECTION_NUMS[sectionIds.indexOf(id)];
   const applyRef = useRef<HTMLDivElement>(null);
   const footerRef = useRef<HTMLElement>(null);
 
@@ -2299,29 +2429,40 @@ function ConcertPage() {
       <Intro />
 
       <main className="relative z-10 mx-auto max-w-5xl px-6 pt-16 md:px-10 md:pt-32">
-        {/* ① 인사말 */}
-        <Section id="greeting" head={{ num: "壹", hanja: "序", eyebrow: "GREETING", title: T.sections.greeting }}>
-          <Rise>
-            <p className="c26-serif text-[22px] font-bold leading-snug text-white md:text-[28px]">
-              {C.greeting.heading}
-            </p>
-          </Rise>
-          <div className="mt-6 space-y-4">
-            {C.greeting.body.map((line, i) => (
-              <Rise key={i} delay={i * 120}>
-                <p className="break-keep text-[15px] leading-[1.9] text-white/75 md:text-base">{line}</p>
+        {/* ① 인사말 — 공연이 끝나면 같은 자리에 감사 인사(afterShow)가 들어가요 */}
+        {(() => {
+          const g = over ? C.afterShow : C.greeting;
+          return (
+            <Section
+              key={over ? "thanks" : "greeting"}
+              id={over ? "thanks" : "greeting"}
+              head={
+                over
+                  ? { num: numOf("thanks"), hanja: "謝", eyebrow: "THANK YOU", title: T.sections.thanks }
+                  : { num: numOf("greeting"), hanja: "序", eyebrow: "GREETING", title: T.sections.greeting }
+              }
+            >
+              <Rise>
+                <p className="c26-serif text-[22px] font-bold leading-snug text-white md:text-[28px]">{g.heading}</p>
               </Rise>
-            ))}
-          </div>
-          <Rise delay={400}>
-            <p className="c26-serif mt-8 text-right text-sm text-white/55">{C.greeting.sign}</p>
-          </Rise>
-        </Section>
+              <div className="mt-6 space-y-4">
+                {g.body.map((line, i) => (
+                  <Rise key={i} delay={i * 120}>
+                    <p className="break-keep text-[15px] leading-[1.9] text-white/75 md:text-base">{line}</p>
+                  </Rise>
+                ))}
+              </div>
+              <Rise delay={400}>
+                <p className="c26-serif mt-8 text-right text-sm text-white/55">{g.sign}</p>
+              </Rise>
+            </Section>
+          );
+        })()}
 
         <RingDivider />
 
         {/* ② 설명글 */}
-        <Section id="about" head={{ num: "貳", hanja: "輪舞", eyebrow: "ABOUT", title: T.sections.about }}>
+        <Section id="about" head={{ num: numOf("about"), hanja: "輪舞", eyebrow: "ABOUT", title: T.sections.about }}>
           <Rise>
             <div className="relative overflow-hidden rounded-2xl">
               <img src="/concert2026/poster.jpg" alt={T.posterAlt(C.titleHanja)} className="w-full" loading="lazy" />
@@ -2373,8 +2514,10 @@ function ConcertPage() {
 
         <RingDivider />
 
-        {/* ③ Q&A */}
-        <Section id="qna" head={{ num: "參", hanja: "問答", eyebrow: "Q & A", title: T.sections.qna }}>
+        {/* ③ Q&A · ④ 사전 신청 — 공연 전에만 */}
+        {!over && (
+        <>
+        <Section id="qna" head={{ num: numOf("qna"), hanja: "問答", eyebrow: "Q & A", title: T.sections.qna }}>
           <div data-lines className="c26-rule-t">
             {C.qna.map((item, i) => {
               const open = openQna === i;
@@ -2417,7 +2560,7 @@ function ConcertPage() {
         <RingDivider />
 
         {/* ④ 사전 신청 */}
-        <Section id="apply" head={{ num: "肆", hanja: "申請", eyebrow: "RESERVATION", title: T.sections.apply }}>
+        <Section id="apply" head={{ num: numOf("apply"), hanja: "申請", eyebrow: "RESERVATION", title: T.sections.apply }}>
           <div ref={applyRef}>
             <Rise>
               <div data-lines className="c26-rule-y py-9 md:py-11">
@@ -2460,9 +2603,11 @@ function ConcertPage() {
         </Section>
 
         <RingDivider />
+        </>
+        )}
 
         {/* ⑤ 팀 / 라인업 */}
-        <Section id="teams" head={{ num: "伍", hanja: "舞臺", eyebrow: "LINE-UP", title: T.sections.teams }}>
+        <Section id="teams" head={{ num: numOf("teams"), hanja: "舞臺", eyebrow: "LINE-UP", title: T.sections.teams }}>
           <Rise>
             <p className="mb-5 text-sm text-white/50">{T.teamsHint}</p>
           </Rise>
@@ -2519,9 +2664,9 @@ function ConcertPage() {
         <RingDivider />
 
         {/* ⑥ 경품 */}
-        <Section id="prizes" head={{ num: "陸", hanja: "景品", eyebrow: "GIFTS", title: T.sections.prizes }}>
+        <Section id="prizes" head={{ num: numOf("prizes"), hanja: "景品", eyebrow: "GIFTS", title: T.sections.prizes }}>
           <Rise>
-            <p className="mb-5 break-keep text-sm leading-relaxed text-white/60">{C.prizeHowTo}</p>
+            <p className="mb-5 break-keep text-sm leading-relaxed text-white/60">{over ? C.afterShow.prizeNote : C.prizeHowTo}</p>
           </Rise>
           <ul data-lines className="c26-rule-t">
             {C.prizes.map((p, i) => (
@@ -2546,8 +2691,10 @@ function ConcertPage() {
 
         <RingDivider />
 
-        {/* ⑦ 공유하기 */}
-        <Section id="share" head={{ num: "柒", hanja: "共有", eyebrow: "SHARE", title: T.sections.share }}>
+        {/* ⑦ 공유하기 — 공연 전에만 */}
+        {!over && (
+        <>
+        <Section id="share" head={{ num: numOf("share"), hanja: "共有", eyebrow: "SHARE", title: T.sections.share }}>
           <Rise>
             <p className="mb-6 break-keep text-[15px] leading-relaxed text-white/70">{T.shareLead}</p>
             {/* 폰: 세로로 세 줄 / PC: 가로 한 줄 */}
@@ -2588,9 +2735,11 @@ function ConcertPage() {
         </Section>
 
         <RingDivider />
+        </>
+        )}
 
         {/* ⑧ 스폰서 */}
-        <Section id="sponsors" head={{ num: "捌", hanja: "協贊", eyebrow: "SPONSORS", title: T.sections.sponsors }}>
+        <Section id="sponsors" head={{ num: numOf("sponsors"), hanja: "協贊", eyebrow: "SPONSORS", title: T.sections.sponsors }}>
           {/* 크레딧 문단 — 30곳이 넘어도 한 화면 안팎에 들어가게, 이름만 " · " 로 이어 가운데 정렬해요.
               가게 이름 하나는 whitespace-nowrap 이라 "오일장 햄버거"처럼 띄어쓰기가 있어도 중간에서 줄이 안 바뀌어요. */}
           <Rise>
@@ -2618,10 +2767,15 @@ function ConcertPage() {
           </Rise>
         </Section>
 
+        {/* 공연이 끝나면 오시는 길 대신 감사 마무리 한 줄로 끝나요 */}
+        {over && <ClosingNote phase={phase} />}
+
+        {/* ⑨ 오시는 길 — 공연 전 · 공연 중에만 */}
+        {!over && (
+        <>
         <RingDivider />
 
-        {/* ⑨ 오시는 길 */}
-        <Section id="location" head={{ num: "玖", hanja: "道", eyebrow: "LOCATION", title: T.sections.location }}>
+        <Section id="location" head={{ num: numOf("location"), hanja: "道", eyebrow: "LOCATION", title: T.sections.location }}>
           <Rise>
             <ConcertMap />
           </Rise>
@@ -2670,8 +2824,10 @@ function ConcertPage() {
             </dl>
           </Rise>
           {/* 페이지 마무리 인사 — 원이 한 바퀴 그려진 뒤 한 줄 */}
-          <ClosingNote />
+          <ClosingNote phase={phase} />
         </Section>
+        </>
+        )}
       </main>
 
       {/* 푸터 */}
@@ -2694,7 +2850,7 @@ function ConcertPage() {
       </footer>
 
       {/* 오른쪽 한자 목차 */}
-      <SectionIndex />
+      <SectionIndex ids={sectionIds} />
 
       {/* 하단 고정 사전신청 버튼 (주로 모바일용) */}
       <div

@@ -1,0 +1,2 @@
+# 캘린더(.ics) 파일은 규격상 줄바꿈이 CRLF 여야 해요
+*.ics text eol=crlf

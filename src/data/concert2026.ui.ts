@@ -24,8 +24,23 @@ const ko = {
     share: "함께 보러 가요",
     sponsors: "함께해 주신 곳",
     location: "찾아오시는 길",
+    thanks: "감사 인사",
   },
   sectionIndexAria: "섹션 목차",
+
+  // 캘린더에 저장
+  calendarAdd: "캘린더에 저장",
+  calendarGoogle: "구글 캘린더",
+  calendarApple: "아이폰 · 기타 캘린더",
+  calendarTitle: (hanja: string, korean: string) => `춤바람 정기공연 「${hanja} ${korean}」`,
+  calendarDetails: (url: string) => `2026 춤바람 정기공연 · 전석 무료\n${url}`,
+
+  // 공연이 끝난 뒤
+  recapCta: "공연 다시 보기",
+  instaCta: "인스타그램 보기",
+  afterClosingLine1: "올해도 함께해 주셔서",
+  afterClosingLine2: "고맙습니다",
+  afterClosingSub: "다음 무대에서 또 만나요",
   goTo: (label: string) => `${label}로 이동`,
 
   // 첫 화면 · 카운트다운
@@ -148,8 +163,21 @@ const en: DeepPartial<ConcertUI> = {
     share: "Bring a Friend",
     sponsors: "With Thanks To",
     location: "Getting Here",
+    thanks: "Thank You",
   },
   sectionIndexAria: "Sections",
+
+  calendarAdd: "Add to Calendar",
+  calendarGoogle: "Google Calendar",
+  calendarApple: "iPhone · Other",
+  calendarTitle: (hanja) => `Dancewind Annual Concert 「${hanja}」`,
+  calendarDetails: (url) => `Dancewind 2026 Annual Concert · Free admission\n${url}`,
+
+  recapCta: "Watch the Recap",
+  instaCta: "See Instagram",
+  afterClosingLine1: "Thank you for",
+  afterClosingLine2: "being with us",
+  afterClosingSub: "See you at our next show",
   goTo: (label) => `Go to ${label}`,
 
   countdownLabel: (d) => (d === 1 ? "1 DAY TO GO" : `${d} DAYS TO GO`),
