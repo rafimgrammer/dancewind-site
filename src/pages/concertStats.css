@@ -24,7 +24,7 @@
 .cs .app1 { max-width: 1320px; margin: 0 auto; padding: 22px 24px 70px; }
 .cs .hdr { display: flex; justify-content: space-between; align-items: center; gap: 14px; flex-wrap: wrap; padding-bottom: 16px; border-bottom: 1px solid var(--line); }
 .cs .brand { font-family: "Noto Serif KR", serif; font-weight: 900; color: #fff; font-size: 20px; }
-.cs .brand small { display: block; font: 500 9px "JetBrains Mono", monospace; letter-spacing: .3em; color: var(--blue); margin-top: 2px; }
+.cs .brand small { display: block; font: 500 12.5px Pretendard, -apple-system, sans-serif; letter-spacing: .04em; color: var(--blue); margin-top: 4px; }
 .cs .livechip { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ink2); border: 1px solid var(--line); border-radius: 99px; padding: 5px 12px; }
 .cs .dot { width: 8px; height: 8px; border-radius: 50%; background: #e66767; animation: cs-pl 1.6s infinite; flex: none; }
 .cs .dot.idle { background: #555; animation: none; }
@@ -53,7 +53,7 @@
 .cs .down { color: #f19a9a; }
 
 .cs .sec-t { display: flex; align-items: baseline; gap: 10px; margin: 34px 0 0; }
-.cs .sec-t b { font: 500 10px "JetBrains Mono", monospace; letter-spacing: .3em; color: var(--blue); }
+.cs .sec-t b { font: 600 13px "JetBrains Mono", ui-monospace, monospace; letter-spacing: .15em; color: var(--blue); }
 .cs .sec-t span { font-family: "Noto Serif KR", serif; font-weight: 900; color: #fff; font-size: 19px; }
 .cs .headrow { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; align-items: flex-start; }
 
@@ -72,8 +72,8 @@
 .cs .note { font-size: 12px; color: var(--ink3); margin-top: 10px; }
 .cs .call { background: linear-gradient(135deg, rgba(124,196,238,.12), rgba(243,201,139,.06)); border: 1px solid rgba(124,196,238,.25); }
 .cs .call .big { font-family: "Noto Serif KR", serif; font-weight: 900; color: #fff; font-size: 20px; margin-top: 6px; line-height: 1.35; word-break: keep-all; }
-.cs .more { font-size: 12px; color: var(--blue); cursor: pointer; margin-top: 10px; display: inline-block; }
-.cs .link { font-size: 11.5px; color: var(--blue); }
+.cs .more { font-size: 13px; font-weight: 600; color: var(--blue); cursor: pointer; margin-top: 10px; display: inline-block; }
+.cs .link { font-size: 13px; font-weight: 600; color: var(--blue); }
 .cs .link:hover { text-decoration: underline; }
 
 .cs svg { display: block; overflow: visible; }
@@ -82,7 +82,7 @@
 .cs .tt .m { color: var(--ink3); font-size: 11px; }
 
 .cs .rank li { list-style: none; display: grid; grid-template-columns: 24px 1fr 70px 34px; gap: 10px; align-items: center; font-size: 13px; padding: 8px 0; border-bottom: 1px solid var(--line); }
-.cs .rank .n { font: 500 12px "JetBrains Mono", monospace; color: var(--blue); }
+.cs .rank .n { font: 600 13px "JetBrains Mono", ui-monospace, monospace; color: var(--blue); }
 .cs .rank .nm { color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cs .rank .bar { height: 8px; border-radius: 4px; background: var(--blue); }
 .cs .rank .c { text-align: right; font-variant-numeric: tabular-nums; }
@@ -90,7 +90,7 @@
 .cs .gauge { height: 18px; border-radius: 9px; background: rgba(255,255,255,.07); position: relative; overflow: visible; margin-top: 14px; }
 .cs .gauge b { position: absolute; left: 0; top: 0; bottom: 0; background: var(--blue); border-radius: 9px; max-width: 100%; }
 .cs .gauge i { position: absolute; top: -6px; bottom: -6px; width: 2px; background: var(--gold); }
-.cs .gauge em { position: absolute; top: -24px; transform: translateX(-50%); font: 500 10px "JetBrains Mono", monospace; color: var(--gold); font-style: normal; white-space: nowrap; }
+.cs .gauge em { position: absolute; top: -26px; transform: translateX(-50%); font: 600 12px Pretendard, sans-serif; color: var(--gold); font-style: normal; white-space: nowrap; }
 
 .cs .feed { display: flex; flex-direction: column; gap: 8px; overflow: hidden; -webkit-mask: linear-gradient(#000 75%, transparent); mask: linear-gradient(#000 75%, transparent); }
 .cs .feed > div { display: flex; gap: 10px; align-items: center; font-size: 12.5px; color: var(--ink); animation: cs-fin .4s; min-width: 0; }
@@ -125,7 +125,8 @@
 /* 비밀번호 화면 */
 .cs .gate { min-height: 100vh; display: grid; place-items: center; padding: 16px; background: radial-gradient(ellipse at 50% 0%, rgba(124,196,238,.12), transparent 60%), var(--bg); }
 .cs .gate form { width: min(360px, 100%); background: var(--card); border: 1px solid var(--line); border-radius: 22px; padding: 30px 24px; text-align: center; }
-.cs .gate .brand { font-size: 28px; }
+.cs .gate .brand { font-size: 30px; }
+.cs .gate .brand small { font-size: 14px; margin-top: 8px; }
 .cs .gate input { width: 100%; margin-top: 22px; font-size: 16px; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line); background: #0b0e11; color: #fff; outline: none; text-align: center; letter-spacing: .1em; }
 .cs .gate input:focus { border-color: rgba(124,196,238,.6); }
 .cs .gate .btn { width: 100%; margin-top: 10px; padding: 12px; font-size: 14px; border-radius: 12px; }

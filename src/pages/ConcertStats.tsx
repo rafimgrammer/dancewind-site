@@ -119,6 +119,20 @@ const tipOn = (c: ReactNode) => ({
   onPointerLeave: () => tipApi?.hide(),
 });
 
+/** 폰 화면인지 — 넓은 차트(760폭)를 폰에서 그대로 줄이면 글씨가 4~5px 까지 작아져서,
+ *  폰에서는 좁은 폭(440)으로 다시 그려 글씨가 덜 줄어들게 해요 */
+function useNarrow() {
+  const q = "(max-width: 700px)";
+  const [narrow, setNarrow] = useState(() => window.matchMedia(q).matches);
+  useEffect(() => {
+    const mq = window.matchMedia(q);
+    const on = () => setNarrow(mq.matches);
+    mq.addEventListener("change", on);
+    return () => mq.removeEventListener("change", on);
+  }, []);
+  return narrow;
+}
+
 /* =========================================================================
  * SVG 차트 (시안의 그리기 함수를 React 로 옮김)
  * ========================================================================= */
@@ -496,6 +510,7 @@ function Dashboard({ pw, onAuthFail }: { pw: string; onAuthFail: () => void }) {
   const [err, setErr] = useState("");
   const [mainKey, setMainKey] = useState<"visitors" | "sessions" | "clickers">("visitors");
   const [stackPct, setStackPct] = useState(false);
+  const narrow = useNarrow();
   const [rankOpen, setRankOpen] = useState(false);
   const [confirm, setConfirm] = useState<null | { title: string; sub?: string; run: () => Promise<void> }>(null);
   const [busy, setBusy] = useState(false);
@@ -618,7 +633,7 @@ function Dashboard({ pw, onAuthFail }: { pw: string; onAuthFail: () => void }) {
                 </div>
               </div>
               <div className="empty-box">
-                <LineChart
+                <LineChart w={narrow ? 440 : 760} h={narrow ? 300 : 330}
                   labels={data.daily.map((x) => `${md(x.day)} ${wd(x.day)}`)}
                   data={data.daily.map((x) => x[mainKey])}
                   name={mainKey === "visitors" ? "방문자" : mainKey === "sessions" ? "방문 수" : "신청 클릭"}
@@ -698,7 +713,7 @@ function Dashboard({ pw, onAuthFail }: { pw: string; onAuthFail: () => void }) {
                 </div>
               </div>
               <div className="empty-box">
-                <Stacked days={data.daily.map((x) => x.day)} srcs={view.srcOrder} values={view.srcByDay} pctMode={stackPct} />
+                <Stacked days={data.daily.map((x) => x.day)} srcs={view.srcOrder} values={view.srcByDay} pctMode={stackPct} w={narrow ? 440 : 760} h={narrow ? 260 : 300} />
                 {data.totals.visitors === 0 && <Empty />}
               </div>
               <div className="legend">
@@ -757,7 +772,7 @@ function Dashboard({ pw, onAuthFail }: { pw: string; onAuthFail: () => void }) {
             <div className="card">
               <h3>요일 × 시간대</h3><div className="s">진할수록 많이 들어온 시간 (한국 시간)</div>
               <div className="empty-box">
-                <Heat cells={view.heat} />
+                <Heat cells={view.heat} w={narrow ? 440 : 760} cell={narrow ? 24 : 30} />
                 {!data.heat.length && <Empty />}
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6, fontSize: 11, color: "var(--ink3)" }}>
