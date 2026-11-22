@@ -11,6 +11,7 @@ import { createPortal } from "react-dom";
 import { useNavigate, useParams } from "react-router-dom";
 import { useScrollReveal } from "../hooks/useScrollReveal";
 import { shareToKakao, shareToKakaoFeed } from "../lib/kakaoShare";
+import { setTrackLang, startPresence, track, trackOnce, withSrc } from "../lib/concertTrack";
 import { CONCERT_2026 as KO, type ConcertTeam } from "../data/concert2026";
 import { CONCERT_2026_EN } from "../data/concert2026.en";
 import { CONCERT_UI, type ConcertLang, type ConcertUI } from "../data/concert2026.ui";
@@ -1199,6 +1200,7 @@ function Intro() {
             !applyClosed && (
               <a
                 href={C.applyUrl}
+                onClick={() => track("apply_click", "hero", true)}
                 target="_blank"
                 rel="noreferrer"
                 className="c26-shine c26-roll rounded-full bg-[#e9eef2] px-6 py-3 text-sm font-semibold text-black transition-transform active:scale-95 md:hover:-translate-y-0.5"
@@ -1864,6 +1866,7 @@ const MAP_APPS: MapApp[] = [
 ];
 
 function openMapApp(app: MapApp) {
+  track("map_click", app.key);
   const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
   if (!app.app || !isMobile) {
     window.open(app.web, "_blank", "noopener");
@@ -1931,10 +1934,10 @@ function AddToCalendar({ align = "center" }: { align?: "center" | "responsive" }
       <div className={`grid transition-[grid-template-rows] duration-400 ease-out ${open ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}>
         <div className="overflow-hidden">
           <div className={`flex flex-wrap gap-2 pt-3 ${justify}`}>
-            <a href={googleUrl} target="_blank" rel="noreferrer" tabIndex={open ? 0 : -1} {...inkHandlers} className={optionCls}>
+            <a href={googleUrl} onClick={() => track("calendar_save", "google")} target="_blank" rel="noreferrer" tabIndex={open ? 0 : -1} {...inkHandlers} className={optionCls}>
               {T.calendarGoogle}
             </a>
-            <a href={icsUrl} tabIndex={open ? 0 : -1} {...inkHandlers} className={optionCls}>
+            <a href={icsUrl} onClick={() => track("calendar_save", "ics")} tabIndex={open ? 0 : -1} {...inkHandlers} className={optionCls}>
               {T.calendarApple}
             </a>
           </div>
@@ -2071,6 +2074,7 @@ function ConcertMap() {
             href={`https://map.kakao.com/link/map/${encodeURIComponent(venueName)},${lat},${lng}`}
             target="_blank"
             rel="noreferrer"
+            onClick={() => track("map_click", "kakao-fallback")}
             className="underline underline-offset-4"
           >
             {T.mapOpenKakao}
@@ -2272,7 +2276,13 @@ function isApplyRedirect() {
 
 function ApplyRedirect() {
   useEffect(() => {
-    window.location.replace(KO.applyUrl);
+    // 방문 기록: 페이지를 안 거치고 바로 폼으로 가는 사람도 "방문 + 신청 클릭"으로 세요.
+    // 곧 페이지를 떠나니까 미루지 않고 바로(urgent) 보내고, keepalive 라 이동 중에도 전송이 이어져요.
+    trackOnce("page_view", "redirect", true);
+    track("apply_click", "redirect", true);
+    // 아주 오래된 인앱 브라우저는 keepalive 를 무시할 수 있어서, 전송이 출발할 틈만 살짝(0.2초) 줘요
+    const timer = window.setTimeout(() => window.location.replace(KO.applyUrl), 200);
+    return () => window.clearTimeout(timer);
   }, []);
   return (
     <div className="flex min-h-[100svh] items-center justify-center bg-black px-6 text-center text-sm text-white/60">
@@ -2296,7 +2306,10 @@ function ConcertPage() {
   const C = lang === "en" ? CONCERT_2026_EN : KO;
   const T = CONCERT_UI[lang];
   const langValue = useMemo(() => ({ lang, C, T }), [lang, C, T]);
+  // 방문 기록에 실을 언어 — 렌더 중에 바로 맞춰 둬야 아래 page_view 가 처음부터 맞는 언어로 나가요 (값만 넣는 거라 부작용 없음)
+  setTrackLang(lang);
   const changeLang = useCallback((next: ConcertLang) => {
+    track("lang_switch", next);
     setLang(next);
     try {
       window.localStorage.setItem(LANG_KEY, next);
@@ -2386,6 +2399,17 @@ function ConcertPage() {
   useEffect(() => {
     if (teamId && openTeam < 0) navigate("/2026concert", { replace: true });
   }, [teamId, openTeam, navigate]);
+
+  // ── 방문 기록 ──
+  // 들어올 때 1번(탭당) + 화면에 보이는 동안 45초마다 ping ("지금 보는 사람" 계산용)
+  useEffect(() => {
+    trackOnce("page_view");
+    return startPresence();
+  }, []);
+  // 팀 상세 — 목록에서 누르든, 이전/다음 무대로 넘기든, 팀 링크로 바로 들어오든 주소에 팀이 생기는 순간 1번
+  useEffect(() => {
+    if (teamId && openTeam >= 0) track("team_open", teamId);
+  }, [teamId, openTeam]);
   const [openQna, setOpenQna] = useState<number | null>(0);
   const [toast, setToast] = useState("");
   const [shareError, setShareError] = useState("");
@@ -2437,6 +2461,35 @@ function ConcertPage() {
     return listenScrollLike(onScroll);
   }, []);
 
+  // 방문 기록: 공연 소개 · 무대 순서 · 사전 신청 섹션이 화면에 "처음" 보일 때 탭당 1번씩
+  //   (신청까지 가는 단계별로 몇 명이 빠지는지 보려고). 한 번 보낸 섹션은 바로 관찰을 끊어요.
+  useEffect(() => {
+    const targets: [string, string][] = [
+      ["about", "about"],
+      ["teams", "lineup"],
+      ["apply", "apply"],
+    ];
+    const io = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((e) => {
+          if (!e.isIntersecting) return;
+          const name = (e.target as HTMLElement).dataset.trackSection;
+          if (name) trackOnce("section_view", name);
+          io.unobserve(e.target);
+        });
+      },
+      // 섹션 윗부분이 화면 아래 1/4 선을 넘으면 "봤다"로 쳐요 (스쳐 지나가는 건 빼고 싶어서)
+      { rootMargin: "0px 0px -25% 0px" },
+    );
+    targets.forEach(([id, name]) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.dataset.trackSection = name;
+      io.observe(el);
+    });
+    return () => io.disconnect();
+  }, [over]);
+
   useEffect(() => {
     if (!toast) return;
     const t = window.setTimeout(() => setToast(""), 2000);
@@ -2453,6 +2506,7 @@ function ConcertPage() {
   };
 
   const handleKakaoShare = async () => {
+    track("share_kakao");
     setShareError("");
     try {
       if (lang === "en") {
@@ -2464,14 +2518,16 @@ function ConcertPage() {
           imageUrl: `${SITE_URL}/share/concert2026-invite-en.jpg`,
           imageWidth: 1080,
           imageHeight: 1080,
-          linkUrl: `${PAGE_URL}?lang=en`,
+          linkUrl: `${PAGE_URL}?lang=en&src=kakao`,
           buttons: [
-            { title: T.kakaoBtnSite, url: `${PAGE_URL}?lang=en` },
-            { title: T.kakaoBtnApply, url: `${PAGE_URL}?go=apply` },
+            { title: T.kakaoBtnSite, url: `${PAGE_URL}?lang=en&src=kakao` },
+            { title: T.kakaoBtnApply, url: `${PAGE_URL}?go=apply&src=kakao` },
           ],
         });
       } else if (C.kakaoTemplateId) {
         // 초대장 템플릿: 이미지 · 제목 · 설명 · 버튼 2개를 콘솔에서 전부 고정해 둬서 채울 값이 없어요.
+        // ⚠️ 방문 경로(src=kakao)는 코드로 못 붙여요 → 카카오 디벨로퍼스 콘솔의 템플릿 링크를 직접
+        //    2026concert?src=kakao / 2026concert?go=apply&src=kakao 로 바꿔 주세요.
         await shareToKakao({ templateId: C.kakaoTemplateId, templateArgs: {} });
       } else {
         // 초대장 템플릿을 만들기 전까지는 예전 공통 템플릿으로
@@ -2481,7 +2537,7 @@ function ConcertPage() {
             description: `${C.dateText} ${C.timeText} · ${C.location.venueName}`,
             image_url: `${SITE_URL}/share/concert2026-share.jpg?v=3`,
             button_title: "공연 보러 가기",
-            link_url: PAGE_URL,
+            link_url: `${PAGE_URL}?src=kakao`,
           },
         });
       }
@@ -2566,8 +2622,9 @@ function ConcertPage() {
   const closeStoryPick = useCallback(() => setStoryPickOpen(false), []);
 
   const handleStoryShare = () => {
-    // 링크 스티커용 주소 복사 (고르는 창을 띄우는 이 순간에 미리)
-    navigator.clipboard?.writeText(shareUrl()).catch(() => {});
+    track("share_insta");
+    // 링크 스티커용 주소 복사 (고르는 창을 띄우는 이 순간에 미리) — ?src=insta 꼬리표를 붙여서 스토리 유입을 셀 수 있게
+    navigator.clipboard?.writeText(withSrc(shareUrl(), "insta")).catch(() => {});
     setStoryPickOpen(true);
   };
 
@@ -2776,6 +2833,7 @@ function ConcertPage() {
                     </p>
                     <a
                       href={C.applyUrl}
+                      onClick={() => track("apply_click", "section", true)}
                       target="_blank"
                       rel="noreferrer"
                       {...inkHandlers}
@@ -2994,7 +3052,10 @@ function ConcertPage() {
                 ))}
               </div>
               <button
-                onClick={() => copyText(KO.location.address, T.toastAddressCopied)}
+                onClick={() => {
+                  track("map_click", "copy-address");
+                  copyText(KO.location.address, T.toastAddressCopied);
+                }}
                 {...inkHandlers}
                 className="c26-inkbtn c26-roll mt-2 w-full rounded-full border border-white/20 py-3 text-sm text-white/85 transition-colors hover:border-white/50"
               >
@@ -3050,6 +3111,7 @@ function ConcertPage() {
       >
         <a
           href={C.applyUrl}
+          onClick={() => track("apply_click", "dock", true)}
           target="_blank"
           rel="noreferrer"
           className="c26-shine c26-roll c26-serif flex w-full items-center justify-center rounded-full bg-[#e9eef2] py-3.5 text-[15px] font-bold text-black"

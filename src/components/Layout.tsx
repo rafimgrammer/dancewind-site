@@ -9,7 +9,7 @@ import InstallPrompt from "./InstallPrompt";
 
 // 사이드바/상단바 없이 화면 전체를 쓰는 "랜딩 페이지" 경로들.
 // 공연 홍보처럼 외부 관객에게 공유하는 페이지는 동아리 내부 메뉴가 안 보이는 게 더 깔끔해요.
-const FULLSCREEN_PATHS = ["/2026concert"];
+const FULLSCREEN_PATHS = ["/2026concert", "/2026concert-stats"];
 
 export default function Layout({ children }: { children: ReactNode }) {
   const [drawerOpen, setDrawerOpen] = useState(false);

@@ -1,0 +1,3 @@
+# 회장단 전용 통계 페이지는 검색엔진에 안 잡히게
+/2026concert-stats
+  X-Robots-Tag: noindex, nofollow

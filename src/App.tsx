@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import { PresenceProvider } from "./context/PresenceContext";
@@ -70,6 +71,8 @@ import FormationEditor from "./pages/FormationEditor";
 import CircleGame from "./pages/CircleGame";
 import ReactionGame from "./pages/ReactionGame";
 import Concert from "./pages/Concert";
+// 통계 대시보드는 회장단만 쓰니까 따로 불러와요 → 공연 페이지 방문자는 이 코드를 내려받지 않아요
+const ConcertStats = lazy(() => import("./pages/ConcertStats"));
 
 
 export default function App() {
@@ -115,6 +118,15 @@ export default function App() {
                 {/* 2026 정기공연 「輪舞」 홍보 페이지 — Layout.tsx에서 사이드바 없이 전체 화면으로 렌더링 */}
                 {/* /2026concert/팀id 도 같은 페이지가 받아서 그 팀의 프로그램북 화면을 위에 띄워요 (뒤로가기 하면 원래 스크롤 위치 그대로) */}
                 <Route path="/2026concert/*" element={<Concert />} />
+                {/* 회장단 전용 통계 (사이트 어디에도 링크 없음 · 비밀번호로만) */}
+                <Route
+                  path="/2026concert-stats"
+                  element={
+                    <Suspense fallback={<div style={{ minHeight: "100vh", background: "#050506" }} />}>
+                      <ConcertStats />
+                    </Suspense>
+                  }
+                />
 
                 {/* 인증 / 온보딩 */}
                 <Route path="/login" element={<Login />} />
