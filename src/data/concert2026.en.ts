@@ -36,6 +36,8 @@ const EN: Record<string, string> = {
     "Free admission",
   "11월 30일(월) 20:00 마감":
     "Closes Mon, Nov 30, 8:00 PM",
+  "11월 29일(일) 20:00 마감":
+    "Closes Sun, Nov 29, 8:00 PM",
 
   // ── 인사말
   "다시, 원을 그리며":
