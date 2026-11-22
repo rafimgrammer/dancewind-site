@@ -157,7 +157,7 @@ export const CONCERT_2026 = {
         { title: "MOSHPIT", artist: "Reyrzy" },
         { title: "Plz tell me Y", artist: "mig.on" },
       ],
-      members: ["김휘수", "김재승", "심예성"],
+      members: ["김휘수", "심예성"],
       leaders: ["김휘수"],
     },
     {
