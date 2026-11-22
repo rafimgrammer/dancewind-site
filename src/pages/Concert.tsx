@@ -114,6 +114,194 @@ function Rise({ children, delay = 0, className = "" }: { children: ReactNode; de
   );
 }
 
+/* ---------- 포스터 3D 기울기 + 빛 반사 ----------
+ * PC: 마우스를 올리면 커서를 따라 기울고 커서 쪽에 빛이 맺혀요.
+ * 폰: 누르고 움직이는 동안만 따라 기울고, 손을 떼면 부드럽게 원위치.
+ * 가만히 있을 때 저절로 흔들리는 애니메이션은 일부러 없어요 (글 읽을 때 시선 뺏김 + 배터리 낭비).
+ * 기울기 센서(DeviceOrientation)도 안 써요 — 아이폰에서 권한 팝업이 떠서.
+ *
+ * 성능 때문에 일부러 이렇게 짰어요:
+ *   · 각도를 React state 로 두면 움직일 때마다 리렌더돼서, ref 로 DOM style 에 직접 넣어요.
+ *   · pointermove 는 1초에 100번 넘게 올 수 있어서, 마지막 위치만 기억했다가
+ *     requestAnimationFrame 으로 한 프레임에 한 번만 적용해요.
+ *   · 바꾸는 건 transform · opacity 뿐 (다시 그리기 없이 GPU 합성만).
+ *   · 포스터 크기(getBoundingClientRect)는 시작할 때 한 번만 재고, 스크롤되면 그때만 다시 재요.
+ *   · will-change 는 움직이는 동안에만 붙이고, 원위치로 돌아오면 떼서 GPU 메모리를 돌려줘요.
+ *   · 화면 밖에 있을 땐(IntersectionObserver) 이벤트가 와도 아무것도 안 해요.
+ * 동작 줄이기 설정 · 가벼운 모드(c26-lite) · 마우스도 터치도 없는 환경에서는 그냥 평평한 포스터예요.
+ * Rise 가 바깥 div 의 transform 을 쓰고 있어서, 기울기는 안쪽 카드에만 걸어 서로 덮어쓰지 않게 했어요. */
+const TILT_MAX_Y = 8; // 좌우 최대 각도
+const TILT_MAX_X = 6; // 위아래 최대 각도
+const TILT_RETURN_MS = 500;
+
+/** 미디어 쿼리는 한 번만 만들어 두고 .matches 만 읽어요 (이벤트마다 matchMedia 를 새로 부르지 않게).
+ *  설정이 바뀌면 .matches 도 알아서 바뀌어요. */
+let tiltMq: { reduce: MediaQueryList; pointer: MediaQueryList } | null = null;
+
+/** 지금 기울기를 써도 되는지 — c26-lite 는 나중에 붙을 수도 있어서 이벤트가 올 때마다 확인해요 */
+function tiltAllowed() {
+  tiltMq ??= {
+    reduce: window.matchMedia("(prefers-reduced-motion: reduce)"), // = prefersReducedMotion()
+    pointer: window.matchMedia("(any-pointer: fine), (any-pointer: coarse)"), // 마우스나 터치가 하나라도 있으면
+  };
+  if (tiltMq.reduce.matches) return false;
+  if (document.documentElement.classList.contains("c26-lite")) return false;
+  return tiltMq.pointer.matches;
+}
+
+function PosterTilt({ children }: { children: ReactNode }) {
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
+  const glareRef = useRef<HTMLDivElement>(null);
+  // 렌더와 상관없는 값들은 전부 ref 에 (바뀌어도 리렌더 안 되게)
+  const st = useRef({
+    onScreen: false,
+    active: false,
+    rect: null as DOMRect | null,
+    x: 0.5, // 포스터 안 위치 (0 ~ 1)
+    y: 0.5,
+    raf: 0,
+    settleTimer: 0,
+  });
+
+  /** 한 프레임에 한 번만 — 마지막으로 기억한 위치로 카드 · 빛을 옮겨요 */
+  const paint = useCallback(() => {
+    const s = st.current;
+    s.raf = 0;
+    const card = cardRef.current;
+    const glare = glareRef.current;
+    if (!card || !glare || !s.active || !s.rect) return;
+    const ry = (s.x - 0.5) * 2 * TILT_MAX_Y;
+    const rx = (0.5 - s.y) * 2 * TILT_MAX_X;
+    card.style.transform = `rotateX(${rx.toFixed(2)}deg) rotateY(${ry.toFixed(2)}deg)`;
+    // 빛 레이어는 포스터 가운데 기준으로 커서만큼 밀어요 (그라데이션은 다시 계산하지 않음)
+    const dx = (s.x - 0.5) * s.rect.width;
+    const dy = (s.y - 0.5) * s.rect.height;
+    glare.style.transform = `translate3d(calc(-50% + ${dx.toFixed(1)}px), calc(-50% + ${dy.toFixed(1)}px), 0)`;
+  }, []);
+
+  const schedule = useCallback(() => {
+    if (!st.current.raf) st.current.raf = requestAnimationFrame(paint);
+  }, [paint]);
+
+  /** 원위치로 — CSS transition(0.5초)이 부드럽게 되돌려요 */
+  const release = useCallback(() => {
+    const s = st.current;
+    const card = cardRef.current;
+    const glare = glareRef.current;
+    if (!s.active) return;
+    s.active = false;
+    s.rect = null;
+    if (s.raf) cancelAnimationFrame(s.raf);
+    s.raf = 0;
+    if (card) {
+      card.style.transition = ""; // CSS 의 0.5초짜리로 돌려놓기
+      card.style.transform = "";
+    }
+    if (glare) glare.style.opacity = "0";
+    // 다 돌아온 뒤 will-change 를 떼요 (transitionend 는 중간에 끊기면 안 올 수도 있어서 타이머로)
+    window.clearTimeout(s.settleTimer);
+    s.settleTimer = window.setTimeout(() => {
+      if (st.current.active) return;
+      if (card) card.style.willChange = "";
+      if (glare) glare.style.willChange = "";
+    }, TILT_RETURN_MS + 100);
+  }, []);
+
+  /** 위치만 기억하고 그리기는 다음 프레임에 (여기서 style 을 바로 바꾸지 않아요) */
+  const move = useCallback(
+    (e: ReactPointerEvent<HTMLDivElement>) => {
+      const s = st.current;
+      if (!s.active) return;
+      // 중간에 가벼운 모드로 바뀌었거나 화면 밖으로 나갔으면 바로 원위치
+      if (!s.onScreen || !tiltAllowed()) {
+        release();
+        return;
+      }
+      const card = cardRef.current;
+      if (!card) return;
+      if (!s.rect) s.rect = card.getBoundingClientRect();
+      const r = s.rect;
+      s.x = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
+      s.y = Math.min(1, Math.max(0, (e.clientY - r.top) / r.height));
+      schedule();
+    },
+    [release, schedule],
+  );
+
+  const start = useCallback(
+    (e: ReactPointerEvent<HTMLDivElement>) => {
+      const s = st.current;
+      if (s.active || !s.onScreen || !tiltAllowed()) return;
+      const card = cardRef.current;
+      const glare = glareRef.current;
+      if (!card || !glare) return;
+      window.clearTimeout(s.settleTimer);
+      s.active = true;
+      s.rect = card.getBoundingClientRect();
+      card.style.willChange = "transform";
+      glare.style.willChange = "transform, opacity";
+      // 따라갈 때는 아주 짧은 transition 으로 손떨림만 살짝 부드럽게 (0.5초짜리는 돌아올 때만)
+      card.style.transition = "transform 0.12s ease-out";
+      glare.style.opacity = "1";
+      move(e);
+    },
+    [move],
+  );
+
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const s = st.current;
+    const io = new IntersectionObserver(([entry]) => {
+      s.onScreen = entry.isIntersecting;
+      if (!s.onScreen) release();
+    });
+    io.observe(el);
+    // 움직이는 중에 스크롤되면 포스터 위치가 바뀌니 다음 move 때 다시 재게 (스크롤마다 재지는 않아요)
+    const onScroll = () => {
+      if (s.active) s.rect = null;
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      io.disconnect();
+      window.removeEventListener("scroll", onScroll);
+      if (s.raf) cancelAnimationFrame(s.raf);
+      window.clearTimeout(s.settleTimer);
+    };
+  }, [release]);
+
+  return (
+    <div
+      ref={wrapRef}
+      className="c26-tilt"
+      // 마우스: 올리면 시작 / 터치 · 펜: 누르면 시작
+      onPointerEnter={(e) => {
+        if (e.pointerType === "mouse") start(e);
+      }}
+      onPointerDown={(e) => {
+        if (e.pointerType !== "mouse") start(e);
+      }}
+      onPointerMove={(e) => {
+        if (st.current.active) move(e);
+        // 마우스가 포스터 위에 있는 채로 스크롤돼 들어온 경우(enter 가 안 옴)에도 시작되게
+        else if (e.pointerType === "mouse") start(e);
+      }}
+      onPointerUp={(e) => {
+        if (e.pointerType !== "mouse") release();
+      }}
+      // pointercancel: 폰에서 손가락이 세로 스크롤로 바뀌면 브라우저가 보내요 → 원위치
+      onPointerCancel={release}
+      onPointerLeave={release}
+    >
+      <div ref={cardRef} className="c26-tilt-card">
+        {children}
+        <div ref={glareRef} className="c26-tilt-glare" aria-hidden="true" />
+      </div>
+    </div>
+  );
+}
+
 /** 포스터의 파란 먹물 번짐 — SVG 노이즈 필터로 가장자리를 거칠게 만들어요 */
 function InkBlot({ className = "", style, seed = 3 }: { className?: string; style?: CSSProperties; seed?: number }) {
   // useId 값에는 ":"가 들어 있어서 url(#...) 에서 깨지므로 제거
@@ -2464,9 +2652,10 @@ function ConcertPage() {
         {/* ② 설명글 */}
         <Section id="about" head={{ num: numOf("about"), hanja: "輪舞", eyebrow: "ABOUT", title: T.sections.about }}>
           <Rise>
-            <div className="relative overflow-hidden rounded-2xl">
-              <img src="/concert2026/poster.jpg" alt={T.posterAlt(C.titleHanja)} className="w-full" loading="lazy" />
-            </div>
+            {/* Rise(등장) 와 기울기는 서로 다른 요소에 걸려 있어서 transform 이 겹치지 않아요 */}
+            <PosterTilt>
+              <img src="/concert2026/poster.jpg" alt={T.posterAlt(C.titleHanja)} className="block w-full" loading="lazy" />
+            </PosterTilt>
           </Rise>
           <Rise delay={100}>
             <p className="c26-serif mt-8 text-[20px] font-bold leading-snug text-white md:text-2xl">

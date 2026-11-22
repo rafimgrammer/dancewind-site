@@ -545,3 +545,42 @@
   .c26-roll.is-rolling .c26-roll-in { animation: none; }
   .c26-roll:hover .c26-roll-in { transform: none; }
 }
+/* ---------- 공연 소개 포스터: 3D 기울기 + 빛 반사 (PosterTilt) ----------
+ * 성능 때문에 일부러 이렇게 했어요:
+ *   · 매 프레임 바뀌는 건 카드의 transform 과 빛 레이어의 transform · opacity 뿐이에요.
+ *     (둘 다 GPU 가 합성만 하면 돼서 다시 그리기(repaint)가 안 일어나요)
+ *   · 빛 반사는 radial-gradient 를 한 번만 그려 둔 레이어를 translate3d 로 옮기기만 해요.
+ *     mix-blend-mode 는 저사양 폰에서 비싸서 안 쓰고, 흰색 반투명 + opacity 로만 표현해요.
+ *   · 그림자(box-shadow)는 고정값이에요. 카드와 함께 기울 뿐, 값 자체는 바뀌지 않아요. */
+.c26-tilt {
+  perspective: 900px;
+  /* 카드를 누른 채 위아래로 밀어도 페이지 스크롤은 그대로 되게 (가로 움직임만 우리가 받아요) */
+  touch-action: pan-y;
+}
+.c26-tilt-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 1rem;
+  box-shadow: 0 30px 50px -25px rgba(124, 196, 238, 0.35);
+  transform: rotateX(0deg) rotateY(0deg);
+  /* 손을 뗐을 때 원위치로 돌아오는 속도 — 움직이는 중에는 JS 가 짧은 값으로 바꿔요 */
+  transition: transform 0.5s cubic-bezier(0.22, 0.9, 0.3, 1);
+}
+.c26-tilt-glare {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  /* 포스터 폭의 140% 정사각형 — 200% 로 크게 잡으면 폰 GPU 메모리를 너무 많이 써서 이 정도로 */
+  width: 140%;
+  aspect-ratio: 1;
+  pointer-events: none;
+  opacity: 0;
+  transform: translate3d(-50%, -50%, 0);
+  background: radial-gradient(
+    closest-side,
+    rgba(255, 255, 255, 0.24) 0%,
+    rgba(255, 255, 255, 0.1) 35%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  transition: opacity 0.5s ease-out;
+}
