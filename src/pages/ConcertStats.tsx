@@ -86,6 +86,18 @@ interface Stats {
   manual: Record<string, number>;
 }
 interface Live { live: number; recent: { t: string; event: string; src: string; detail: string | null; device: string | null }[] }
+interface VisitFlags {
+  about: boolean; lineup: boolean; apply: boolean; team_open: number; apply_click: boolean;
+  share_kakao: boolean; share_insta: boolean; calendar_save: boolean; map_click: boolean; lang_switch: boolean;
+}
+interface Visit {
+  code: string; started_at: string; ended_at: string; duration_sec: number; src: string;
+  device: string; browser: string; lang: string; visit_no: number;
+  result: "clicked" | "browsed" | "bounced"; flags: VisitFlags;
+}
+interface VisitEvent { t: string; event: string; detail: string | null }
+interface VisitorsPage { total: number; visits: Visit[] }
+interface VisitDetail { events: VisitEvent[] }
 
 /** 비밀번호가 틀리면 서버가 28P01 을 돌려줘요 */
 const isAuthError = (e: { code?: string; message?: string } | null) => !!e && (e.code === "28P01" || /invalid password/.test(e.message ?? ""));
@@ -496,6 +508,30 @@ const EVENT_TEXT = (e: Live["recent"][number]) => {
   }
 };
 const hhmm = (iso: string) => new Date(new Date(iso).getTime() + KST).toISOString().slice(11, 16);
+const visitKey = (v: Pick<Visit, "code" | "started_at">) => `${v.code}:${v.started_at}`;
+const visitDuration = (sec: number) => sec < 60 ? `${sec}초` : `${Math.floor(sec / 60)}분${sec % 60 ? ` ${sec % 60}초` : ""}`;
+const visitStamp = (iso: string) => new Intl.DateTimeFormat("ko-KR", {
+  timeZone: "Asia/Seoul", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false,
+}).format(new Date(iso));
+const visitResultText = (result: Visit["result"]) => result === "clicked" ? "신청 클릭" : result === "browsed" ? "둘러봄" : "첫 화면만";
+const visitEventText = (event: VisitEvent) => {
+  switch (event.event) {
+    case "page_view": return "👋 들어왔어요";
+    case "section_view":
+      if (event.detail === "about") return "📖 공연 소개를 봤어요";
+      if (event.detail === "lineup") return "🎭 무대 순서까지 내려왔어요";
+      if (event.detail === "apply") return "📝 사전 신청 섹션까지 왔어요";
+      return "📖 섹션을 봤어요";
+    case "team_open": return `⭐ ${event.detail ? teamName(event.detail) : "팀"} 팀 상세를 열었어요`;
+    case "apply_click": return "✅ 사전 신청 버튼을 눌렀어요";
+    case "share_kakao": return "💬 카톡으로 공유했어요";
+    case "share_insta": return "📸 인스타 스토리로 공유했어요";
+    case "calendar_save": return "📅 캘린더에 저장했어요";
+    case "map_click": return "📍 오시는 길을 눌렀어요";
+    case "lang_switch": return "🌏 영어로 바꿨어요";
+    default: return event.event;
+  }
+};
 const hourWords = (h: number) => {
   const part = h < 6 ? "새벽" : h < 12 ? "오전" : h < 18 ? "오후" : "밤";
   const h12 = h % 12 === 0 ? 12 : h % 12;
@@ -507,6 +543,25 @@ function Dashboard({ pw, onAuthFail }: { pw: string; onAuthFail: () => void }) {
   const [period, setPeriod] = useState<Period>("all");
   const [data, setData] = useState<Stats | null>(null);
   const [live, setLive] = useState<Live | null>(null);
+  const [visitorPreview, setVisitorPreview] = useState<Visit[]>([]);
+  const [visitorPreviewError, setVisitorPreviewError] = useState("");
+  const [visitorPreviewLoaded, setVisitorPreviewLoaded] = useState(false);
+  const [visitorsOpen, setVisitorsOpen] = useState(false);
+  const [visitorRows, setVisitorRows] = useState<Visit[]>([]);
+  const [visitorTotal, setVisitorTotal] = useState(0);
+  const [visitorListLoading, setVisitorListLoading] = useState(false);
+  const [visitorListError, setVisitorListError] = useState("");
+  const [visitorFilter, setVisitorFilter] = useState("all");
+  const [visitorSearch, setVisitorSearch] = useState("");
+  const [visitorSearchQuery, setVisitorSearchQuery] = useState("");
+  const [visitorAnchor, setVisitorAnchor] = useState("");
+  const [selectedVisit, setSelectedVisit] = useState<Visit | null>(null);
+  const [visitDetails, setVisitDetails] = useState<Record<string, VisitDetail>>({});
+  const [visitDetailLoading, setVisitDetailLoading] = useState(false);
+  const [visitDetailError, setVisitDetailError] = useState("");
+  const [visitDetailRetry, setVisitDetailRetry] = useState(0);
+  const visitorPreviewRequest = useRef(0);
+  const visitorListRequest = useRef(0);
   const [err, setErr] = useState("");
   const [mainKey, setMainKey] = useState<"visitors" | "sessions" | "clickers">("visitors");
   const [stackPct, setStackPct] = useState(false);
@@ -544,6 +599,116 @@ function Dashboard({ pw, onAuthFail }: { pw: string; onAuthFail: () => void }) {
     setLive(d as Live);
   }, [pw, onAuthFail]);
 
+  const loadVisitorPreview = useCallback(async () => {
+    const request = ++visitorPreviewRequest.current;
+    const r = rangeOf(period);
+    setVisitorPreviewLoaded(false);
+    const response = await Promise.resolve(supabase.rpc("get_concert_visitors", {
+      p_password: pw, p_from: r.from, p_to: r.to, p_filter: "all", p_offset: 0, p_limit: 10,
+    })).catch(() => null);
+    if (request !== visitorPreviewRequest.current) return;
+    if (!response) {
+      setVisitorPreviewError("방문자 기록을 불러오지 못했어요.");
+      setVisitorPreviewLoaded(true);
+      return;
+    }
+    const { data, error } = response;
+    if (error) {
+      if (isAuthError(error)) onAuthFail();
+      else setVisitorPreviewError("방문자 기록을 불러오지 못했어요.");
+      setVisitorPreviewLoaded(true);
+      return;
+    }
+    const result = data as VisitorsPage;
+    setVisitorPreview(result.visits.slice(0, 10));
+    setVisitorPreviewError("");
+    setVisitorPreviewLoaded(true);
+  }, [pw, onAuthFail, period]);
+
+  const loadVisitorPage = useCallback(async (offset: number, filter: string, append: boolean) => {
+    const request = ++visitorListRequest.current;
+    const r = rangeOf(period);
+    setVisitorListLoading(true);
+    setVisitorListError("");
+    if (!append) {
+      setVisitorRows([]);
+      setVisitorTotal(0);
+    }
+    const response = await Promise.resolve(supabase.rpc("get_concert_visitors", {
+      p_password: pw, p_from: r.from, p_to: r.to, p_filter: filter, p_offset: offset, p_limit: 30,
+    })).catch(() => null);
+    if (request !== visitorListRequest.current) return;
+    setVisitorListLoading(false);
+    if (!response) {
+      setVisitorListError("방문자 목록을 불러오지 못했어요.");
+      return;
+    }
+    const { data, error } = response;
+    if (error) {
+      if (isAuthError(error)) onAuthFail();
+      else setVisitorListError("방문자 목록을 불러오지 못했어요.");
+      return;
+    }
+    const result = data as VisitorsPage;
+    setVisitorTotal(result.total);
+    if (append) setVisitorRows((rows) => [...rows, ...result.visits]);
+    else {
+      setVisitorRows(result.visits);
+      setVisitorAnchor(result.visits[0]?.started_at ?? "");
+      setSelectedVisit(result.visits[0] ?? null);
+    }
+  }, [period, pw, onAuthFail]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setVisitorSearchQuery(visitorSearch.trim().toUpperCase()), 250);
+    return () => window.clearTimeout(timer);
+  }, [visitorSearch]);
+  const activeVisitorFilter = visitorSearchQuery || visitorFilter;
+  useEffect(() => {
+    if (visitorsOpen) void loadVisitorPage(0, activeVisitorFilter, false);
+  }, [visitorsOpen, period, activeVisitorFilter, loadVisitorPage]);
+  useEffect(() => {
+    void loadVisitorPreview();
+  }, [loadVisitorPreview]);
+  useEffect(() => {
+    if (!visitorsOpen || !selectedVisit) return;
+    const key = visitKey(selectedVisit);
+    if (visitDetails[key]) return;
+    let active = true;
+    setVisitDetailLoading(true);
+    setVisitDetailError("");
+    void Promise.resolve(supabase.rpc("get_concert_visit_detail", {
+      p_password: pw, p_code: selectedVisit.code, p_started_at: selectedVisit.started_at,
+    })).then(({ data: response, error }) => {
+      if (!active) return;
+      setVisitDetailLoading(false);
+      if (error) {
+        if (isAuthError(error)) onAuthFail();
+        else setVisitDetailError("방문 상세를 불러오지 못했어요.");
+        return;
+      }
+      setVisitDetails((cache) => ({ ...cache, [key]: response as VisitDetail }));
+    }).catch(() => {
+      if (!active) return;
+      setVisitDetailLoading(false);
+      setVisitDetailError("방문 상세를 불러오지 못했어요.");
+    });
+    return () => { active = false; };
+  }, [visitorsOpen, selectedVisit, visitDetails, visitDetailRetry, pw, onAuthFail]);
+  useEffect(() => {
+    if (!visitorsOpen) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setVisitorsOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = previous;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [visitorsOpen]);
+
   useEffect(() => {
     void load();
   }, [period, load]);
@@ -552,19 +717,22 @@ function Dashboard({ pw, onAuthFail }: { pw: string; onAuthFail: () => void }) {
     // 탭을 안 보고 있을 땐 건너뛰어요 (서버 부담 · 배터리)
     const a = window.setInterval(() => !document.hidden && void load(), 60_000);
     const b = window.setInterval(() => !document.hidden && void loadLive(), 30_000);
+    const c = window.setInterval(() => !document.hidden && void loadVisitorPreview(), 60_000);
     const onVis = () => {
       if (!document.hidden) {
         void load();
         void loadLive();
+        void loadVisitorPreview();
       }
     };
     document.addEventListener("visibilitychange", onVis);
     return () => {
       window.clearInterval(a);
       window.clearInterval(b);
+      window.clearInterval(c);
       document.removeEventListener("visibilitychange", onVis);
     };
-  }, [load, loadLive]);
+  }, [load, loadLive, loadVisitorPreview]);
 
   /* ---------- 저장 (홍보 기록 · 수동 숫자) ---------- */
   const rpcWrite = async (fn: string, args: Record<string, unknown>) => {
@@ -592,6 +760,9 @@ function Dashboard({ pw, onAuthFail }: { pw: string; onAuthFail: () => void }) {
   /* ---------- 계산 ---------- */
   const view = useMemo(() => (data ? compute(data) : null), [data]);
   const r = rangeOf(period);
+  const previewNewCount = visitorsOpen && visitorAnchor
+    ? visitorPreview.filter((v) => v.started_at > visitorAnchor).length
+    : 0;
 
   return (
     <div className="app1">
@@ -657,6 +828,38 @@ function Dashboard({ pw, onAuthFail }: { pw: string; onAuthFail: () => void }) {
                     </div>
                   ))}
                 </div>
+              </div>
+              <div className="card cs-vis-preview">
+                <div className="headrow">
+                  <h3>방문자별 기록</h3>
+                  <button className="link" onClick={() => {
+                    setVisitorFilter("all");
+                    setVisitorSearch("");
+                    setVisitorSearchQuery("");
+                    setVisitorAnchor(visitorPreview[0]?.started_at ?? "");
+                    setVisitorsOpen(true);
+                  }}>자세히 보기 ⤢</button>
+                </div>
+                {visitorPreviewError ? (
+                  <div className="cs-vis-status">
+                    <span>{visitorPreviewError}</span>
+                    <button className="link" onClick={() => void loadVisitorPreview()}>다시 시도</button>
+                  </div>
+                ) : visitorPreview.length ? (
+                  <div className="cs-vis-preview-list">
+                    {visitorPreview.slice(0, 3).map((visit) => (
+                      <div className="cs-vis-preview-row" key={visitKey(visit)}>
+                        <span className="cs-vis-time">{hhmm(visit.started_at)}</span>
+                        <b className="mono">#{visit.code}</b>
+                        <span className="pill" style={{ background: srcMeta(visit.src).color }}>{srcMeta(visit.src).short}</span>
+                        <span className={`cs-vis-result cs-vis-${visit.result}`}>{visitResultText(visit.result)}</span>
+                        <span className="cs-vis-duration">{visitDuration(visit.duration_sec)}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="cs-vis-status">{visitorPreviewLoaded ? "아직 다녀간 사람이 없어요" : "방문 기록을 불러오는 중…"}</p>
+                )}
               </div>
             </div>
           </div>
@@ -892,6 +1095,136 @@ function Dashboard({ pw, onAuthFail }: { pw: string; onAuthFail: () => void }) {
         </>
       )}
 
+      {visitorsOpen && (
+        <div className="cs-vis-overlay" onMouseDown={(e) => {
+          if (e.target === e.currentTarget) setVisitorsOpen(false);
+        }}>
+          <section className="cs-vis-modal" role="dialog" aria-modal="true" aria-labelledby="cs-vis-title">
+            <header className="cs-vis-modal-head">
+              <div>
+                <h2 id="cs-vis-title">방문자별 기록</h2>
+                <p>{period === "today" ? "오늘" : period === "7d" ? "최근 7일" : "전체 기간"} 방문 흐름을 살펴봐요</p>
+              </div>
+              {previewNewCount > 0 && (
+                <button className="cs-vis-new" onClick={() => void loadVisitorPage(0, activeVisitorFilter, false)}>
+                  새 방문 {previewNewCount}명 ↻
+                </button>
+              )}
+              <button className="cs-vis-close" aria-label="닫기" onClick={() => setVisitorsOpen(false)}>×</button>
+            </header>
+            <div className="cs-vis-columns">
+              <section className="cs-vis-list-pane" aria-label="방문 목록">
+                <div className="cs-vis-list-tools">
+                  <input
+                    className="sel cs-vis-search"
+                    value={visitorSearch}
+                    onChange={(e) => setVisitorSearch(e.target.value.replace(/[^0-9a-f]/gi, "").slice(0, 4))}
+                    placeholder="코드 검색 (예: A3F2)"
+                    aria-label="방문 코드 검색"
+                    maxLength={4}
+                  />
+                  <button className="btn g" disabled={visitorListLoading} onClick={() => void loadVisitorPage(0, activeVisitorFilter, false)}>↻ 새로고침</button>
+                </div>
+                <div className="cs-vis-filters">
+                  {([
+                    ["all", "전체"], ["clicked", "신청 클릭"], ["browsed", "둘러봄"], ["bounced", "첫 화면만"],
+                    ["insta", "인스타"], ["kakao", "카톡"], ["qr", "QR"],
+                  ] as const).map(([key, label]) => (
+                    <button key={key} className={!visitorSearchQuery && visitorFilter === key ? "on" : ""}
+                      onClick={() => { setVisitorSearch(""); setVisitorSearchQuery(""); setVisitorFilter(key); }}>{label}</button>
+                  ))}
+                </div>
+                <div className="cs-vis-list" aria-live="polite">
+                  {visitorListError ? (
+                    <div className="cs-vis-empty">
+                      <p>{visitorListError}</p>
+                      <button className="btn g" onClick={() => void loadVisitorPage(0, activeVisitorFilter, false)}>다시 시도</button>
+                    </div>
+                  ) : visitorListLoading && !visitorRows.length ? (
+                    <div className="cs-vis-empty">방문 기록을 불러오는 중…</div>
+                  ) : visitorRows.length ? visitorRows.map((visit) => (
+                    <button key={visitKey(visit)} className={`cs-vis-row ${selectedVisit && visitKey(selectedVisit) === visitKey(visit) ? "selected" : ""}`}
+                      onClick={() => setSelectedVisit(visit)}>
+                      <span className="cs-vis-row-top">
+                        <b className="mono">#{visit.code}</b>
+                        <span className="cs-vis-time">{visitStamp(visit.started_at)}</span>
+                      </span>
+                      <span className="cs-vis-row-bottom">
+                        <span className="pill" style={{ background: srcMeta(visit.src).color }}>{srcMeta(visit.src).short}</span>
+                        <span className={`cs-vis-result cs-vis-${visit.result}`}>{visitResultText(visit.result)}</span>
+                        <span className="cs-vis-duration">{visitDuration(visit.duration_sec)}</span>
+                      </span>
+                    </button>
+                  )) : !visitorListLoading ? (
+                    <div className="cs-vis-empty">아직 다녀간 사람이 없어요</div>
+                  ) : null}
+                </div>
+                <div className="cs-vis-list-foot">
+                  <span>{fmt(visitorTotal)}명</span>
+                  {visitorRows.length < visitorTotal && (
+                    <button className="btn g" disabled={visitorListLoading} onClick={() => void loadVisitorPage(visitorRows.length, activeVisitorFilter, true)}>
+                      {visitorListLoading ? "불러오는 중…" : "더 보기"}
+                    </button>
+                  )}
+                  {visitorListLoading && visitorRows.length > 0 && <span className="cs-vis-loading">불러오는 중…</span>}
+                </div>
+              </section>
+
+              <section className="cs-vis-detail-pane" aria-label="선택 방문 상세">
+                {!selectedVisit ? (
+                  <div className="cs-vis-empty">방문자를 선택해 주세요</div>
+                ) : (
+                  <>
+                    <div className="cs-vis-detail-heading">
+                      <div>
+                        <b className="cs-vis-code mono">#{selectedVisit.code}</b>
+                        <span className={`cs-vis-result cs-vis-${selectedVisit.result}`}>{visitResultText(selectedVisit.result)}</span>
+                      </div>
+                      <span className="cs-vis-started">{visitStamp(selectedVisit.started_at)}에 들어왔어요</span>
+                    </div>
+                    <div className="cs-vis-facts">
+                      <div><small>들어온 경로</small><b>{srcMeta(selectedVisit.src).label}</b></div>
+                      <div><small>기기</small><b>{DEVICE_NAME[selectedVisit.device] ?? selectedVisit.device} · {BROWSER_NAME[selectedVisit.browser] ?? selectedVisit.browser}</b></div>
+                      <div><small>머문 시간</small><b>{visitDuration(selectedVisit.duration_sec)}</b></div>
+                      <div><small>몇 번째 방문</small><b>{selectedVisit.visit_no === 1 ? "처음 방문" : `${selectedVisit.visit_no}번째 방문`}</b></div>
+                    </div>
+                    <h3 className="cs-vis-timeline-title">한 일</h3>
+                    <div className="cs-vis-timeline">
+                      {visitDetailLoading && <div className="cs-vis-empty">상세 기록을 불러오는 중…</div>}
+                      {visitDetailError && (
+                        <div className="cs-vis-empty">
+                          <p>{visitDetailError}</p>
+                          <button className="btn g" onClick={() => setVisitDetailRetry((n) => n + 1)}>다시 시도</button>
+                        </div>
+                      )}
+                      {(visitDetails[visitKey(selectedVisit)]?.events ?? []).map((event, index, events) => {
+                        const gap = index ? Math.floor((new Date(event.t).getTime() - new Date(events[index - 1].t).getTime()) / 1000) : 0;
+                        return (
+                          <div key={`${event.t}-${event.event}-${index}`}>
+                            {gap > 20 && <div className="cs-vis-gap">· {gap}초 뒤</div>}
+                            <div className={`cs-vis-timeline-event ${event.event === "apply_click" ? "gold" : ""}`}>
+                              <span className="cs-vis-timeline-dot" />
+                              <span>{visitEventText(event)}</span>
+                              <time>{hhmm(event.t)}</time>
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {visitDetails[visitKey(selectedVisit)]?.events.length ? (
+                        <div className="cs-vis-timeline-event exit">
+                          <span className="cs-vis-timeline-dot" />
+                          <span>🚪 나갔어요</span>
+                          <time>{hhmm(selectedVisit.ended_at)}</time>
+                        </div>
+                      ) : null}
+                    </div>
+                  </>
+                )}
+              </section>
+            </div>
+          </section>
+        </div>
+      )}
       {confirm && <Confirm title={confirm.title} sub={confirm.sub} busy={busy} onYes={runConfirm} onNo={() => !busy && setConfirm(null)} />}
     </div>
   );

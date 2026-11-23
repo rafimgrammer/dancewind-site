@@ -5,11 +5,14 @@
 //   - 사이트 속도에 영향이 없게: await 하지 않고, 한가할 때(requestIdleCallback) 조용히 보내고, 실패해도 무시해요.
 //   - supabase-js 대신 fetch 를 직접 써요. keepalive 옵션을 줄 수 있어서
 //     "신청 버튼 누르고 바로 구글 폼으로 넘어가는" 순간에도 기록이 끊기지 않고 전송돼요.
+//   - 지금 보는 중 신호는 concert_events에 행을 쌓지 않고 concert_ping RPC로 별도 갱신해요.
 //
 // 기록하지 않는 경우
 //   - 실제 사이트(hallymdancewind.com)가 아닌 곳: localhost, netlify 미리보기 주소 등
 //   - 자동화된 브라우저(navigator.webdriver = 봇·크롤러)
 //   - 통계 페이지에 비밀번호로 한 번이라도 들어간 기기 (회장단 본인 방문은 빼려고)
+
+import { supabase } from "./supabase";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
@@ -258,21 +261,37 @@ export function trackOnce(event: ConcertEvent, detail?: string | null, urgent = 
 export function startPresence(): () => void {
   if (!trackingEnabled() && !DEBUG) return () => {};
   let timer = 0;
+  const ping = () => {
+    if (DEBUG) {
+      track("ping");
+      return;
+    }
+    if (!trackingEnabled()) return;
+    currentSrc ??= resolveSrc();
+    void Promise.resolve(supabase.rpc("concert_ping", { p_visitor: visitorId(), p_src: currentSrc })).then(({ error }) => {
+      if (error) console.warn("[concert-track] presence ping failed", error.message);
+    }).catch((error: unknown) => {
+      console.warn("[concert-track] presence ping failed", error);
+    });
+  };
   const stop = () => {
     window.clearInterval(timer);
     timer = 0;
   };
   const begin = () => {
     stop();
-    timer = window.setInterval(() => track("ping"), 45_000);
+    timer = window.setInterval(ping, 45_000);
   };
   const onVis = () => {
     if (document.visibilityState === "visible") {
-      track("ping");
+      ping();
       begin();
     } else stop();
   };
-  if (document.visibilityState === "visible") begin();
+  if (document.visibilityState === "visible") {
+    ping();
+    begin();
+  }
   document.addEventListener("visibilitychange", onVis);
   return () => {
     stop();
