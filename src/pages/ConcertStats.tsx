@@ -1338,9 +1338,15 @@ function GoalCard({ d, onSave }: { d: Stats; onSave: (key: string, v: number) =>
       ) : (
         <>
           <div className="kpi"><div className="v" style={{ marginTop: 8 }}>{fmt(d.all_visitors)}<small>/ {fmt(goal)}명</small></div></div>
-          <div className="gauge">
+          {/* 목표선 글씨는 막대 "아래"에 둬요 — 위에 두면 큰 숫자(62 / 500명)와 겹쳐요.
+              글씨를 12~88% 로 밀어 넣으면 선과 떨어져 보여서, 대신 선 위치에 붙이고
+              양 끝 근처에선 글씨가 선의 오른쪽(왼쪽 끝일 때) / 왼쪽(오른쪽 끝일 때)으로 펼쳐지게 해요. */}
+          <div className={`gauge${frac > 0 && frac < 1 ? " has-mark" : ""}`}>
             <b style={{ width: `${Math.min(100, pct(d.all_visitors, goal))}%` }} />
-            {frac > 0 && frac < 1 && <><i style={{ left: `${frac * 100}%` }} /><em style={{ left: `${Math.min(88, Math.max(12, frac * 100))}%` }}>오늘 목표선</em></>}
+            {frac > 0 && frac < 1 && <><i style={{ left: `${frac * 100}%` }} /><em style={{
+              left: `${frac * 100}%`,
+              transform: frac < 0.15 ? "translateX(-3px)" : frac > 0.85 ? "translateX(calc(-100% + 3px))" : "translateX(-50%)",
+            }}>오늘 목표선</em></>}
           </div>
           <div className="note" style={{ color: "var(--ink2)", marginTop: 14 }}>
             {d.all_visitors >= goal ? (

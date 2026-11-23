@@ -90,7 +90,9 @@
 .cs .gauge { height: 18px; border-radius: 9px; background: rgba(255,255,255,.07); position: relative; overflow: visible; margin-top: 14px; }
 .cs .gauge b { position: absolute; left: 0; top: 0; bottom: 0; background: var(--blue); border-radius: 9px; max-width: 100%; }
 .cs .gauge i { position: absolute; top: -6px; bottom: -6px; width: 2px; background: var(--gold); }
-.cs .gauge em { position: absolute; top: -26px; transform: translateX(-50%); font: 600 12px Pretendard, sans-serif; color: var(--gold); font-style: normal; white-space: nowrap; }
+.cs .gauge em { position: absolute; top: calc(100% + 8px); transform: translateX(-50%); font: 600 12px Pretendard, sans-serif; color: var(--gold); font-style: normal; white-space: nowrap; }
+/* 목표선 글씨가 막대 아래로 내려간 만큼 다음 줄과 띄워요 */
+.cs .gauge.has-mark { margin-bottom: 22px; }
 
 .cs .feed { display: flex; flex-direction: column; gap: 8px; overflow: hidden; -webkit-mask: linear-gradient(#000 75%, transparent); mask: linear-gradient(#000 75%, transparent); }
 .cs .feed > div { display: flex; gap: 10px; align-items: center; font-size: 12.5px; color: var(--ink); animation: cs-fin .4s; min-width: 0; }
