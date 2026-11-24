@@ -146,7 +146,7 @@ export const CONCERT_2026 = {
         { title: "Beggin'", artist: "Måneskin" },
       ],
       members: ["이동금", "주유정", "권현민", "전시연", "조은서", "maja", "김유빈"],
-      leaders: ["이동금"],
+      leaders: ["이동금", "주유정"],
     },
     {
       id: "4",
